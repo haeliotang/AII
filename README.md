@@ -1,5 +1,9 @@
 # AII — Autonomous Infrastructure Intelligence
 
+> An open autonomous industrial platform initiated by **Inceptless**.
+
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 ### Build the open foundation for self-sustaining industrial systems.
 
 **From autonomous machines to autonomous industry. From remote outposts on Earth to the industrial foundations of a multiplanetary civilization.**
@@ -141,7 +145,19 @@ Start with the [founding research document](docs/research/FOUNDATIONS.zh-CN.md).
 
 Use [issues](https://github.com/haeliotang/AII/issues) to discuss research questions and scoped implementation proposals. Proposed architecture should earn stability through experiments rather than being treated as a frozen specification.
 
-**Licensing:** Apache-2.0 is proposed for the future core. No project license has been adopted in this initial documentation commit; public visibility alone does not grant an open-source license. Selecting and adding the license is an explicit next governance decision. Third-party components retain their own terms.
+## Open Source License
+
+AII is released under the **Apache License, Version 2.0**.
+
+The root [LICENSE](LICENSE) applies to the project code and documentation unless otherwise noted. Third-party components retain their own licenses; preserve their notices when redistributing dependencies or binaries.
+
+## Project Origin
+
+AII is initiated by **Inceptless**.
+
+- Initiating Company: Inceptless
+- Project: AII — Autonomous Infrastructure Intelligence
+- Copyright: (c) 2026 Inceptless.
 
 ---
 
