@@ -34,6 +34,7 @@ Our central question is simple:
 | [Base-01 scenario](scenarios/base-01/README.zh-CN.md) | Structural v0.1 with synthetic data and 40 stratified cases whose expectations were written before the first run. All 40 match. |
 | [Timed Base-01](scenarios/base-01-timed/README.zh-CN.md) | v0.1 timed scenario: asset/stock timelines with failure predictions, day/night energy and supply interruption; 20 pre-registered cases with a committed replay digest checked in CI. |
 | [H1 structural experiment](experiments/h1-structural/PREREG.md) | Pre-registered protocol; 40 stratified cases with a committed 25% holdout; the per-device baseline misses 2/7 blocked holdout cases while the capability-graph solver misses 0/7. H1 is weakly supported, but the conclusion is internal evidence only: the ≥1/4 external-contribution quota is not met and the ground truth was authored with the same model. Details in the [report](experiments/h1-structural/REPORT.md). |
+| [H1 temporal re-test](experiments/h1-temporal/PREREG.md) | Pre-registered; the time-blind baseline misses 3/7 temporal blockings and 2/5 joint-dependency blockings on the 20 timed cases, while the timed evaluator mismatches 0/20. Internal evidence only. Details in the [report](experiments/h1-temporal/REPORT.md). |
 
 A `candidate` route from the prototype is structural only: it does not check time, capacity, concurrency, or physical execution.
 

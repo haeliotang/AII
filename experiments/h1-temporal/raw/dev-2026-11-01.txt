@@ -1,0 +1,28 @@
+case	truth	poieweave	baseline	class	tags
+T0	feasible	feasible	feasible	agree	One spare sleeve is in stock and the default repair takes 3 h; the pump's failure is predicted from 4 h, so the repair must finish by then.
+T1	too_late	too_late	feasible	temporal_miss	
+T2	insufficient_resource	insufficient_resource	blocked	agree	Only 1 kWh is in the battery until 8 h; the turning route needs 2 kWh.
+T3	feasible	feasible	blocked	false_block	
+T4	too_late	too_late	blocked	agree	
+T5	feasible	feasible	feasible	agree	At 8 h the pump has worn out, but replace-sleeve-p1 restores failed assets; the bus is still available.
+T6	blocked	blocked	blocked	agree	
+T7	unknown	unknown	unknown	agree	
+T8	feasible	feasible	feasible	agree	
+T9	too_late	too_late	feasible	temporal_miss	
+T10	insufficient_resource	insufficient_resource	blocked	agree	
+T11	blocked	blocked	feasible	joint_miss	
+T12	feasible	feasible	feasible	agree	
+T13	blocked	blocked	blocked	agree	
+T14	feasible	feasible	feasible	agree	
+T15	insufficient_resource	insufficient_resource	blocked	agree	
+T16	too_late	too_late	feasible	temporal_miss	
+T17	feasible	feasible	blocked	false_block	
+T18	blocked	blocked	feasible	joint_miss	
+T19	feasible	feasible	blocked	false_block	
+
+cases: 20
+agreement: 12/20
+temporal_miss: 3/7
+joint_miss: 2/5
+false_block: 3/8
+poieweave_vs_truth_mismatch: 0/20
