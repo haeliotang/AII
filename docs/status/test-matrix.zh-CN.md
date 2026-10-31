@@ -56,7 +56,7 @@
 
 本地一键复现：`scripts/verify-all.sh`（与 CI 相同的步骤序列）；干净克隆复现：`scripts/check-fresh-clone.sh`。
 
-另：`.github/workflows/scheduled.yml` 每周一 04:17 UTC（或手动触发）运行 `verify-all.sh`（`SKIP_DENY=1`）与独立的 `cargo-deny` job，用于捕获新公告/依赖来源漂移。
+另：`.github/workflows/scheduled.yml` 每周一 04:17 UTC（或手动触发）运行 `verify-all.sh`（`SKIP_DENY=1`）与独立的 `cargo-deny` job；手动触发时还会运行 `fresh-clone` job（干净克隆内重跑完整套件）。
 
 ## 4. 对应关系
 
