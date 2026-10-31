@@ -1,0 +1,10 @@
+[package]
+name = "poie-federation"
+version = "0.1.0"
+description = "Multi-site federation (simulated): HLC ordering, log exchange, reconnect reconciliation, ownership and reservation conflicts (M12)."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+poie-state = { path = "../poie-state", version = "0.1.0" }

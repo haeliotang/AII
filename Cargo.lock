@@ -55,6 +55,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-federation"
+version = "0.1.0"
+dependencies = [
+ "poie-state",
+]
+
+[[package]]
 name = "poie-h1-baseline"
 version = "0.1.0"
 dependencies = [
