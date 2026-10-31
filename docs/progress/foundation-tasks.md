@@ -131,3 +131,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增图求解器随机不变量测试（`crates/poie-ontology/tests/graph_properties.rs`，120 trials + 默认深度全目标检查）：验证判定与阻断分类一致（Candidate 无阻断、Blocked 有根因、SearchLimit 必有深度阻断、Unknown 必有未知状态阻断）、候选步骤内部一致（步骤引用只向后、提供者/路线验证等级不低于查询下限）、弱化验证等级不会丢失候选、加强验证等级不会产生候选、更大深度不会丢失候选。
 - 2026-10-31：新增[测试与证据矩阵](../status/test-matrix.zh-CN.md)：按 crate 列出 269 个已列出的 Rust 测试与随机性质 trials、场景/实验重放、CI 步骤及里程碑对应关系，并从 stage-gates/README/开发文档链接。
 - 2026-10-31：新增 Markdown 相对链接检查 `scripts/check-docs.py` 并纳入 CI/`verify-all.sh`：扫描全部 Markdown 相对链接/图片（跳过代码块、外链、锚点），首次运行发现并修复 **38 处**路径错误（ADR/specification/experiments/progress 相对路径与 PREREG 链接），现全部链接可解析。
+- 2026-10-31：新增 HLC 随机不变量测试（`crates/poie-federation/tests/hlc_properties.rs`，80 trials × 60 操作）：tick/observe 与独立 HLC 规格 oracle 逐步一致、时钟永不回退、observe 严格超过远端与本地前值、物理时间不低于墙钟、逻辑计数器饱和不回绕；另含同一操作序列的可复现性检查。
