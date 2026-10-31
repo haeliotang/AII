@@ -134,7 +134,10 @@ impl LocalRuntime {
                         self.append_observation(&name, &observation)?;
                         accepted += 1;
                     }
-                    self.last_assets.insert(name, known);
+                    // Remember every asset this adapter has ever reported, so a
+                    // later disconnect marks all of them unknown (not only the
+                    // assets of the most recent successful poll).
+                    self.last_assets.entry(name).or_default().extend(known);
                 }
                 Err(error) => {
                     self.health.insert(name.clone(), AdapterHealth { connected: false, last_observation_ms: None });
