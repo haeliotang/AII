@@ -13,6 +13,8 @@ pub enum AdapterFault {
     DuplicateDelivery,
     /// The actuator moves and the process then crashes.
     CrashAfterExecute,
+    /// The executor cannot be reached (no physical action).
+    Unreachable,
 }
 
 #[derive(Debug)]
@@ -66,6 +68,9 @@ impl WritableAdapter for SimulatedWritableAdapter {
     }
 
     fn dispatch(&mut self, command: &crate::writable::Command) -> Result<Receipt, ExecError> {
+        if self.fault == AdapterFault::Unreachable {
+            return Err(ExecError::Disconnected("simulated network loss".into()));
+        }
         if self.declaration.supports_idempotency && self.executed_keys.contains(&command.idempotency_key) {
             return Ok(Receipt {
                 action_id: command.action_id.clone(),
