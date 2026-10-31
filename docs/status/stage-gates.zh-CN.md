@@ -8,7 +8,7 @@
 scripts/verify-all.sh
 ```
 
-脚本依次运行：格式、clippy、全测试、Base-01/Base-02 预登记用例、时间版用例与重放摘要、VEC 报告重放、H3 模拟重放、H4 报告重放、联邦分区模拟重放、`cargo-deny`。
+脚本依次运行：格式、clippy、全测试、**rustdoc（警告即错误）**、Base-01/Base-02 预登记用例、时间版用例与重放摘要、VEC 报告重放、H3 模拟重放、H4 报告重放、联邦分区模拟重放、本机 TCP 联邦演示、两站点影子集成、`cargo-deny`。
 
 ## 1. Foundation（M1–M5）
 

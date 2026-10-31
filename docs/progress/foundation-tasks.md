@@ -118,3 +118,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：本机 TCP 双进程联邦演示：`experiments/federation-tcp` 由父进程分配两个回环端口并并发启动两个子进程，双方通过真实 TCP socket 交换记录/预留/租约并对账；两个站点均报告 `over_reservation`、`double_ownership`、`duplicate_idempotency_key` 三类冲突，报告/原始输出提交并加入 CI 与 `verify-all.sh` 重放。明确标注 localhost/two-process，非真实多站点。
 - 2026-10-31：新增联邦随机化分区性质测试（`crates/poie-federation/tests/federation_properties.rs`，固定种子 120 trials）：验证交换前不泄漏对端记录、重连后各站持有并集、合并无丢失/无重复且因果有序、对账确定且可独立复核、预留/租约不被丢弃、重复交换幂等。
 - 2026-10-31：两站点影子集成演示：站点 A 经只读适配器/投影/规划产生动作，站点 B 通过联邦层共享预留与租约；验证超额预留与重叠租约阻断派发、干净对账放行，并经执行门与独立验证完成派发（7/7 断言）。报告/轨迹提交并加入 CI 与 `verify-all.sh` 重放；明确为模拟/进程内联邦。
+- 2026-10-31：文档门禁加固：`RUSTDOCFLAGS="-D warnings" cargo doc --no-deps` 纳入 CI 与 `verify-all.sh`；修复 3 处 rustdoc 警告（`poie-timed` 与 H2 runner 的用法示例中的裸 `<path>/<dir>`，以及 `poie-viability::bridge` 的冗余显式链接）。

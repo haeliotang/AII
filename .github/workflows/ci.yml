@@ -35,6 +35,8 @@ jobs:
         run: cargo clippy --locked --all-targets -- -D warnings
       - name: Test
         run: cargo test --locked
+      - name: rustdoc (warnings as errors)
+        run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --offline
       - name: Base-01 pre-registered cases
         run: cargo run --locked -q -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml
 
