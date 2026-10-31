@@ -6,8 +6,12 @@
 //! through the SAP lifecycle (proposed → validated → authorized) and the six
 //! dispatch checks, so there is no path that bypasses authorization.
 
+pub mod baselines;
 pub mod plan;
+pub mod replan;
 pub mod sap;
 
+pub use baselines::{baseline, BaselineKind, BaselineRequest};
 pub use plan::{plan, GoalFailure, Plan, PlanError, PlannedAction, PlanningGoal, PlanningRequest};
+pub use replan::{replan, ReplanError, ReplanRequest, ReplanResult, ReplanTrigger};
 pub use sap::{validate_plan_through_sap, PlanValidationError, SapValidation};
