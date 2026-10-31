@@ -133,3 +133,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增 Markdown 相对链接检查 `scripts/check-docs.py` 并纳入 CI/`verify-all.sh`：扫描全部 Markdown 相对链接/图片（跳过代码块、外链、锚点），首次运行发现并修复 **38 处**路径错误（ADR/specification/experiments/progress 相对路径与 PREREG 链接），现全部链接可解析。
 - 2026-10-31：新增 HLC 随机不变量测试（`crates/poie-federation/tests/hlc_properties.rs`，80 trials × 60 操作）：tick/observe 与独立 HLC 规格 oracle 逐步一致、时钟永不回退、observe 严格超过远端与本地前值、物理时间不低于墙钟、逻辑计数器饱和不回绕；另含同一操作序列的可复现性检查。
 - 2026-10-31：新增[契约自审与外部评审问题包](../status/contract-self-audit.zh-CN.md)：逐份契约列出 §8/§10 开放问题、自审补充问题与反例方向、建议评审顺序与处置流程；新增 `.github/ISSUE_TEMPLATE/contract-review.yml`，并在 M1.8 外部行动中链接。
+- 2026-10-31：新增记录层随机不变量测试（`crates/poie-state/tests/record_properties.rs`，120 trials）：随机信封损坏下验证错误分类（schema/kind/subject/site/source）、九类 payload 全部可构造且 JSON 往返一致、kind 不匹配一律拒绝、record id 解析往返、live/simulation 命名空间隔离、验证独立性判定。

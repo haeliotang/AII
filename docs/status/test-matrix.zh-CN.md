@@ -7,7 +7,7 @@
 | crate | 列出测试数 | 其中随机性质测试 | 主要里程碑 |
 | --- | ---: | --- | --- |
 | `poie-ontology` | 77 | 图求解 120 trials；调度 120 trials | M2、M4 |
-| `poie-state` | 67 | 状态机 10⁵ 序列（单元内）；投影 120 trials | M4、M5、M12 |
+| `poie-state` | 70 | 状态机 10⁵ 序列（单元内）；投影 120 trials；记录验证/往返 120 trials | M4、M5、M12 |
 | `poie-sim` | 14 | 仿真 80 trials | M4、M6 |
 | `poie-viability` | 38 | 指标 60 轨迹；报告 20 份 × 16 类变异 | M6 |
 | `poie-plan` | 19 | 规划器 80 trials | M8 |
@@ -15,9 +15,9 @@
 | `poie-runtime` | 13 | 运行时/断连 80 trials | M9 |
 | `poie-exec` | 13 | 执行门 120 trials | M10 |
 | `poie-expansion` | 9 | 结构 40/时序 40 trials | M11 |
-| `poie-federation` | 8 | 分区/重连 120 trials | M12 |
+| `poie-federation` | 10 | HLC 80 trials；分区/重连 120 trials | M12 |
 
-**Rust 测试合计：269 个已列出的测试**（不含实验 runner 的断言脚本）。
+**Rust 测试合计：274 个已列出的测试**（不含实验 runner 的断言脚本）。
 
 ## 2. 场景与实验重放
 
