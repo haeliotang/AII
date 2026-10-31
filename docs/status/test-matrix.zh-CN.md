@@ -46,7 +46,7 @@
 4. `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`
 5. Markdown 相对链接检查：`python3 scripts/check-docs.py`
 6. 实验重放覆盖检查：`python3 scripts/check-experiment-replays.py`
-7. 测试矩阵计数校验：`python3 scripts/check-test-matrix.py`
+7. 测试矩阵与状态快照计数校验：`python3 scripts/check-test-matrix.py`
 8. Python：`python3 -m unittest discover -s python/poie_models`
 6. Base-01 40 例、Base-02 8 例
 7. M12 分区模拟重放、e2e 重放、TCP 重放、两站点重放

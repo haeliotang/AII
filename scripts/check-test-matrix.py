@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Check that docs/status/test-matrix.zh-CN.md matches the actual test counts.
 
-Parses the library-crate table and the total from the Markdown file, runs
-`cargo test -q -p <crate> -- --list` for every listed crate, and fails when a
-count or the total drifts. Keeps evidence documents honest as tests are added.
+Parses the library-crate table, the total and the status-snapshot count, runs
+`cargo test -q -p <crate> -- --list` for every listed crate and for the two
+test-bearing experiment runners, and fails when a count or a total drifts.
+Keeps evidence documents honest as tests are added.
 
 Usage: python3 scripts/check-test-matrix.py [repo-root]
 """
@@ -15,6 +16,8 @@ from pathlib import Path
 
 ROW = re.compile(r"^\|\s*`(poie-[a-z0-9-]+)`\s*\|\s*(\d+)\s*\|", re.MULTILINE)
 TOTAL = re.compile(r"\*\*库 crate 测试合计：(\d+) 个已列出的测试\*\*")
+SNAPSHOT = re.compile(r"Rust 列表测试\s*\|\s*\*\*(\d+)\*\*（库 crate (\d+) \+ 实验 runner (\d+)）")
+RUNNERS = ("poie-h1-baseline", "poie-vec-base01")
 LIST_END = ": test"
 
 
@@ -39,6 +42,11 @@ def main():
     if not rows or not total_match:
         print(f"FAILED: cannot find the crate table or total in {matrix}")
         return 1
+    snapshot = root / "docs" / "status" / "status-snapshot.zh-CN.md"
+    snapshot_match = SNAPSHOT.search(snapshot.read_text(encoding="utf-8")) if snapshot.exists() else None
+    if not snapshot_match:
+        print(f"FAILED: cannot find the test count in {snapshot}")
+        return 1
 
     expected_total = int(total_match.group(1))
     failures = 0
@@ -56,6 +64,16 @@ def main():
         failures += 1
     else:
         print(f"ok total: {actual_total}")
+    runner_total = sum(listed_tests(root, package) for package in RUNNERS)
+    snap_total, snap_library, snap_runner = (int(value) for value in snapshot_match.groups())
+    if (snap_library, snap_runner, snap_total) != (actual_total, runner_total, actual_total + runner_total):
+        print(
+            f"MISMATCH status snapshot: documented {snap_total} ({snap_library} library + {snap_runner} runner), "
+            f"actual {actual_total + runner_total} ({actual_total} library + {runner_total} runner)"
+        )
+        failures += 1
+    else:
+        print(f"ok status snapshot: {snap_total} ({snap_library} + {snap_runner})")
     if failures:
         print(f"FAILED: {failures} test-matrix mismatch(es)")
         return 1
