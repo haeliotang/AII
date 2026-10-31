@@ -1,0 +1,11 @@
+[package]
+name = "poie-process"
+version = "0.1.0"
+description = "Versioned process-model bridge: JSON-line protocol, process isolation, deadlines, dimensional/conservation validation and classified failures."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
