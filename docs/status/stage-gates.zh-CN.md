@@ -34,7 +34,7 @@ CI 固定使用 Rust 1.94.0（与参考开发环境一致，避免 clippy 版本
 | 条件 | 证据 |
 | --- | --- |
 | VEC 参考实现 | [viability-expansion v0.2](../../specifications/viability-expansion.zh-CN.md)：查询/六类结论/抽样枚举/四组指标/报告；`poie-viability` 33 测试 + 随机不变量（60 条轨迹指标、汇总截尾、抽样/枚举方法可复现） |
-| Base-01 v0.2 报告 | [VEC report](../vec-base01/report.md)（20 runs / 78 metrics，CI 重放） |
+| Base-01 v0.2 报告 | [VEC report](../vec-base01/report.md)（20 runs / 78 metrics，CI 重放）；报告校验随机防作弊（合法 TOML 往返 + 16 类单字段变异全部拒绝） |
 | 规划与 H2 | `poie-plan` 18 测试；[H2 REPORT](../h2-joint-planning/REPORT.md)：**H2 不被支持（负结果）**，留出集 5/8 持平 |
 | 联合规划经 SAP 校验 | 每个动作走 proposed→validated→authorized + 六项检查，不派发、不绕过授权；80 次随机化不变量测试（有序/不重叠/唯一 id/确定性/预算/所有计划可经 SAP 校验） |
 | 过程桥（M7） | 合成水模型 + JSON-line 桥 + Rust 客户端；Python 9 项测试纳入 CI（有效性不被钳制、质量守恒、协议版本/单位、错误分类、故障注入）；明确 `synthetic`，无标定 | 真实过程模型/标定（IDAES 候选） |
