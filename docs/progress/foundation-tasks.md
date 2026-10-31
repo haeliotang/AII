@@ -28,7 +28,7 @@ M5 时间维度与 Base-01 v0.2：**已完成**（M5.1–M5.7）。PO 升为 **v
 
 M6 可行性评估 v1：**已完成**（VEC 升为 v0.2-draft）——查询/六类结论/表述约束、抽样/枚举与种子、四组指标（截尾/防作弊）、机读/人读报告、恢复路径桥接均已完成（`crates/poie-viability` 32 个单元测试）；Base-01 v0.2 的 20 个时间版场景已生成符合 VEC §7 的报告（[report.toml](../experiments/vec-base01/report.toml) / [report.md](../experiments/vec-base01/report.md)，74 条指标，CI 校验可重放）；集合/证书方法经评估不实现（[ADR-0004](../adr/0004-set-based-viability-scope.zh-CN.md)）。
 
-M7 过程模型桥接：**进行中**——M7.1 桥接协议（`crates/poie-process` + JSON-line 子进程）、M7.2 简化水处理模型（`python/poie_models`，ADR-0005）、M7.3 结果验证（单位/有限值/适用范围/守恒）、M7.5 校准数据计划已完成；M7.4 失败分类完成，VEC 报告中的分别记录与 Base-01 服务水平集成待做。
+M7 过程模型桥接：**已完成**（M7.1–M7.5）——JSON-line 子进程桥接（超时杀进程、9 类失败分类）、简化水处理模型（ADR-0005，合成未校准）、单位/守恒/适用范围校验、校准数据计划；Base-01 报告的供水服务水平由过程模型计算（0.9），报告含 `model_provenance`（synthetic + validity）与 process 指标（78 条），CI 重放校验。
 
 ## 初期工作清单（2026-10-31 完成）
 
@@ -89,3 +89,4 @@ M7 过程模型桥接：**进行中**——M7.1 桥接协议（`crates/poie-proc
 - 2026-10-31：M6.5/M6.6 完成：`poie-viability::bridge` 在轨迹出现服务违反时自动调用能力图恢复查询（候选步骤/路线验证等级或阻断根因写入轨迹），3 个测试；M6.6 评估写入 [ADR-0004](../adr/0004-set-based-viability-scope.zh-CN.md)：区间界对单调资源可行，但服务可用性非单调、恢复动作使不动点复杂、时域不可行缺少可检查证书，故 M6 不实现 set_based/certificate，保留 sampled/enumerated 表述，并固定最小原型触发条件与验收要求。viability 测试 28→31。
 - 2026-10-31：M6 完成：新增 `experiments/vec-base01` 报告运行器，对 20 个时间版场景生成 VEC §7 机读/人读报告（8 held_on_tested、7 counterexample、4 infeasible_in_model、1 unknown_input；74 条指标：生存/韧性/独立性），报告通过校验并在 CI 中 `--check` 重放；`poie-sim::timed` 暴露结构化违反信息（时刻/约束/详情）供报告映射；VEC 升为 v0.2-draft（§7 报告清单与表述守卫测试满足退出条件），M6 退出复核通过。
 - 2026-10-31：M7.1–M7.3、M7.5 完成：新增 `crates/poie-process`（`poie.process-bridge/0.1` 模式、模型 id/版本、单位、截止时间与子进程隔离；超时杀进程、崩溃/协议/模型不匹配/越界/不收敛/数值失败/守恒/量纲分类）与 `python/poie_models`（`water-treatment` v0.1.0 简化稳态模型，声明输入范围、守恒与 `synthetic`；ADR-0005 选择简化模型并记录 IDAES 引入条件；DATA.zh-CN.md 列出校准数据来源与步骤）；桥接 5 个集成测试全部通过（含超时、不收敛、数值失败、守恒、量纲、崩溃）。M7.4 报告记录与 Base-01 集成列为下一步。
+- 2026-10-31：M7 完成：Base-01 v0.2 报告运行器逐个场景调用 `water-treatment` 模型（`experiments/vec-base01/process.toml`），服务水平取模型输出（0.9），报告新增 `model_provenance`（id/version、synthetic、validity）与 process 指标组（含失败分类映射），报告 78 条指标且 CI `--check` 重放一致；人读摘要显示模型来源与适用范围；超时/不收敛/数值失败/越界等映射到不同运行结论并有单元测试。M7 退出复核通过（模型为合成未校准，只证明接口/校验/失败路径）。

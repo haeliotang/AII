@@ -19,6 +19,7 @@ use std::time::Instant;
 use poie_ontology::graph::Goal;
 use poie_ontology::model::{Model, Verification};
 use poie_ontology::units::Quantity;
+use poie_process::{BridgeClient, BridgeError, BridgeErrorClass};
 use poie_sim::timed::{CaseDoc, TimedCases, TimedOutcome, TimedRunner, TimedScenario, TimedVerdict};
 use poie_viability::bridge::recovery_path_for_goal;
 use poie_viability::method::Method;
@@ -26,13 +27,56 @@ use poie_viability::metrics::{
     aggregate_external_inputs, independence, resilience, summarize_viability, RunTrace, TimeSample,
 };
 use poie_viability::report::{
-    ConfidenceInterval, InputHashes, MachineReport, MetricGroup, MetricRecord, RunRecord, ScenarioPartition,
-    METRIC_DEFINITION_VERSION, REPORT_SCHEMA,
+    ConfidenceInterval, InputHashes, MachineReport, MetricGroup, MetricRecord, ModelProvenance, RunRecord,
+    ScenarioPartition, METRIC_DEFINITION_VERSION, REPORT_SCHEMA,
 };
 use poie_viability::verdict::Verdict;
 
 const CONTRACT_VERSION: &str = "viability-expansion/0.2";
 const CHECKABLE_CERTIFICATE: &str = "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml";
+const PROCESS_CONFIG: &str = "experiments/vec-base01/process.toml";
+const MINIMUM_SERVICE_LEVEL: f64 = 0.8;
+
+struct TraceLevels {
+    nominal: f64,
+    minimum: f64,
+}
+
+#[derive(serde::Deserialize)]
+struct ProcessConfig {
+    model: String,
+    version: String,
+    deadline_ms: u64,
+    inlet_flow_m3_h: f64,
+    turbidity_ntu: f64,
+    filter_loading: f64,
+}
+
+fn load_process_config(path: &Path) -> Result<ProcessConfig, String> {
+    let text = std::fs::read_to_string(path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+    toml::from_str(&text).map_err(|error| format!("cannot parse {}: {error}", path.display()))
+}
+
+fn process_verdict(error: &BridgeError, model: &str, deadline_ms: u64) -> Verdict {
+    match error.class {
+        BridgeErrorClass::Timeout => Verdict::Timeout {
+            completed_scenarios: 0,
+            budget: format!("process model {model} deadline {deadline_ms} ms"),
+        },
+        BridgeErrorClass::NumericalFailure | BridgeErrorClass::NonConvergence => Verdict::NumericalFailure {
+            solver: model.to_string(),
+            settings: "water-treatment bridge".to_string(),
+            message: format!("{}: {}", error.class.as_str(), error.detail),
+        },
+        _ => Verdict::UnknownInput {
+            unknowns: vec![format!("process model {model}: {}: {}", error.class.as_str(), error.detail)],
+        },
+    }
+}
+
+fn validity_text(ranges: &std::collections::BTreeMap<String, (f64, f64)>) -> String {
+    ranges.iter().map(|(field, (low, high))| format!("{field} {low}-{high}")).collect::<Vec<_>>().join("; ")
+}
 
 fn parse_seconds(text: &str) -> f64 {
     text.parse::<Quantity>().map(|quantity| quantity.si).unwrap_or(0.0)
@@ -116,10 +160,16 @@ fn build_trace(
     deadline_s: Option<f64>,
     outcome: &TimedOutcome,
     goal: &Goal,
+    levels: TraceLevels,
 ) -> RunTrace {
+    let nominal_level = levels.nominal;
+    let minimum_level = levels.minimum;
     let horizon_s = start_s + 86_400.0 + deadline_s.unwrap_or(0.0);
-    let initial_level =
-        if matches!(outcome.verdict, TimedVerdict::Feasible) || outcome.violation.is_some() { 1.0 } else { 0.0 };
+    let initial_level = if matches!(outcome.verdict, TimedVerdict::Feasible) || outcome.violation.is_some() {
+        nominal_level
+    } else {
+        0.0
+    };
     let mut samples = vec![sample(start_s, initial_level, label)];
     if let Some(violation) = &outcome.violation {
         if violation.at_s > start_s + 1e-6 {
@@ -137,11 +187,11 @@ fn build_trace(
     }
     if let Some(completion) = outcome.completion_s {
         if matches!(outcome.verdict, TimedVerdict::Feasible) && completion > start_s + 1e-6 {
-            samples.push(sample(completion, 1.0, label));
+            samples.push(sample(completion, nominal_level, label));
         }
     }
     let mut minimum_levels = BTreeMap::new();
-    minimum_levels.insert(label.to_string(), 1.0);
+    minimum_levels.insert(label.to_string(), minimum_level);
     RunTrace { scenario_id: case.id.clone(), horizon_s, minimum_levels, samples, recovery_paths: BTreeMap::new() }
 }
 
@@ -168,10 +218,22 @@ fn main() -> ExitCode {
     };
     let model: Model = scenario.model.clone();
     let runner = TimedRunner::new(scenario);
+    let process_config = match load_process_config(Path::new(PROCESS_CONFIG)) {
+        Ok(config) => config,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return ExitCode::from(2);
+        }
+    };
+    let script = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../python/poie_models/bridge_server.py");
+    let bridge = BridgeClient::new(script);
 
     let started = Instant::now();
     let mut runs = Vec::new();
     let mut traces = Vec::new();
+    let mut provenance: Option<ModelProvenance> = None;
+    let mut process_calls: usize = 0;
+    let mut process_failures: Vec<String> = Vec::new();
     for case in &cases.cases {
         let outcome = match runner.run(case) {
             Ok(outcome) => outcome,
@@ -190,12 +252,51 @@ fn main() -> ExitCode {
         let label = goal_label(&query.goal);
         let start_s = parse_seconds(&case.start);
         let deadline_s = case.deadline.as_deref().filter(|text| *text != "prediction").map(parse_seconds);
-        let mut trace = build_trace(case, &label, start_s, deadline_s, &outcome, &query.goal);
+        let parameters = poie_process::Parameters {
+            inlet_flow_m3_h: process_config.inlet_flow_m3_h,
+            turbidity_ntu: process_config.turbidity_ntu,
+            filter_loading: process_config.filter_loading,
+        };
+        let model_id =
+            poie_process::ModelId { id: process_config.model.clone(), version: process_config.version.clone() };
+        let bridge_request = poie_process::BridgeRequest::new(model_id, parameters, process_config.deadline_ms);
+        let evaluated = bridge.call(&bridge_request);
+        let (nominal_level, process_error) = match &evaluated {
+            Ok((response, _validation)) => {
+                let validity = response
+                    .validity
+                    .as_ref()
+                    .map(|validity| validity_text(&validity.ranges))
+                    .unwrap_or_else(|| "not declared".to_string());
+                provenance = Some(ModelProvenance {
+                    id: response.model.id.clone(),
+                    version: response.model.version.clone(),
+                    synthetic: response.synthetic,
+                    validity,
+                });
+                (response.service_level.unwrap_or(0.0), None)
+            }
+            Err(error) => (0.0, Some(error.clone())),
+        };
+        let mut trace = build_trace(
+            case,
+            &label,
+            start_s,
+            deadline_s,
+            &outcome,
+            &query.goal,
+            TraceLevels { nominal: nominal_level, minimum: MINIMUM_SERVICE_LEVEL },
+        );
         if !matches!(outcome.verdict, TimedVerdict::Feasible) {
             let path = recovery_path_for_goal(&patched_model, &query.goal, case.min_verification);
             trace.recovery_paths.insert(label.clone(), path);
         }
-        let verdict = map_verdict(case, &outcome);
+        let mut verdict = map_verdict(case, &outcome);
+        if let Some(error) = &process_error {
+            verdict = process_verdict(error, &process_config.model, process_config.deadline_ms);
+            process_failures.push(error.class.as_str().to_string());
+        }
+        process_calls += 1;
         runs.push(RunRecord {
             scenario_id: case.id.clone(),
             method: Method::Enumerated,
@@ -287,6 +388,20 @@ fn main() -> ExitCode {
         "count",
         false,
     ));
+    let model_service_level = traces
+        .iter()
+        .filter_map(|trace| trace.samples.first().and_then(|sample| sample.service_levels.values().next().copied()))
+        .sum::<f64>()
+        / traces.len().max(1) as f64;
+    metrics.push(metric(MetricGroup::Process, "water_service_level", None, model_service_level, "1", false));
+    metrics.push(metric(MetricGroup::Process, "calls", None, process_calls as f64, "count", false));
+    metrics.push(metric(MetricGroup::Process, "failure_count", None, process_failures.len() as f64, "count", false));
+    if let Some(provenance) = &provenance {
+        metrics.push(metric(MetricGroup::Process, "synthetic", None, provenance.synthetic as u8 as f64, "flag", false));
+    }
+    for class in &process_failures {
+        metrics.push(metric(MetricGroup::Process, &format!("failure.{class}"), None, 1.0, "count", false));
+    }
 
     let file = |path: &Path| std::fs::read_to_string(path).unwrap_or_default();
     let report = MachineReport {
@@ -312,6 +427,7 @@ fn main() -> ExitCode {
         actual_cost_s: started.elapsed().as_secs_f64(),
         metric_definition_version: METRIC_DEFINITION_VERSION.to_string(),
         confidence_intervals: Vec::<ConfidenceInterval>::new(),
+        model_provenance: provenance.into_iter().collect(),
         runs,
         metrics,
     };
@@ -399,4 +515,37 @@ fn metric(
     censored: bool,
 ) -> MetricRecord {
     MetricRecord { group, name: name.to_string(), service, value, unit: unit.to_string(), censored }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn error(class: BridgeErrorClass) -> BridgeError {
+        BridgeError { class, detail: "injected".into() }
+    }
+
+    #[test]
+    fn process_failure_classes_map_to_distinct_report_verdicts() {
+        assert!(matches!(
+            process_verdict(&error(BridgeErrorClass::Timeout), "water-treatment", 5_000),
+            Verdict::Timeout { .. }
+        ));
+        for class in [BridgeErrorClass::NumericalFailure, BridgeErrorClass::NonConvergence] {
+            assert!(matches!(
+                process_verdict(&error(class), "water-treatment", 5_000),
+                Verdict::NumericalFailure { .. }
+            ));
+        }
+        for class in [
+            BridgeErrorClass::OutOfValidity,
+            BridgeErrorClass::DimensionMismatch,
+            BridgeErrorClass::Conservation,
+            BridgeErrorClass::ModelMismatch,
+            BridgeErrorClass::Protocol,
+            BridgeErrorClass::Crashed,
+        ] {
+            assert!(matches!(process_verdict(&error(class), "water-treatment", 5_000), Verdict::UnknownInput { .. }));
+        }
+    }
 }

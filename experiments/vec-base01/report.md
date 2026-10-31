@@ -1,6 +1,7 @@
 Viability report (viability-expansion/0.2, method enumerated, horizon 86400s)
 scenarios: development 20, holdout 0 (holdout viewed in development: false)
 solver: poie-viability 0.1.0 + poie-sim timed 0.1.0 (finite fixed-trajectory set (20 pre-registered cases); no random sampling)
+model water-treatment v0.1.0 (synthetic: true; validity: filter_loading 0-0.9; inlet_flow_m3_h 5-15; turbidity_ntu 5-50)
 verdicts: counterexample: 7, held_on_tested: 8, infeasible_in_model: 4, unknown_input: 1
 - T0: held on 1 tested scenario(s) with the enumerated method; only the fixed trajectory of case T0; untested disturbances are not covered, and this is not a claim of safety or robustness
 - T1: counterexample in scenario T1: constraint "deadline" first violated at 14400s (state: completion 21600s after deadline 14400s)
@@ -23,5 +24,5 @@ verdicts: counterexample: 7, held_on_tested: 8, infeasible_in_model: 4, unknown_
 - T18: infeasible in the model; certificate "capability-graph blocked: cycle bus-1", checked by "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml"
 - T19: held on 1 tested scenario(s) with the enumerated method; only the fixed trajectory of case T19; untested disturbances are not covered, and this is not a claim of safety or robustness
 note: censored survival times are marked censored; no mean is reported from them
-metric groups: independence, resilience, viability
+metric groups: independence, process, resilience, viability
 no confidence interval computed; finite samples are not a robustness guarantee
