@@ -1,0 +1,16 @@
+h2-00	true	true	3.000	3.000
+h2-01	true	true	3.000	3.000
+h2-02	true	true	3.000	3.000
+h2-03	true	true	3.000	3.000
+h2-04	true	true	3.000	3.000
+h2-05	true	true	3.000	3.000
+h2-06	true	true	3.000	3.000
+h2-07	true	true	3.000	3.000
+h2-08	true	true	3.000	3.000
+h2-09	true	true	3.000	3.000
+h2-10	true	true	3.000	3.000
+h2-11	true	true	3.000	3.000
+h2-12	true	true	3.000	3.000
+h2-13	true	true	3.000	3.000
+h2-14	true	true	3.000	3.000
+h2-15	true	true	3.000	3.000
