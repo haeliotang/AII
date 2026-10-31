@@ -7,3 +7,4 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+poie-ontology = { path = "../poie-ontology", version = "0.1.0" }
