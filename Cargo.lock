@@ -55,6 +55,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-h2-joint-planning"
+version = "0.1.0"
+dependencies = [
+ "poie-ontology",
+ "poie-plan",
+]
+
+[[package]]
 name = "poie-ontology"
 version = "0.1.0"
 dependencies = [

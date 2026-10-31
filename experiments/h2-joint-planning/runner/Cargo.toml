@@ -1,0 +1,12 @@
+[package]
+name = "poie-h2-joint-planning"
+version = "0.1.0"
+description = "H2 joint-planning experiment runner: seeded scenarios, four methods, SAP-validated plans and ablations."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+poie-ontology = { path = "../../../crates/poie-ontology", version = "0.1.0" }
+poie-plan = { path = "../../../crates/poie-plan", version = "0.1.0" }
