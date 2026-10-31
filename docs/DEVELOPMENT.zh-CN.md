@@ -575,3 +575,4 @@ flowchart LR
 | 0.1.79 | 2026-10-31 | 每周/手动触发的定期验证工作流（verify-all 与 cargo-deny 分离 job） |
 | 0.1.80 | 2026-10-31 | scheduled workflow 手动触发时增加 fresh-clone job（runner 上验证干净克隆复现） |
 | 0.1.81 | 2026-10-31 | 手动 dispatch scheduled workflow 验证（4 job 全绿，含 runner 上的 fresh-clone） |
+| 0.1.82 | 2026-10-31 | 一页式当前状态快照（里程碑/测试/复现/外部阻塞/下一步）；复现记录更新至 c8fc518 |
