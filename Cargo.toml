@@ -4,6 +4,7 @@ members = [
     "crates/poie-ontology",
     "crates/poie-sim",
     "crates/poie-state",
+    "crates/poie-viability",
     "experiments/h1-structural/baseline",
     "experiments/h1-temporal/runner",
 ]
