@@ -45,6 +45,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-h1-temporal"
+version = "0.1.0"
+dependencies = [
+ "poie-h1-baseline",
+ "poie-ontology",
+ "poie-sim",
+ "toml",
+]
+
+[[package]]
 name = "poie-ontology"
 version = "0.1.0"
 dependencies = [
