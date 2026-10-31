@@ -188,7 +188,7 @@ The first implementation focus is the ontology and capability graph, exercised b
 
 Start with the [founding research document](docs/research/FOUNDATIONS.zh-CN.md). Useful contributions include counterexamples to the capability model, auditable physical models, reproducible failure scenarios, interface proposals, and evidence that challenges our assumptions.
 
-Current evidence for every stage gate and the actions that need external participation are collected in the [stage-gate evidence pack](docs/status/stage-gates.zh-CN.md), the [test and evidence matrix](docs/status/test-matrix.zh-CN.md) and the [external action list](docs/status/external-actions.zh-CN.md). `scripts/verify-all.sh` reproduces every claimed gate.
+A one-page [status snapshot](docs/status/status-snapshot.zh-CN.md) summarizes where the project stands. The evidence for every stage gate is in the [stage-gate evidence pack](docs/status/stage-gates.zh-CN.md), with the [test and evidence matrix](docs/status/test-matrix.zh-CN.md) and the [external action list](docs/status/external-actions.zh-CN.md) alongside it; `scripts/verify-all.sh` reproduces every claimed gate.
 
 Use [issues](https://github.com/haeliotang/poieweave/issues) to discuss research questions and scoped implementation proposals. Proposed architecture should earn stability through experiments rather than being treated as a frozen specification.
 
