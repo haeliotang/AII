@@ -1,0 +1,16 @@
+[package]
+name = "poie-h1-temporal"
+version = "0.1.0"
+description = "H1 temporal re-test: time-blind per-device baseline vs the timed capability-graph evaluator."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+poie-h1-baseline = { path = "../../h1-structural/baseline", version = "0.1.0" }
+poie-ontology = { path = "../../../crates/poie-ontology", version = "0.1.0" }
+poie-sim = { path = "../../../crates/poie-sim", version = "0.1.0" }
+
+[dev-dependencies]
+toml = "0.8"

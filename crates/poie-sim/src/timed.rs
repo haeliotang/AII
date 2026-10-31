@@ -413,6 +413,14 @@ impl TimedRunner {
         })
     }
 
+    /// The patched model and query for a case, for experiment harnesses (M5.7).
+    pub fn prepared_at(&self, case: &CaseDoc) -> Result<(Model, Query), TimedError> {
+        let start_s = parse_duration(&case.start)?;
+        let model = self.patched_model_at(start_s)?;
+        let goal = resolve_goal(&model, &case.goal)?;
+        Ok((model, Query { goal, min_verification: case.min_verification, max_depth: DEFAULT_MAX_DEPTH }))
+    }
+
     /// Compares an outcome against the pre-registered expectation.
     pub fn check(&self, case: &CaseDoc) -> Result<(TimedOutcome, Vec<String>), TimedError> {
         let outcome = self.run(case)?;
