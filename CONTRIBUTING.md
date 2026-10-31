@@ -14,7 +14,7 @@ Chinese and English are both welcome. Choose one language per contribution; do n
 
 ## Toolchain and MSRV
 
-CI uses the current stable Rust (`dtolnay/rust-toolchain@stable`); the reference development environment used `rustc 1.94.0`.
+CI uses Rust **1.94.0** (pinned in the workflow to match the reference development environment; bumping it is a deliberate PR). This avoids clippy-version drift between local checks and CI.
 
 The MSRV is **not pinned yet**. The code uses APIs such as `Option::is_none_or` (stabilized in 1.82) and `BTreeSet::pop_first` (1.66), so toolchains older than 1.82 will not compile; no older toolchain is verified in CI. If you need a specific MSRV, open an issue — pinning it requires a dedicated CI job on that toolchain before it can be claimed.
 
