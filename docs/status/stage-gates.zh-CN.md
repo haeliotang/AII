@@ -17,9 +17,9 @@ CI 固定使用 Rust 1.94.0（与参考开发环境一致，避免 clippy 版本
 | 条件 | 证据 |
 | --- | --- |
 | 三份契约草案存在且可反驳 | [PO v0.3-draft](../../specifications/physical-ontology.zh-CN.md)、[SAP v0.2-draft](../../specifications/state-action-protocol.zh-CN.md)、[VEC v0.2-draft](../../specifications/viability-expansion.zh-CN.md) |
-| 本体可执行 + 预登记用例 | Base-01 40/40（`scenarios/base-01/cases.toml`）；Base-02 8/8（**M12.5 新增**）；ontology 57 单元 + 16 集成 |
+| 本体可执行 + 预登记用例 | Base-01 40/40（`scenarios/base-01/cases.toml`）；Base-02 8/8（**M12.5 新增**）；ontology 57 单元 + 16 集成 + 调度随机不变量（120 trials：前置满足、容量冲突完整性） |
 | 状态协议参考实现与故障注入 | `crates/poie-state`：53 单元 + 13 SAP 验收（T1–T11）；10⁵ 序列属性测试；逐写入点崩溃注入；120 次随机投影不变量测试（对照独立契约 oracle） |
-| 时间维度与可重放 | `poie-sim` 13 测试；Base-01 时间版 20/20，`digests.toml` CI 逐位校验 |
+| 时间维度与可重放 | `poie-sim` 13 测试 + 仿真随机不变量（80 trials：digest 确定、守恒分类、外部流/库存核算、SoC 边界）；Base-01 时间版 20/20，`digests.toml` CI 逐位校验 |
 | H1 实验 | [H1 REPORT](../h1-structural/REPORT.md)（弱支持、内部证据）；[H1 temporal REPORT](../h1-temporal/REPORT.md) |
 | M1.6–M1.7 | CI 全绿；DCO/CONTRIBUTING/SECURITY/issue 模板已合并 |
 | M1.8/M1.9/M1.10 | **未完成**：外部评审、ADR-0001 由 Inceptless 确认、正式商标检索 |
