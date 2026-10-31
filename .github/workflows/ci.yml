@@ -38,6 +38,15 @@ jobs:
       - name: Base-01 pre-registered cases
         run: cargo run --locked -q -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml
 
+      - name: Base-02 pre-registered cases
+        run: cargo run --locked -q -p poie-ontology --bin poie-graph -- scenarios/base-02/cases.toml
+
+      - name: M12 federation partition simulation
+        run: |
+          cargo run --locked -q -p poie-federation-partition -- --write /tmp/fed
+          diff /tmp/fed/REPORT.sim.md experiments/federation-partition/REPORT.sim.md
+          diff /tmp/fed/raw/partition.txt experiments/federation-partition/raw/partition.txt
+
       - name: Base-01 timed cases and replay digests
         run: |
           cargo run --locked -q -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml

@@ -1,0 +1,12 @@
+[package]
+name = "poie-federation-partition"
+version = "0.1.0"
+description = "Simulated M12.6 partition/reconnect experiment over the federation crate."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+poie-federation = { path = "../../../crates/poie-federation", version = "0.1.0" }
+poie-state = { path = "../../../crates/poie-state", version = "0.1.0" }

@@ -1,0 +1,6 @@
+P0	no conflicts, ordered merge		2	0	0	true
+P1	over_reservation, both retained	over_reservation	0	2	0	true
+P2	double_ownership, leases retained	double_ownership	0	0	2	true
+P3	duplicate_idempotency_key	duplicate_idempotency_key	2	0	0	true
+P4	double_dispatch	double_dispatch	2	0	0	true
+P5	no duplicate records, stable conflicts		2	0	0	true

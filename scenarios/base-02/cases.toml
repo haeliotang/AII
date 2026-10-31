@@ -1,0 +1,88 @@
+# Autonomous Base-02 — pre-registered structural cases, v0.1 (M12.5)
+# Expectations written before the first run.
+# Run: cargo run -p poie-ontology --bin poie-graph -- scenarios/base-02/cases.toml
+
+schema = "poie.scenario-cases/0.3"
+model = "model.toml"
+
+[[case]]
+id = "B0"
+title = "Baseline: the workshop can supply a heat-treated sleeve"
+goal = { service = "heated-sleeve-supply" }
+min_verification = "modeled"
+tags = ["other"]
+[case.expect]
+verdict = "candidate"
+
+[[case]]
+id = "B1"
+title = "Three sleeves: two shared stock plus one fetched from the depot"
+goal = { obtain = { resource = "sleeve-p1", quantity = "3 item" } }
+min_verification = "modeled"
+tags = ["stock-contention"]
+[case.expect]
+verdict = "candidate"
+route_includes = ["fetch-sleeve"]
+
+[[case]]
+id = "B2"
+title = "Five sleeves exceed the shared depot stock"
+goal = { obtain = { resource = "sleeve-p1", quantity = "5 item" } }
+min_verification = "modeled"
+tags = ["stock-contention"]
+[case.expect]
+verdict = "blocked"
+
+[[case]]
+id = "B3"
+title = "Truck failed: the depot cannot be reached"
+goal = { obtain = { resource = "sleeve-p1", quantity = "3 item" } }
+min_verification = "modeled"
+tags = ["other"]
+[case.patch]
+asset_status = { "truck-1" = "failed" }
+[case.expect]
+verdict = "blocked"
+
+[[case]]
+id = "B4"
+title = "Truck failed: the furnace cannot be loaded either"
+goal = { service = "heated-sleeve-supply" }
+min_verification = "modeled"
+tags = ["other"]
+[case.patch]
+asset_status = { "truck-1" = "failed" }
+[case.expect]
+verdict = "blocked"
+
+[[case]]
+id = "B5"
+title = "Furnace failed with no local restorer"
+goal = { service = "heated-sleeve-supply" }
+min_verification = "modeled"
+tags = ["cycle"]
+[case.patch]
+asset_status = { "furnace-2" = "failed" }
+[case.expect]
+verdict = "blocked"
+
+[[case]]
+id = "B6"
+title = "Depot stock exhausted externally"
+goal = { obtain = { resource = "sleeve-p1", quantity = "3 item" } }
+min_verification = "modeled"
+tags = ["stock-contention"]
+[case.patch]
+lot_quantity = { "lot-b02-depot-sleeve" = "0 item" }
+[case.expect]
+verdict = "blocked"
+
+[[case]]
+id = "B7"
+title = "Four sleeves: two fetched runs over the shared truck"
+goal = { obtain = { resource = "sleeve-p1", quantity = "4 item" } }
+min_verification = "modeled"
+tags = ["other"]
+[case.expect]
+verdict = "candidate"
+route_includes = ["fetch-sleeve"]

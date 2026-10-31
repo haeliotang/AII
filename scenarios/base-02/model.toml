@@ -1,0 +1,117 @@
+# Autonomous Base-02 — shared depot and heat-treatment workshop (M12.5)
+# A second site that shares inventory and transport with Base-01. Synthetic
+# assumptions, not calibrated. Schema: Physical Ontology v0.3.
+
+schema = "poie.physical-ontology/0.3"
+name = "base-02-shared-depot"
+description = "Workshop that shares bronze/sleeve stock and a transport truck with Base-01."
+
+[[resource]]
+id = "sleeve-p1"
+unit = "item"
+mass_per_unit = "0.80 kg"
+description = "Shaft sleeve shared with Base-01."
+
+[[resource]]
+id = "depot-sleeve"
+unit = "item"
+mass_per_unit = "0.80 kg"
+description = "Spare sleeves held at the shared depot; external to this site."
+
+[[resource]]
+id = "heat-treated-sleeve"
+unit = "item"
+mass_per_unit = "0.80 kg"
+description = "Sleeve after heat treatment."
+
+[[resource]]
+id = "bronze-bar"
+unit = "kg"
+description = "Shared bronze stock."
+
+[[resource]]
+id = "electric-energy"
+unit = "kWh"
+description = "Shared electrical energy budget."
+
+[[asset]]
+id = "truck-1"
+kind = "transport"
+status = "available"
+provides = ["transport"]
+capability_verification = { "transport" = "modeled" }
+description = "Shared transport truck; also brings batches to the furnace."
+
+[[asset]]
+id = "furnace-2"
+kind = "furnace"
+status = "available"
+requires = ["truck-1"]
+provides = ["heat-treatment"]
+description = "Heat-treatment furnace loaded through the truck."
+
+[[asset]]
+id = "gauge-2"
+kind = "gauge"
+status = "available"
+provides = ["inspection"]
+description = "Dimensional gauge for the treated sleeves."
+
+[[lot]]
+id = "lot-b02-sleeve"
+resource = "sleeve-p1"
+quantity = "2 item"
+quality = "accepted"
+location = "depot"
+
+[[lot]]
+id = "lot-b02-depot-sleeve"
+resource = "depot-sleeve"
+quantity = "2 item"
+quality = "accepted"
+location = "depot"
+
+[[lot]]
+id = "lot-b02-bronze"
+resource = "bronze-bar"
+quantity = "2 kg"
+quality = "accepted"
+location = "depot"
+
+[[lot]]
+id = "lot-b02-energy"
+resource = "electric-energy"
+quantity = "30 kWh"
+quality = "accepted"
+location = "depot"
+
+[[process]]
+id = "fetch-sleeve"
+description = "Fetch one spare sleeve from the shared depot by truck."
+inputs = [
+  { resource = "depot-sleeve", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "2 kWh" },
+]
+outputs = [{ resource = "sleeve-p1", quantity = "1 item" }]
+occupies = ["truck-1"]
+requires_capabilities = ["transport"]
+duration = "2 h"
+verification = "modeled"
+
+[[process]]
+id = "heat-treat-sleeve"
+description = "Heat-treat one sleeve in furnace-2."
+inputs = [
+  { resource = "sleeve-p1", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "5 kWh" },
+]
+outputs = [{ resource = "heat-treated-sleeve", quantity = "1 item" }]
+occupies = ["furnace-2", "gauge-2"]
+requires_capabilities = ["heat-treatment", "inspection"]
+duration = "4 h"
+verification = "demonstrated"
+
+[[service]]
+id = "heated-sleeve-supply"
+description = "Produce a heat-treated sleeve through the shared truck and furnace."
+requires = ["furnace-2", "gauge-2"]
