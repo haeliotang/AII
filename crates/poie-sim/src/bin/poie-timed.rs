@@ -1,6 +1,6 @@
 //! Runs the pre-registered timed cases of a scenario and checks replay digests.
 //!
-//! Usage: poie-timed <cases.toml> [--write-digests <path>] [--check-digests <path>]
+//! Usage: `poie-timed <cases.toml> [--write-digests <path>] [--check-digests <path>]`
 //!
 //! Exits with status 1 if any case does not match its expectation or a digest
 //! differs from the committed replay file (M5.5, M5.6).

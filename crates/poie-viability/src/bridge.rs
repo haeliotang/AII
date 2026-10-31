@@ -5,7 +5,7 @@
 //! to the violation state (the simulator's asset-status patch) and this module
 //! runs the capability-graph query for the violated service, recording the
 //! verdict, the candidate steps or the blocked root causes in the trace's
-//! [`RecoveryPath`](crate::metrics::RecoveryPath) slots.
+//! [`RecoveryPath`] slots.
 
 use poie_ontology::graph::{self, Goal, Query, DEFAULT_MAX_DEPTH};
 use poie_ontology::model::{Model, Verification};
