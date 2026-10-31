@@ -99,7 +99,8 @@ flowchart LR
 
 每次合并前必须满足：
 
-- `cargo fmt --check`、`cargo clippy --all-targets` 无警告、`cargo test` 全部通过；
+- `cargo fmt --check`、`cargo clippy --all-targets` 无警告、`cargo test` 全部通过，Base-01 用例全部符合预期；
+- `cargo deny check licenses bans sources` 通过（依赖许可策略见 ADR-0001 §5）；`advisories` 失败时必须在合并前评估，但不自动阻断无关的 PR；
 - 新的规范性行为至少有一个测试，且测试名称能看出它对应契约的哪一条；
 - 不引入未在 ADR 或里程碑中说明理由的依赖；
 - Python 部分（M7 起）：`ruff`、`mypy --strict`、`pytest`。
@@ -154,7 +155,7 @@ flowchart LR
 
 | 工作包 | 内容 | 退出条件 |
 | --- | --- | --- |
-| M1.6 持续集成 | GitHub Actions：fmt、clippy、test；在 PR 上运行 Base-01 | CI 在 `main` 上为绿 |
+| M1.6 持续集成 | GitHub Actions（`.github/workflows/ci.yml`）：fmt、clippy、test、Base-01 用例；`cargo-deny`（`deny.toml`）检查许可、禁用项、来源与安全公告。**已配置**，待合并 | CI 在 `main` 上为绿 |
 | M1.7 贡献指南 | `CONTRIBUTING.md`：如何提交反例、用例和契约修改；issue 模板（反例 / 契约修改 / 实验提案） | 文件合并 |
 | M1.8 契约外部评审 | 邀请至少一位领域外读者按"能否构造反例"审读三份契约，把问题登记为 issue | 评审意见已登记，并逐条标注接受、拒绝（附理由）或推迟 |
 | M1.9 开源边界 | [ADR-0001](adr/0001-open-source-boundary.zh-CN.md)：开放核心 + 六条不变式；配套 `NOTICE`、DCO、`SECURITY.md`、`cargo-deny` | ADR 由 Inceptless 确认为"已接受"；配套文件合并 |
@@ -439,7 +440,7 @@ flowchart LR
 
 1. 确认 ADR-0001 开源边界，添加 `NOTICE`（M1.9）
 2. 完成 Poieweave 商标检索（M1.10）
-3. 配置 GitHub Actions：fmt、clippy、test、`cargo-deny`（M1.6）
+3. 合并 CI 配置并确认 `main` 上为绿（M1.6，已配置）
 4. 编写 `CONTRIBUTING.md`（含 DCO）、`SECURITY.md` 与三类 issue 模板（M1.7）
 5. 实现 `requires_any`，并为 S3 增加应急供电改进版用例（M2.1、M2.8）
 6. 实现多来源补足（M2.2）

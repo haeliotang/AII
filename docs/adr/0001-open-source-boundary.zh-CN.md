@@ -122,7 +122,7 @@
 - [ ] Inceptless 确认本 ADR，状态改为"已接受"
 - [ ] 添加 `NOTICE`
 - [ ] 添加 `SECURITY.md` 与 DCO 说明（并入 M1.7）
-- [ ] CI 加入 `cargo-deny` 许可检查（并入 M1.6）
+- [x] CI 加入 `cargo-deny` 许可检查（M1.6，`deny.toml`）
 - [x] 确定项目名称：Poieweave（ADR-0002）
 - [ ] 商标检索与注册，添加 `TRADEMARKS.md`
 - [ ] M9 开始前：合规复核

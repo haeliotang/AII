@@ -21,3 +21,4 @@
 - 2026-10-31：开发文档完成，M1 剩余项为 CI、贡献指南、契约外部评审。
 - 2026-10-31：项目改名 Poieweave（原 AII），crate 前缀 `poie-`，模式字符串前缀 `poie.`；见 ADR-0002。
 - 2026-10-31：GitHub 仓库改名为 haeliotang/poieweave，本地 origin 已更新。
+- 2026-10-31：M1.6 CI 已配置（GitHub Actions + cargo-deny），本地按 CI 步骤全部通过；分支 ci/m1.6-github-actions。
