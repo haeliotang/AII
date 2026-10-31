@@ -159,7 +159,7 @@ flowchart LR
 | M1.7 贡献指南 | `CONTRIBUTING.md`：如何提交反例、用例和契约修改；issue 模板（反例 / 契约修改 / 实验提案）；`DCO`、`SECURITY.md`。**已完成**（2026-10-31）：文件全部合并，GitHub 私有漏洞报告已启用 | 文件合并 |
 | M1.8 契约外部评审 | 邀请至少一位领域外读者按"能否构造反例"审读三份契约，把问题登记为 issue | 评审意见已登记，并逐条标注接受、拒绝（附理由）或推迟 |
 | M1.9 开源边界 | [ADR-0001](adr/0001-open-source-boundary.zh-CN.md)：开放核心 + 六条不变式；配套 `NOTICE`、DCO、`SECURITY.md`、`cargo-deny`。**配套文件已合并**（2026-10-31） | ADR 由 Inceptless 确认为"已接受"；配套文件合并 |
-| M1.10 名称落地 | [ADR-0002](adr/0002-rename-to-poieweave.zh-CN.md)：仓库内改名与 GitHub 仓库改名已完成；剩余：商标检索 | USPTO / EUIPO / CNIPA / WIPO 检索结果记入 ADR-0002 |
+| M1.10 名称落地 | [ADR-0002](adr/0002-rename-to-poieweave.zh-CN.md)：仓库内改名与 GitHub 仓库改名已完成；**商标初步检索已记录**（§7，2026-10-31）：TMview 与 Trademarkia 未发现完全同名标记，残余风险来自 POIE 词根；官方库直连被阻断，类别专项检索待人工复核 | USPTO / EUIPO / CNIPA / WIPO 检索结果记入 ADR-0002 |
 
 **M1 退出条件**：M1.6–M1.10 完成。
 
@@ -459,3 +459,4 @@ flowchart LR
 | 0.1.2 | 2026-10-31 | 项目由 AII 改名为 Poieweave（ADR-0002）；crate、包与模式字符串前缀改为 `poie` |
 | 0.1.3 | 2026-10-31 | M1.6 持续集成完成：`main` 上 CI 为绿 |
 | 0.1.4 | 2026-10-31 | M1.7 贡献指南完成；M1.9 配套文件（`NOTICE`、`DCO`、`SECURITY.md`）合并 |
+| 0.1.5 | 2026-10-31 | M1.10 商标初步检索记入 ADR-0002 §7（官方库直连受限，类别专项检索待复核） |

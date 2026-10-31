@@ -16,7 +16,7 @@ M1 工作包 10 个，已完成 7 个（M1.1–M1.7），剩余 3 个（M1.8–M
 | M1.7 贡献指南 | 完成 | `CONTRIBUTING.md`（DCO、测试门、契约变更流程）、`DCO`、`SECURITY.md`、三类 issue 模板；GitHub 私有漏洞报告已启用 |
 | M1.8 契约外部评审 | 未开始 | 需外部读者审读并登记 issue |
 | M1.9 开源边界 | 部分 | 配套文件已齐（`NOTICE`、`DCO`、`SECURITY.md`、`cargo-deny`）；ADR-0001 仍为"提议"，待发起方确认 |
-| M1.10 名称落地 | 部分 | 已改名（ADR-0002 已接受）；商标检索未开始 |
+| M1.10 名称落地 | 部分 | 改名已完成；初步商标检索已记入 [ADR-0002 §7](../adr/0002-rename-to-poieweave.zh-CN.md)，官方库直连与类别专项检索待人工复核 |
 
 ## 初期工作清单（2026-10-31 完成）
 
@@ -46,3 +46,4 @@ M1 工作包 10 个，已完成 7 个（M1.1–M1.7），剩余 3 个（M1.8–M
 - 2026-10-31：注意：目录由 `Documents/AII` 改名后，旧 `target/` 缓存会让集成测试按旧路径找场景文件而失败；`cargo clean -p poie-ontology` 即可。
 - 2026-10-31：M1.7 完成：新增 `CONTRIBUTING.md`（含 DCO 说明与测试门要求）、`DCO`（DCO 1.1 全文）、`SECURITY.md`；`.github/ISSUE_TEMPLATE/` 下三类 issue 表单（反例 / 契约修改 / 实验提案）与 `config.yml`；创建 `kind:counterexample`、`kind:spec`、`kind:experiment` 标签；GitHub 私有漏洞报告已启用。README 的 Participate 一节已链接贡献指南与安全政策。
 - 2026-10-31：M1.9 配套文件齐备：`NOTICE` 已按 Apache-2.0 §4(d) 添加；`DCO`、`SECURITY.md` 随 M1.7 落地；`cargo-deny` 随 M1.6 落地。M1.9 仅剩 ADR-0001 的"已接受"状态确认（需 Inceptless）。
+- 2026-10-31：M1.10 商标初步检索记入 ADR-0002 §7：TMview（聚合 USPTO/EUIPO/WIPO/CNIPA 等）与 Trademarkia 对 "poieweave" 均为 0 命中；USPTO/EUIPO/WIPO/CNIPA 官方界面被反爬阻断，检索经聚合库间接覆盖并逐项标注；相近标记集中在 POIE 词根（含一条序列号存疑的美国 cl. 9 申请）。仍需人工/付费复核，不得宣称"已清权"。
