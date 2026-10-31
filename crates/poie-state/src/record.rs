@@ -216,6 +216,15 @@ pub enum VerificationOutcome {
 }
 
 impl Payload {
+    /// For verification records, whether the evidence is independent of the
+    /// executor (SAP §3.2 supplementary rule 3). `None` for other payloads.
+    pub fn verification_is_independent(&self) -> Option<bool> {
+        match self {
+            Payload::Verification { self_reported, .. } => Some(!self_reported),
+            _ => None,
+        }
+    }
+
     pub fn kind(&self) -> RecordKind {
         match self {
             Payload::Observation { .. } => RecordKind::Observation,

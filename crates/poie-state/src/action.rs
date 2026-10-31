@@ -355,6 +355,15 @@ impl ActionLedger {
     }
 }
 
+/// Whether a *new* action may be dispatched for the same idempotency key after
+/// the previous action reached `previous` (SAP §3.2 supplementary rule 2).
+///
+/// Re-dispatch is only ever considered from `outcome_unknown`; irreversible
+/// actions additionally require that the outcome was checked first.
+pub fn redispatch_allowed(reversibility: Reversibility, previous: ActionState, outcome_checked: bool) -> bool {
+    previous == ActionState::OutcomeUnknown && (outcome_checked || reversibility != Reversibility::Irreversible)
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum LedgerError {
     InvalidAction(ActionError),
@@ -505,6 +514,15 @@ mod tests {
     }
 
     use std::collections::BTreeSet;
+
+    #[test]
+    fn redispatch_policy_matches_sap() {
+        assert!(!redispatch_allowed(Reversibility::Irreversible, ActionState::OutcomeUnknown, false));
+        assert!(redispatch_allowed(Reversibility::Irreversible, ActionState::OutcomeUnknown, true));
+        assert!(redispatch_allowed(Reversibility::Idempotent, ActionState::OutcomeUnknown, false));
+        assert!(!redispatch_allowed(Reversibility::Idempotent, ActionState::Dispatched, true));
+        assert!(!redispatch_allowed(Reversibility::Idempotent, ActionState::Verified, true));
+    }
 
     struct Rng(u64);
 
