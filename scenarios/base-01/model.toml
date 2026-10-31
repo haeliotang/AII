@@ -1,0 +1,282 @@
+# Autonomous Base-01 — structural model, v0.1
+# Specification: scenarios/base-01/README.zh-CN.md
+# All quantities are SYNTHETIC assumptions, not calibrated data.
+
+schema = "poie.physical-ontology/0.1"
+name = "Autonomous Base-01"
+description = "Minimal virtual industrial loop: power, water treatment, workshop, inspection, maintenance robot, spare-parts store."
+
+# --- Resources -------------------------------------------------------------
+
+[[resource]]
+id = "electric-energy"
+unit = "kWh"
+description = "Stored electrical energy in bat-1. v0.1 treats it as a fixed budget (PV recharge needs time)."
+
+[[resource]]
+id = "bronze-bar"
+unit = "kg"
+
+[[resource]]
+id = "bronze-swarf"
+unit = "kg"
+description = "Machining waste; no local recycling process in v0.1."
+
+[[resource]]
+id = "sleeve-p1-raw"
+unit = "item"
+mass_per_unit = "0.8 kg"
+description = "Machined pump shaft sleeve, not yet inspected."
+
+[[resource]]
+id = "sleeve-p1"
+unit = "item"
+mass_per_unit = "0.8 kg"
+description = "Inspected, accepted pump shaft sleeve."
+
+[[resource]]
+id = "worn-sleeve-p1"
+unit = "item"
+mass_per_unit = "0.78 kg"
+
+[[resource]]
+id = "grease"
+unit = "kg"
+
+[[resource]]
+id = "cutting-insert"
+unit = "item"
+mass_per_unit = "10 g"
+
+[[resource]]
+id = "worn-insert"
+unit = "item"
+mass_per_unit = "10 g"
+
+[[resource]]
+id = "lathe-nut"
+unit = "item"
+mass_per_unit = "0.25 kg"
+description = "Cross-slide nut of lathe-1."
+
+[[resource]]
+id = "broken-lathe-nut"
+unit = "item"
+mass_per_unit = "0.25 kg"
+
+[[resource]]
+id = "breaker-b1"
+unit = "item"
+mass_per_unit = "0.5 kg"
+description = "Main breaker of bus-1. Cannot be made locally."
+
+[[resource]]
+id = "failed-breaker"
+unit = "item"
+mass_per_unit = "0.5 kg"
+
+# --- Assets ----------------------------------------------------------------
+
+[[asset]]
+id = "pv-1"
+kind = "pv-array"
+status = "available"
+
+[[asset]]
+id = "bat-1"
+kind = "battery-bank"
+status = "available"
+
+[[asset]]
+id = "bus-1"
+kind = "power-bus"
+status = "available"
+requires = ["bat-1"]
+description = "Single AC bus feeding pump, lathe and charger."
+
+[[asset]]
+id = "pump-p1"
+kind = "pump"
+status = "degraded"
+status_evidence = "obs/vibration-p1-0031"
+requires = ["bus-1"]
+description = "Raw-water pump; vibration indicates shaft-sleeve wear."
+
+[[asset]]
+id = "filter-1"
+kind = "filter-unit"
+status = "available"
+
+[[asset]]
+id = "lathe-1"
+kind = "lathe"
+status = "available"
+requires = ["bus-1"]
+
+[[asset]]
+id = "gauge-1"
+kind = "inspection-station"
+status = "available"
+provides = ["dimensional-inspection"]
+
+[[asset]]
+id = "charger-1"
+kind = "charger"
+status = "available"
+requires = ["bus-1"]
+
+[[asset]]
+id = "robot-m1"
+kind = "maintenance-robot"
+status = "available"
+requires = ["charger-1"]
+provides = ["sleeve-replacement", "machine-tending", "material-handling", "lathe-repair", "electrical-repair"]
+description = "Only maintenance robot. v0.1 coarsely models its battery dependence as requiring charger-1."
+
+# --- Inventory -------------------------------------------------------------
+
+[[lot]]
+id = "lot-energy"
+resource = "electric-energy"
+quantity = "40 kWh"
+quality = "accepted"
+location = "bat-1"
+
+[[lot]]
+id = "lot-sleeve-01"
+resource = "sleeve-p1"
+quantity = "1 item"
+quality = "accepted"
+location = "store-a"
+
+[[lot]]
+id = "lot-sleeve-02"
+resource = "sleeve-p1"
+quantity = "1 item"
+quality = "quarantined"
+location = "store-a"
+evidence = "Supplier certificate missing; must not be allocated."
+
+[[lot]]
+id = "lot-bronze"
+resource = "bronze-bar"
+quantity = "3 kg"
+quality = "accepted"
+
+[[lot]]
+id = "lot-grease"
+resource = "grease"
+quantity = "1 kg"
+quality = "accepted"
+
+[[lot]]
+id = "lot-insert"
+resource = "cutting-insert"
+quantity = "4 item"
+quality = "accepted"
+
+[[lot]]
+id = "lot-breaker"
+resource = "breaker-b1"
+quantity = "1 item"
+quality = "accepted"
+
+# --- Processes -------------------------------------------------------------
+
+[[process]]
+id = "replace-sleeve-p1"
+description = "Robot replaces the worn shaft sleeve of pump-p1."
+inputs = [
+  { resource = "sleeve-p1", quantity = "1 item" },
+  { resource = "grease", quantity = "0.05 kg" },
+  { resource = "electric-energy", quantity = "0.5 kWh" },
+]
+outputs = [{ resource = "worn-sleeve-p1", quantity = "1 item" }]
+# new sleeve 0.80 kg in, worn sleeve 0.78 kg out, 0.05 kg grease stays in the pump
+asset_mass_change = "0.07 kg"
+requires_capabilities = ["sleeve-replacement"]
+restores = ["pump-p1"]
+duration = "3 h"
+verification = "verified"
+
+[[process]]
+id = "turn-sleeve-p1"
+description = "Machine a replacement sleeve from bronze bar on lathe-1."
+inputs = [
+  { resource = "bronze-bar", quantity = "1.2 kg" },
+  { resource = "cutting-insert", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "2 kWh" },
+]
+outputs = [
+  { resource = "sleeve-p1-raw", quantity = "1 item" },
+  { resource = "bronze-swarf", quantity = "0.4 kg" },
+  { resource = "worn-insert", quantity = "1 item" },
+]
+occupies = ["lathe-1"]
+requires_capabilities = ["machine-tending"]
+duration = "4 h"
+verification = "demonstrated"
+
+[[process]]
+id = "inspect-sleeve-p1"
+description = "Dimensional inspection; the quality gate between raw and accepted sleeve."
+inputs = [
+  { resource = "sleeve-p1-raw", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "0.1 kWh" },
+]
+outputs = [{ resource = "sleeve-p1", quantity = "1 item" }]
+occupies = ["gauge-1"]
+requires_capabilities = ["material-handling"]
+duration = "30 min"
+verification = "verified"
+
+[[process]]
+id = "replace-lathe-nut"
+description = "Robot replaces the broken cross-slide nut of lathe-1."
+inputs = [
+  { resource = "lathe-nut", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "0.3 kWh" },
+]
+outputs = [{ resource = "broken-lathe-nut", quantity = "1 item" }]
+requires_capabilities = ["lathe-repair"]
+restores = ["lathe-1"]
+duration = "2 h"
+verification = "demonstrated"
+
+[[process]]
+id = "turn-lathe-nut"
+description = "Machine and gauge a new cross-slide nut. Needs lathe-1 itself."
+inputs = [
+  { resource = "bronze-bar", quantity = "0.4 kg" },
+  { resource = "cutting-insert", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "1 kWh" },
+]
+outputs = [
+  { resource = "lathe-nut", quantity = "1 item" },
+  { resource = "bronze-swarf", quantity = "0.15 kg" },
+  { resource = "worn-insert", quantity = "1 item" },
+]
+occupies = ["lathe-1", "gauge-1"]
+requires_capabilities = ["machine-tending"]
+duration = "3 h"
+verification = "modeled"
+
+[[process]]
+id = "replace-bus-breaker"
+description = "Robot replaces the main breaker of bus-1."
+inputs = [
+  { resource = "breaker-b1", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "0.2 kWh" },
+]
+outputs = [{ resource = "failed-breaker", quantity = "1 item" }]
+requires_capabilities = ["electrical-repair"]
+restores = ["bus-1"]
+duration = "1 h"
+verification = "demonstrated"
+
+# --- Services --------------------------------------------------------------
+
+[[service]]
+id = "potable-water"
+description = "Treated water supply. v0.1: structural only (required assets usable)."
+requires = ["pump-p1", "filter-1"]

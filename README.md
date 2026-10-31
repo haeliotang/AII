@@ -1,6 +1,8 @@
-# AII — Autonomous Infrastructure Intelligence
+# Poieweave — Autonomous Infrastructure Intelligence
 
 > An open autonomous industrial platform initiated by **Inceptless**.
+
+The name comes from Greek *poiesis* (making) and *autopoiesis* (a system that produces and maintains itself). The project was named **AII** until 2026-10-31; see [ADR-0002](docs/adr/0002-rename-to-poieweave.zh-CN.md).
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
@@ -8,21 +10,38 @@
 
 **From autonomous machines to autonomous industry. From remote outposts on Earth to the industrial foundations of a multiplanetary civilization.**
 
-AII is a long-horizon research and engineering project toward an open autonomous industrial platform: a system that can represent, simulate, plan, coordinate, and verify the operation, maintenance, production, and eventual expansion of physical infrastructure.
+Poieweave is a long-horizon research and engineering project toward an open autonomous industrial platform: a system that can represent, simulate, plan, coordinate, and verify the operation, maintenance, production, and eventual expansion of physical infrastructure.
 
 Our central question is simple:
 
 > Can an industrial system preserve and increase its ability to survive, repair, and produce when resources are limited, communications disappear, and equipment keeps wearing out?
 
-**Status: research and architecture stage.** This repository currently contains the founding documentation. There is no executable platform, validated benchmark, hardware deployment, or implemented integration yet. All capabilities below are design goals.
+**Status: research and architecture stage (Foundation, in progress).** The repository contains the founding documentation, three draft contracts, a structural capability-graph prototype in Rust, and the first structural version of the Autonomous Base-01 scenario. There is no time-domain model, executable platform, validated benchmark, hardware deployment, or implemented integration yet. Unless stated otherwise below, capabilities are design goals.
 
-[中文研究文档 / Research & architecture](docs/research/FOUNDATIONS.zh-CN.md)
+[中文研究文档 / Research & architecture](docs/research/FOUNDATIONS.zh-CN.md) · [开发文档 / Development plan](docs/DEVELOPMENT.zh-CN.md)
+
+## What exists today
+
+| Artifact | State |
+| --- | --- |
+| [Physical Ontology](specifications/physical-ontology.zh-CN.md) | v0.1-draft. Units, entities, verification levels, capability-graph semantics, mass conservation. |
+| [State & Action Protocol](specifications/state-action-protocol.zh-CN.md) | v0.1-draft. Record types, action lifecycle, partition rules, 11 failure-injection cases. No implementation yet. |
+| [Viability & Expansion Contract](specifications/viability-expansion.zh-CN.md) | v0.1-draft. Query fields, verdict classes, four metric groups, expansion accounting. No implementation yet. |
+| [`crates/poie-ontology`](crates/poie-ontology) | Structural prototype: dimensioned quantities, model validation, mass balance, single-ledger capability-graph solver with root-cause reporting. |
+| [Base-01 scenario](scenarios/base-01/README.zh-CN.md) | Structural v0.1 with synthetic data and 11 cases whose expectations were written before the first run. All 11 match. This does not test hypothesis H1 yet; there is no baseline. |
+
+A `candidate` route from the prototype is structural only: it does not check time, capacity, concurrency, or physical execution.
+
+```bash
+cargo test
+cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml
+```
 
 ## The ambition
 
 A collection of capable robots does not automatically become a capable industrial system. A facility can complete every scheduled task while consuming the spare part, energy reserve, or manufacturing capacity it will need to survive tomorrow.
 
-AII aims to connect energy, water, materials, machines, logistics, maintenance, and production into one accountable operational model. Its objective is to preserve essential services while developing the capacity to recover, replace critical equipment, and reduce external dependencies.
+Poieweave aims to connect energy, water, materials, machines, logistics, maintenance, and production into one accountable operational model. Its objective is to preserve essential services while developing the capacity to recover, replace critical equipment, and reduce external dependencies.
 
 The horizon is a complete autonomous industrial platform. Earth-based microgrids, remote factories, polar stations, and isolated research facilities provide environments in which its foundations can be tested. Lunar and Martian industry extend that horizon; they are not current deployment claims or promised timelines.
 
@@ -32,7 +51,7 @@ We distinguish three frontiers:
 2. **Autonomous maintenance:** diagnose degradation and restore verified capabilities.
 3. **Autonomous expansion:** build additional productive capacity within physical, resource, and human-authorized constraints.
 
-Full industrial self-sufficiency remains an open research problem. AII must expose irreducible dependencies, including electronics, precision tools, consumables, and specialist knowledge.
+Full industrial self-sufficiency remains an open research problem. Poieweave must expose irreducible dependencies, including electronics, precision tools, consumables, and specialist knowledge.
 
 ## What we intend to build
 
@@ -76,13 +95,13 @@ qualified material + available machine + energy + tooling + validated process
         -> recovered essential service
 ```
 
-AII will investigate typed, temporal production hypergraphs to represent these joint dependencies. A path through the graph is only a candidate: scheduling, capacity, conservation, quality, and bootstrap dependencies must also be satisfied.
+Poieweave will investigate typed, temporal production hypergraphs to represent these joint dependencies. A path through the graph is only a candidate: scheduling, capacity, conservation, quality, and bootstrap dependencies must also be satisfied.
 
 A machine that could theoretically manufacture its own replacement is not self-sufficient if its failure removes the only available means of manufacturing that replacement.
 
 ## A different control objective
 
-Task throughput is one outcome. AII's proposed objective is to expand the range of conditions under which infrastructure can continue to provide essential services and recover productive capacity.
+Task throughput is one outcome. Poieweave's proposed objective is to expand the range of conditions under which infrastructure can continue to provide essential services and recover productive capacity.
 
 We will report separate, physically interpretable dimensions:
 
@@ -109,7 +128,7 @@ We are evaluating the following foundations, with no integration implied:
 | [Eclipse Ditto](https://eclipse.dev/ditto/intro-overview.html) | Device twin state and connectivity integration. |
 | [IDAES](https://idaes-pse.readthedocs.io/en/stable/) | Equation-oriented process models and optimization. |
 
-[Palantir Ontology](https://www.palantir.com/docs/foundry/ontology/overview) is an architectural reference for connecting operational objects, logic, actions, and permissions. AII's proposed research emphasis is the combination of physical constraints, capability dependencies, local autonomy, and long-term viability. This is not a claim that existing platforms lack related capabilities, and no affiliation is implied.
+[Palantir Ontology](https://www.palantir.com/docs/foundry/ontology/overview) is an architectural reference for connecting operational objects, logic, actions, and permissions. Poieweave's proposed research emphasis is the combination of physical constraints, capability dependencies, local autonomy, and long-term viability. This is not a claim that existing platforms lack related capabilities, and no affiliation is implied.
 
 ## Engineering commitments
 
@@ -125,7 +144,7 @@ Language models may assist with interpretation and candidate planning. They do n
 
 ## Research roadmap
 
-These are capability gates, not delivery dates. Every stage below is planned.
+These are capability gates, not delivery dates. Foundation is in progress; every other stage is planned. Milestones, exit criteria, and current status are tracked in the [development plan](docs/DEVELOPMENT.zh-CN.md).
 
 | Stage | Deliverable | Evidence required to advance |
 | --- | --- | --- |
@@ -143,20 +162,22 @@ The first implementation focus is the ontology and capability graph, exercised b
 
 Start with the [founding research document](docs/research/FOUNDATIONS.zh-CN.md). Useful contributions include counterexamples to the capability model, auditable physical models, reproducible failure scenarios, interface proposals, and evidence that challenges our assumptions.
 
-Use [issues](https://github.com/haeliotang/AII/issues) to discuss research questions and scoped implementation proposals. Proposed architecture should earn stability through experiments rather than being treated as a frozen specification.
+Use [issues](https://github.com/haeliotang/poieweave/issues) to discuss research questions and scoped implementation proposals. Proposed architecture should earn stability through experiments rather than being treated as a frozen specification.
 
 ## Open Source License
 
-AII is released under the **Apache License, Version 2.0**.
+Poieweave is released under the **Apache License, Version 2.0**.
 
 The root [LICENSE](LICENSE) applies to the project code and documentation unless otherwise noted. Third-party components retain their own licenses; preserve their notices when redistributing dependencies or binaries.
 
+The proposed open-source boundary is recorded in [ADR-0001](docs/adr/0001-open-source-boundary.zh-CN.md): specifications, the core, and all safety- and authority-relevant semantics stay open; customer-specific adapters, calibrated customer models, and hosted services may be offered separately. The license does not grant trademark rights to the project name.
+
 ## Project Origin
 
-AII is initiated by **Inceptless**.
+Poieweave is initiated by **Inceptless**.
 
 - Initiating Company: Inceptless
-- Project: AII — Autonomous Infrastructure Intelligence
+- Project: Poieweave — Autonomous Infrastructure Intelligence
 - Copyright: (c) 2026 Inceptless.
 
 ---
