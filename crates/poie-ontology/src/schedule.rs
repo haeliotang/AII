@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn a_process_without_duration_cannot_be_scheduled() {
         let text = r#"
-schema = "poie.physical-ontology/0.2"
+schema = "poie.physical-ontology/0.3"
 name = "no-duration"
 
 [[asset]]

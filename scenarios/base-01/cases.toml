@@ -3,7 +3,7 @@
 # states the expected verdict and root causes BEFORE the run (pre-registered).
 # Run: cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml
 
-schema = "poie.scenario-cases/0.2"
+schema = "poie.scenario-cases/0.3"
 model = "model.toml"
 
 [[case]]

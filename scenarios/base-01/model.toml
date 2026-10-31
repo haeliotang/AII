@@ -2,7 +2,7 @@
 # Specification: scenarios/base-01/README.zh-CN.md
 # All quantities are SYNTHETIC assumptions, not calibrated data.
 
-schema = "poie.physical-ontology/0.2"
+schema = "poie.physical-ontology/0.3"
 name = "Autonomous Base-01"
 description = "Minimal virtual industrial loop: power, water treatment, workshop, inspection, maintenance robot, spare-parts store."
 
