@@ -1,0 +1,7 @@
+step1	observations=9	pump=Degraded
+step2	actions=1	completion_s=10800
+step3	conflicts=["over_reservation"]	blocked=true
+step4	conflicts=[]	allowed=true
+step5	conflicts=["double_ownership"]	blocked=true
+step6	dispatched=true	state=acknowledged	verified=site-a-pump-status
+assertions_failed=0

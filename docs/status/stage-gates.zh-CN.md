@@ -49,6 +49,7 @@ scripts/verify-all.sh
 | M11 扩张核算 | `poie-expansion` 7 测试；[H4 报告](../h4-expansion/REPORT.md) 判定不确定 | M11.6 物理实施（`demonstrated_gain`） |
 | M12 多站点联邦 | `poie-federation` 7 测试 + 120 次随机分区性质测试；[M12.6 模拟报告](../federation-partition/REPORT.sim.md) 6/6；Base-02 8/8；[本机 TCP 双进程交换](../federation-tcp/REPORT.md)（真实 socket，仍非真实多站点） | M12.6 真实多节点网络与长时间分区 |
 | 端到端管线 | [e2e REPORT](../e2e-pipeline/REPORT.md)：适配器→投影→规划→SAP 校验→执行门→独立验证→预测核对，9/9 断言通过，CI 重放 | 真实适配器与物理执行（M9.2/M10） |
+| 两站点影子集成 | [two-site REPORT](../two-site-shadow/REPORT.md)：站点 A 投影/规划，站点 B 共享库存/租约；超额预留与重叠租约阻断派发、干净对账放行，7/7 断言，CI 重放 | 真实多站点与网络（M9.2/M12.6） |
 
 **结论**：不依赖物理/外部条件的实现与实验已完成并纳入 CI；上述四行阻塞项需要设备、场地、安全评审或真实网络环境。
 
