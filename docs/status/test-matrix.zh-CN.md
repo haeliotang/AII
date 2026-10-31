@@ -54,7 +54,7 @@
 9. VEC 报告重放、H1 结构层/时间版重放、H2 开发集/留出集重放、H3 模拟重放、H4 报告重放
 10. `cargo-deny`（advisories、licenses/bans/sources）
 
-本地一键复现：`scripts/verify-all.sh`（与 CI 相同的步骤序列）。
+本地一键复现：`scripts/verify-all.sh`（与 CI 相同的步骤序列）；干净克隆复现：`scripts/check-fresh-clone.sh`。
 
 ## 4. 对应关系
 

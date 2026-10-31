@@ -143,3 +143,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：H1 结构层全量/开发集/留出集原始输出纳入 CI 与 `verify-all.sh` 重放：`poie-h1-baseline` 的全量输出、按开发集 ID 重跑、按留出集 ID 重跑均与提交的原始文件逐字节一致。
 - 2026-10-31：H2 留出集报告/原始输出纳入 CI 与 `verify-all.sh` 重放（`--holdout --write` 逐字节一致）；明确该重放仅用于复现校验，不把留出集用于开发；至此所有已提交实验输出均有重放覆盖。
 - 2026-10-31：新增实验重放覆盖检查 `scripts/check-experiment-replays.py` 并纳入 CI/`verify-all.sh`：枚举 `experiments/*/raw/*` 与生成型报告（REPORT.md、REPORT.sim.md、*-report.md、report.toml），要求均在 CI 中被 diff 重放（手工分析报告显式列入白名单），并检查 CI 引用的实验路径均存在；当前 23 个 CI 路径有效、26 个生成产物全部覆盖。
+- 2026-10-31：新增全新克隆复现脚本 `scripts/check-fresh-clone.sh` 并记录结果（[fresh-clone-repro](../status/fresh-clone-repro.zh-CN.md)）：在仓库内临时目录干净克隆 `a6413e8`、运行完整 `verify-all.sh`，约 62 秒通过（`ALL GATES PASSED` + `FRESH CLONE REPRODUCTION PASSED`）；边界（依赖本地 registry 缓存、单平台、工具链固定）已写明。
