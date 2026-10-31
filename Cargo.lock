@@ -63,6 +63,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-plan"
+version = "0.1.0"
+dependencies = [
+ "poie-ontology",
+ "poie-state",
+]
+
+[[package]]
 name = "poie-process"
 version = "0.1.0"
 dependencies = [

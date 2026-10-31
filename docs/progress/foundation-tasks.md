@@ -30,6 +30,8 @@ M6 可行性评估 v1：**已完成**（VEC 升为 v0.2-draft）——查询/六
 
 M7 过程模型桥接：**已完成**（M7.1–M7.5）——JSON-line 子进程桥接（超时杀进程、9 类失败分类）、简化水处理模型（ADR-0005，合成未校准）、单位/守恒/适用范围校验、校准数据计划；Base-01 报告的供水服务水平由过程模型计算（0.9），报告含 `model_provenance`（synthetic + validity）与 process 指标（78 条），CI 重放校验。
 
+M8 联合规划与 H2 实验：**进行中**——M8.1 确定性联合规划器与 SAP 校验路径完成（`crates/poie-plan`，ADR-0006；10 个测试，含动作预算/截止/确定性/重叠与结构校验/生命周期与派发前检查）；M8.2 重规划、M8.3 基线、M8.4 H2 预登记、M8.5 消融、M8.6 报告未开始。
+
 ## 初期工作清单（2026-10-31 完成）
 
 | # | 任务 | 产物 | 状态 |
@@ -90,3 +92,4 @@ M7 过程模型桥接：**已完成**（M7.1–M7.5）——JSON-line 子进程�
 - 2026-10-31：M6 完成：新增 `experiments/vec-base01` 报告运行器，对 20 个时间版场景生成 VEC §7 机读/人读报告（8 held_on_tested、7 counterexample、4 infeasible_in_model、1 unknown_input；74 条指标：生存/韧性/独立性），报告通过校验并在 CI 中 `--check` 重放；`poie-sim::timed` 暴露结构化违反信息（时刻/约束/详情）供报告映射；VEC 升为 v0.2-draft（§7 报告清单与表述守卫测试满足退出条件），M6 退出复核通过。
 - 2026-10-31：M7.1–M7.3、M7.5 完成：新增 `crates/poie-process`（`poie.process-bridge/0.1` 模式、模型 id/版本、单位、截止时间与子进程隔离；超时杀进程、崩溃/协议/模型不匹配/越界/不收敛/数值失败/守恒/量纲分类）与 `python/poie_models`（`water-treatment` v0.1.0 简化稳态模型，声明输入范围、守恒与 `synthetic`；ADR-0005 选择简化模型并记录 IDAES 引入条件；DATA.zh-CN.md 列出校准数据来源与步骤）；桥接 5 个集成测试全部通过（含超时、不收敛、数值失败、守恒、量纲、崩溃）。M7.4 报告记录与 Base-01 集成列为下一步。
 - 2026-10-31：M7 完成：Base-01 v0.2 报告运行器逐个场景调用 `water-treatment` 模型（`experiments/vec-base01/process.toml`），服务水平取模型输出（0.9），报告新增 `model_provenance`（id/version、synthetic、validity）与 process 指标组（含失败分类映射），报告 78 条指标且 CI `--check` 重放一致；人读摘要显示模型来源与适用范围；超时/不收敛/数值失败/越界等映射到不同运行结论并有单元测试。M7 退出复核通过（模型为合成未校准，只证明接口/校验/失败路径）。
+- 2026-10-31：M8.1 完成：新增 `crates/poie-plan`——按优先级求解结构目标、调度路线、失败资产有界恢复重解，输出带前提/预算/有效期的 `proposed` 动作；`validate_plan_through_sap` 把每个动作走 proposed→validated→authorized 并执行六项派发前检查（空状态版本/结构错误/重叠动作/过期等失败闭合）；ADR-0006 选择确定性贪心规划器并固定 MILP/CP 触发条件与公平基线要求。规划器 10 个测试。

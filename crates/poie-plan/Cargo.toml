@@ -1,0 +1,11 @@
+[package]
+name = "poie-plan"
+version = "0.1.0"
+description = "Deterministic joint production/maintenance/recovery planning with SAP-validated proposed action sequences."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+poie-ontology = { path = "../poie-ontology", version = "0.1.0" }
+poie-state = { path = "../poie-state", version = "0.1.0" }
