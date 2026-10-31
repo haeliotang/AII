@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/poie-ontology"]
+members = ["crates/poie-ontology", "experiments/h1-structural/baseline"]
 
 [workspace.package]
 edition = "2021"
