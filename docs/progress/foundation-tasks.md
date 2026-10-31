@@ -30,7 +30,7 @@ M6 可行性评估 v1：**已完成**（VEC 升为 v0.2-draft）——查询/六
 
 M7 过程模型桥接：**已完成**（M7.1–M7.5）——JSON-line 子进程桥接（超时杀进程、9 类失败分类）、简化水处理模型（ADR-0005，合成未校准）、单位/守恒/适用范围校验、校准数据计划；Base-01 报告的供水服务水平由过程模型计算（0.9），报告含 `model_provenance`（synthetic + validity）与 process 指标（78 条），CI 重放校验。
 
-M8 联合规划与 H2 实验：**进行中**——M8.1–M8.4 完成；H2 运行器已实现，**开发集 16 场景**已运行（原始输出与自动汇总已提交，见 [DEV-NOTES](../experiments/h2-joint-planning/DEV-NOTES.md)）；开发集上 A 与三种基线成功率相同（14/16），短时域消融明显更差（4/16），其余消融持平；**留出集 8 场景尚未运行/查看**，最终报告与 M8 退出复核待做。
+M8 联合规划与 H2 实验：**已完成**——M8.1–M8.6 完成；开发集 16 场景（A/B1/B2/B3 均 14/16）、留出集 8 场景首次运行（均 5/8）；按预登记判定 **H2 不被支持（负结果，0pp < 15pp）**，[REPORT.md](../experiments/h2-joint-planning/REPORT.md) 含消融（短时域 4/16）、全部运行、SAP 校验 100% 与复现清单；Autonomy 阶段（M6–M8）完成，Foundation 门槛仍受外部事项阻塞。
 
 ## 初期工作清单（2026-10-31 完成）
 
@@ -95,3 +95,4 @@ M8 联合规划与 H2 实验：**进行中**——M8.1–M8.4 完成；H2 运行
 - 2026-10-31：M8.1 完成：新增 `crates/poie-plan`——按优先级求解结构目标、调度路线、失败资产有界恢复重解，输出带前提/预算/有效期的 `proposed` 动作；`validate_plan_through_sap` 把每个动作走 proposed→validated→authorized 并执行六项派发前检查（空状态版本/结构错误/重叠动作/过期等失败闭合）；ADR-0006 选择确定性贪心规划器并固定 MILP/CP 触发条件与公平基线要求。规划器 10 个测试。
 - 2026-10-31：M8.2–M8.4 完成：`poie-plan::replan` 从当前观测重规划（非预知、保留/取消/新增 diff、确定性 digest），`baselines` 提供任务优先级/安全库存规则/短期优化三种基线（同 Plan 结构），并提交 `experiments/h2-joint-planning/PREREG.md`（24 场景、种子 `poieweave-h2-2026-10-31`、四方法、主次指标、留出集 +15pp 判定、消融与公平性条款）——预登记先于任何运行。规划器测试 10→18。
 - 2026-10-31：H2 运行器与开发集：新增 `experiments/h2-joint-planning/runner`（按种子生成 16 开发 + 8 留出场景、四种方法与四种消融、每计划经 SAP 校验），运行开发集并提交 `raw/dev-raw.txt`、`dev-report.md` 与 `DEV-NOTES.md`；开发集结果 A/B1/B2/B3 均为 14/16，短时域消融 4/16，其余消融持平；留出集保持封存，最终 REPORT 待留出集运行后发布。
+- 2026-10-31：M8 完成：留出集首次运行（8 场景，A/B1/B2/B3 均 5/8），按预登记判定 H2 不被支持（0pp < 15pp），发布 `experiments/h2-joint-planning/REPORT.md`（开发/留出、消融、SAP 校验 100%、复现清单）；M8 退出复核通过，Autonomy 阶段（M6–M8）完成；Foundation 阶段仍受 M1.8/M1.9/M1.10 与 M3.3 阻塞，Embodiment（M9–M12）不在本轮宣称门槛通过。

@@ -305,12 +305,20 @@ fn run_scenario(base: &Model, scenario: &Scenario, method: MethodName) -> Scenar
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RunMode {
+    Dev,
+    Holdout,
+}
+
 fn main() -> ExitCode {
     let mut write_dir: Option<PathBuf> = None;
+    let mut mode = RunMode::Dev;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--dev" | "--ablate" => {}
+            "--holdout" => mode = RunMode::Holdout,
             "--write" => {
                 let Some(path) = args.next() else {
                     eprintln!("--write needs a directory");
@@ -329,10 +337,16 @@ fn main() -> ExitCode {
         Model::load(&path).expect("Base-01 model loads")
     };
     let all = scenarios();
-    let dev: Vec<&Scenario> = all.iter().filter(|scenario| !scenario.holdout).collect();
+    let selected: Vec<&Scenario> = all.iter().filter(|scenario| (mode == RunMode::Dev) != scenario.holdout).collect();
     let mut results = Vec::new();
-    for scenario in &dev {
-        for method in METHODS {
+    for scenario in &selected {
+        let methods: Vec<MethodName> = if mode == RunMode::Holdout {
+            // Ablations stay on the development set (PREREG §6).
+            vec![MethodName::Joint, MethodName::TaskPriority, MethodName::SafetyStock, MethodName::ShortTerm]
+        } else {
+            METHODS.to_vec()
+        };
+        for method in methods {
             results.push(run_scenario(&base, scenario, method));
         }
     }
@@ -356,14 +370,18 @@ fn main() -> ExitCode {
             eprintln!("cannot create {}: {error}", dir.display());
             return ExitCode::FAILURE;
         }
+        let (raw_name, report_name, title) = match mode {
+            RunMode::Dev => ("dev-raw.txt", "dev-report.md", "H2 开发集结果（自动生成）"),
+            RunMode::Holdout => ("holdout-raw.txt", "holdout-report.md", "H2 留出集结果（自动生成）"),
+        };
         if let Err(error) = std::fs::create_dir_all(dir.join("raw"))
-            .and_then(|_| std::fs::write(dir.join("raw").join("dev-raw.txt"), &lines))
+            .and_then(|_| std::fs::write(dir.join("raw").join(raw_name), &lines))
         {
             eprintln!("cannot write raw results: {error}");
             return ExitCode::FAILURE;
         }
-        let report = summarize(&results);
-        if let Err(error) = std::fs::write(dir.join("dev-report.md"), report) {
+        let report = summarize(&results, title, mode);
+        if let Err(error) = std::fs::write(dir.join(report_name), report) {
             eprintln!("cannot write report: {error}");
             return ExitCode::FAILURE;
         }
@@ -371,10 +389,17 @@ fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn summarize(results: &[ScenarioResult]) -> String {
+fn summarize(results: &[ScenarioResult], title: &str, mode: RunMode) -> String {
     let mut out = String::new();
-    out.push_str("# H2 开发集结果（自动生成）\n\n");
-    out.push_str("本文件由 `poie-h2-joint-planning --dev --write <dir>` 生成；留出集未运行。预登记见 [PREREG.md](../PREREG.md)。\n\n");
+    out.push_str(&format!("# {title}\n\n"));
+    match mode {
+        RunMode::Dev => out.push_str(
+            "本文件由 `poie-h2-joint-planning --dev --write <dir>` 生成；留出集未运行。预登记见 [PREREG.md](../PREREG.md)。\n\n",
+        ),
+        RunMode::Holdout => out.push_str(
+            "本文件由 `poie-h2-joint-planning --holdout --write <dir>` 生成，是留出集的**首次**运行；开发集结果见 [DEV-NOTES.md](../DEV-NOTES.md)。预登记见 [PREREG.md](../PREREG.md)。\n\n",
+        ),
+    }
     out.push_str("| 方法 | 成功 | 场景数 | 成功率 | 平均完成 (h) | 平均动作数 | SAP 通过 |\n| --- | --- | --- | --- | --- | --- | --- |\n");
     for method in METHODS {
         let subset: Vec<&ScenarioResult> = results.iter().filter(|result| result.method == method.as_str()).collect();
@@ -406,7 +431,12 @@ fn summarize(results: &[ScenarioResult]) -> String {
         ));
     }
     out.push_str("\n## 读法与局限\n\n");
-    out.push_str("- 子集为 **开发集（16 场景）**；留出集（8 场景）未运行、未查看。\n");
+    match mode {
+        RunMode::Dev => out.push_str("- 子集为 **开发集（16 场景）**；留出集（8 场景）未运行、未查看。\n"),
+        RunMode::Holdout => {
+            out.push_str("- 子集为 **留出集（8 场景）**，本次为首次运行；消融只在开发集运行（PREREG §6）。\n")
+        }
+    }
     out.push_str("- 成功 = 供水目标在 4 h 预测失效前完成、车床目标达成且无未达成目标；所有方法使用相同扰动轨迹、预算与 SAP 校验路径。\n");
     out.push_str("- 规划器是确定性贪心（ADR-0006）；合成场景、未校准；样本小，只作方向性比较。\n");
     out
