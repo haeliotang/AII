@@ -149,3 +149,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：scheduled workflow 手动触发时新增 `fresh-clone` job（`if: workflow_dispatch`）：在 runner 上运行 `scripts/check-fresh-clone.sh`，无本地环境也可验证干净克隆复现；定时触发不运行该 job 以控制成本。
 - 2026-10-31：手动 dispatch scheduled workflow 验证通过（[run 41245856574](https://github.com/haeliotang/poieweave/actions/runs/41245856574)）：verify-all、fresh-clone（runner 上干净克隆内复现）、advisories、licenses/bans/sources 四个 job 全部成功；首次 dispatch 因 fresh-clone job 缺少 `SKIP_DENY=1` 失败，已修复并记录。
 - 2026-10-31：新增一页式[当前状态快照](../status/status-snapshot.zh-CN.md)（里程碑、测试/证据计数、复现运行、外部阻塞与建议下一步），从 stage-gates/README 链接；干净克隆复现记录更新至 `c8fc518`（通过）。
+- 2026-10-31：本地运行 `cargo test --release --locked` 全量通过（52 个测试套件，约 66 秒）；将该检查加入 scheduled workflow 的 `release-tests` job（每周 + 手动），用于捕获 release 构建独有差异。

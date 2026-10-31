@@ -27,6 +27,8 @@ scripts/check-fresh-clone.sh   # 干净克隆内再跑一遍（约 1 分钟，�
 
 **定期验证**：`.github/workflows/scheduled.yml` 每周一 04:17 UTC（也可手动 `workflow_dispatch`）运行完整的 `verify-all.sh`（跳过 deny，由独立 job 执行）与 `cargo-deny` 两个检查；advisories 只报告不阻塞（`continue-on-error`），许可/禁用/来源违规会失败。它用于捕获"新发布的公告/依赖来源变化"，不替代每次合并的 CI。
 
+**release 模式测试**：`release-tests` job 每周运行 `cargo test --release --locked`，捕获只在 release 构建下出现的差异（overflow、debug_assert 等）。
+
 **手动触发额外 job**：`workflow_dispatch` 时还会运行 `fresh-clone` job——在 runner 上执行 `scripts/check-fresh-clone.sh`（干净克隆内重跑完整套件），用于在没有本地环境时验证证据可复现；定时触发不会运行该 job（成本较高）。该 job 设置 `SKIP_DENY=1`（runner 无 `cargo-deny` 二进制，依赖检查由独立 deny job 负责）。
 
 验证记录：手动 dispatch [run 41245856574](https://github.com/haeliotang/poieweave/actions/runs/41245856574) 四个 job（verify-all、fresh-clone、advisories、licenses/bans/sources）全部成功。
