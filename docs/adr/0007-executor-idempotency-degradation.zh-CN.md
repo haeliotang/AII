@@ -3,7 +3,7 @@
 - 状态：提议（M10 开发中，待 M10 退出复核确认）
 - 日期：2026-10-31
 - 决策者：项目维护者（AI 代理起草，人类可推翻）
-- 相关：[开发文档 M10](../DEVELOPMENT.zh-CN.md)、[SAP §4/§6](../specifications/state-action-protocol.zh-CN.md)、[ADR-0005](0005-water-process-model.zh-CN.md)
+- 相关：[开发文档 M10](../DEVELOPMENT.zh-CN.md)、[SAP §4/§6](../../specifications/state-action-protocol.zh-CN.md)、[ADR-0005](0005-water-process-model.zh-CN.md)
 - 取代/被取代：无
 
 ## 1. 背景

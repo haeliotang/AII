@@ -1,6 +1,6 @@
 # H3 有界执行：模拟运行报告（simulated, not physical）
 
-本报告由 `poie-h3-bounded-execution --write <dir>` 生成；预登记见 [PREREG.md](../PREREG.md)。
+本报告由 `poie-h3-bounded-execution --write <dir>` 生成；预登记见 [PREREG.md](PREREG.md)。
 
 **限制**：这是模拟执行端（`crates/poie-exec::sim`），不是物理试验台；M10 退出条件要求的真实故障与安全演练未覆盖。
 

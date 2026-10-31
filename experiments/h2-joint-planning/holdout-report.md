@@ -1,6 +1,6 @@
 # H2 留出集结果（自动生成）
 
-本文件由 `poie-h2-joint-planning --holdout --write <dir>` 生成，是留出集的**首次**运行；开发集结果见 [DEV-NOTES.md](../DEV-NOTES.md)。预登记见 [PREREG.md](../PREREG.md)。
+本文件由 `poie-h2-joint-planning --holdout --write <dir>` 生成，是留出集的**首次**运行；开发集结果见 [DEV-NOTES.md](DEV-NOTES.md)。预登记见 [PREREG.md](PREREG.md)。
 
 | 方法 | 成功 | 场景数 | 成功率 | 平均完成 (h) | 平均动作数 | SAP 通过 |
 | --- | --- | --- | --- | --- | --- | --- |

@@ -43,7 +43,8 @@
 2. `cargo clippy --all-targets -- -D warnings`（工具链固定 1.94.0）
 3. `cargo test --locked`
 4. `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`
-5. Python：`python3 -m unittest discover -s python/poie_models`
+5. Markdown 相对链接检查：`python3 scripts/check-docs.py`
+6. Python：`python3 -m unittest discover -s python/poie_models`
 6. Base-01 40 例、Base-02 8 例
 7. M12 分区模拟重放、e2e 重放、TCP 重放、两站点重放
 8. Base-01 时间版用例与摘要校验
