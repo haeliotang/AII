@@ -89,6 +89,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-h4-expansion"
+version = "0.1.0"
+dependencies = [
+ "poie-expansion",
+ "poie-ontology",
+ "poie-plan",
+ "poie-viability",
+]
+
+[[package]]
 name = "poie-ontology"
 version = "0.1.0"
 dependencies = [

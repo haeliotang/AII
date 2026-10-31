@@ -52,6 +52,12 @@ jobs:
           diff /tmp/h3-sim/REPORT.sim.md experiments/h3-bounded-execution/REPORT.sim.md
           diff /tmp/h3-sim/raw/sim.txt experiments/h3-bounded-execution/raw/sim.txt
 
+      - name: H4 expansion accounting (M11)
+        run: |
+          cargo run --locked -q -p poie-h4-expansion -- --write /tmp/h4
+          diff /tmp/h4/REPORT.md experiments/h4-expansion/REPORT.md
+          diff /tmp/h4/raw/h4.txt experiments/h4-expansion/raw/h4.txt
+
   deny:
     name: cargo-deny (${{ matrix.checks }})
     runs-on: ubuntu-latest

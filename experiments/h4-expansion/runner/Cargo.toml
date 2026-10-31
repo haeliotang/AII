@@ -1,0 +1,14 @@
+[package]
+name = "poie-h4-expansion"
+version = "0.1.0"
+description = "H4 expansion accounting run: structural gain/loss plus temporal comparison on the H2 development scenarios."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+poie-expansion = { path = "../../../crates/poie-expansion", version = "0.1.0" }
+poie-ontology = { path = "../../../crates/poie-ontology", version = "0.1.0" }
+poie-plan = { path = "../../../crates/poie-plan", version = "0.1.0" }
+poie-viability = { path = "../../../crates/poie-viability", version = "0.1.0" }
