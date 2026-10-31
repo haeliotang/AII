@@ -1,0 +1,13 @@
+[package]
+name = "poie-runtime"
+version = "0.1.0"
+description = "Local shadow runtime: read-only adapter contract, evidence projection and expiry, health checks, shadow planning and prediction reconciliation (M9)."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+poie-ontology = { path = "../poie-ontology", version = "0.1.0" }
+poie-plan = { path = "../poie-plan", version = "0.1.0" }
+poie-state = { path = "../poie-state", version = "0.1.0" }
+serde_json = "1"

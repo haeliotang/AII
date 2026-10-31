@@ -87,6 +87,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-runtime"
+version = "0.1.0"
+dependencies = [
+ "poie-ontology",
+ "poie-plan",
+ "poie-state",
+ "serde_json",
+]
+
+[[package]]
 name = "poie-sim"
 version = "0.1.0"
 dependencies = [
