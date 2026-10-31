@@ -1,6 +1,6 @@
 # 当前状态快照（2026-10-31 UTC）
 
-本页是给发起方/外部评审者的一页式状态，数字截至 `main` = `f17bf9f`（UTC 2026-10-31）。逐项证据与索引见 [stage-gates](stage-gates.zh-CN.md)、[test-matrix](test-matrix.zh-CN.md) 与 [external-actions](external-actions.zh-CN.md)。
+本页是给发起方/外部评审者的一页式状态，数字截至 `main` = `50b1e32`（UTC 2026-10-31）。逐项证据与索引见 [stage-gates](stage-gates.zh-CN.md)、[test-matrix](test-matrix.zh-CN.md) 与 [external-actions](external-actions.zh-CN.md)。
 
 ## 1. 里程碑
 
@@ -18,7 +18,7 @@
 
 | 项 | 当前值 |
 | --- | --- |
-| Rust 列表测试 | **284**（库 crate 278 + 实验 runner 6） |
+| Rust 列表测试 | **286**（库 crate 280 + 实验 runner 6） |
 | Python 桥测试 | 9（CI 执行） |
 | 随机性质测试 | 图求解 120、记录 120、投影 120、调度 120、仿真 80、VEC 60 轨迹 + 报告 20×16 变异、规划器 80、重规划/基线 80+20+60、HLC 80、联邦分区 120、执行门 120、运行时 80、扩张 40+40、桥 40 trials |
 | 预登记场景用例 | Base-01 40、Base-02 8、时间版 20 |
@@ -29,7 +29,7 @@
 
 - 每次合并：CI（fmt/clippy/test/rustdoc/Python/链接/矩阵/重放覆盖/全部场景与实验/`cargo-deny`）全绿后合并，并确认 `main` CI run 成功。
 - 本地一键：`scripts/verify-all.sh`。
-- 干净克隆：`scripts/check-fresh-clone.sh` —— 最近在 `f17bf9f` 上通过（约 1 分钟）。
+- 干净克隆：`scripts/check-fresh-clone.sh` —— 最近在 `50b1e32` 上通过（约 1 分钟）。
 - GitHub runner：手动 dispatch scheduled workflow 的 [run 41246880552](https://github.com/haeliotang/poieweave/actions/runs/41246880552) 五个 job 全绿（verify-all、release tests、fresh-clone、advisories、licenses/bans/sources）。
 - 定期：每周一 04:17 UTC scheduled workflow（`verify-all` + `cargo test --release` + `cargo-deny`；手动触发时额外 fresh-clone）。
 
