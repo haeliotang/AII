@@ -2,6 +2,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use serde::{Deserialize, Serialize};
+
 use poie_state::action::ActionState;
 use poie_state::record::{Payload, Record, RecordId};
 
@@ -51,7 +53,7 @@ pub struct ReconciliationReport {
     pub leases: usize,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ReservationClaim {
     pub site: String,
     pub batch: String,
@@ -59,7 +61,7 @@ pub struct ReservationClaim {
     pub amount_si: f64,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LeaseClaim {
     pub site: String,
     pub executor: String,
