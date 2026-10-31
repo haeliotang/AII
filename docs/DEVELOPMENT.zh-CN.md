@@ -155,7 +155,7 @@ flowchart LR
 
 | 工作包 | 内容 | 退出条件 |
 | --- | --- | --- |
-| M1.6 持续集成 | GitHub Actions（`.github/workflows/ci.yml`）：fmt、clippy、test、Base-01 用例；`cargo-deny`（`deny.toml`）检查许可、禁用项、来源与安全公告。**已完成**：PR #2 合并后 `main` 上 CI 为绿（2026-10-31） | CI 在 `main` 上为绿 |
+| M1.6 持续集成 | GitHub Actions（`.github/workflows/ci.yml`）：fmt、clippy、test、Base-01 用例；`cargo-deny`（`deny.toml`）检查许可、禁用项、来源与安全公告。**已完成**：PR #2 合并后 `main` 上 CI 为绿（[run #2](https://github.com/haeliotang/poieweave/actions/runs/41222603966)，2026-10-31）；2026-10-31 本地按同一组命令复跑通过 | CI 在 `main` 上为绿 |
 | M1.7 贡献指南 | `CONTRIBUTING.md`：如何提交反例、用例和契约修改；issue 模板（反例 / 契约修改 / 实验提案） | 文件合并 |
 | M1.8 契约外部评审 | 邀请至少一位领域外读者按"能否构造反例"审读三份契约，把问题登记为 issue | 评审意见已登记，并逐条标注接受、拒绝（附理由）或推迟 |
 | M1.9 开源边界 | [ADR-0001](adr/0001-open-source-boundary.zh-CN.md)：开放核心 + 六条不变式；配套 `NOTICE`、DCO、`SECURITY.md`、`cargo-deny` | ADR 由 Inceptless 确认为"已接受"；配套文件合并 |
