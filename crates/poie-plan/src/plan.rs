@@ -127,7 +127,7 @@ pub fn plan(request: &PlanningRequest<'_>) -> Result<Plan, PlanError> {
     let mut restored: BTreeSet<String> = BTreeSet::new();
 
     let mut ordered: Vec<&PlanningGoal> = request.goals.iter().collect();
-    ordered.sort_by(|left, right| right.priority.cmp(&left.priority));
+    ordered.sort_by_key(|goal| std::cmp::Reverse(goal.priority));
 
     for goal in ordered {
         let label = goal_label(&goal.goal);
