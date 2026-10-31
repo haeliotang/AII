@@ -47,7 +47,7 @@ CI 固定使用 Rust 1.94.0（与参考开发环境一致，避免 clippy 版本
 | --- | --- | --- |
 | M9 适配器与影子运行 | `poie-runtime` 12 测试 + 80 次随机运行时/断连不变量测试；[影子运行端到端演示](../../experiments/shadow-run/REPORT.md)（投影→影子规划→不派发→操作者日志对比，7/7 断言） | M9.0 合规复核、M9.2 真实适配器、M9.6 物理试验台 |
 | M10 有界执行 | `poie-exec` 12 测试 + 120 次随机执行门安全不变量测试；[H3 模拟报告](../../experiments/h3-bounded-execution/REPORT.sim.md) 14/14 | 物理试验台、真实故障、安全演练、执行端幂等验证 |
-| M11 扩张核算 | `poie-expansion` 7 测试 + 随机不变量（40 trials 结构增益/损失划分与 expand/to_patch 一致、40 trials 时序增益与施工窗口检查）；[H4 报告](../../experiments/h4-expansion/REPORT.md) 判定不确定 | M11.6 物理实施（`demonstrated_gain`） |
+| M11 扩张核算 | `poie-expansion` 7 测试 + 随机不变量（40 trials 结构增益/损失划分与 expand/to_patch 一致、40 trials 时序增益与施工窗口检查）+ 提案 TOML 随机变异不 panic；[H4 报告](../../experiments/h4-expansion/REPORT.md) 判定不确定 | M11.6 物理实施（`demonstrated_gain`） |
 | M12 多站点联邦 | `poie-federation` 7 测试 + HLC 随机不变量（80 trials）+ 120 次随机分区性质测试；[M12.6 模拟报告](../../experiments/federation-partition/REPORT.sim.md) 6/6；Base-02 8/8；[本机 TCP 双进程交换](../../experiments/federation-tcp/REPORT.md)（真实 socket，仍非真实多站点） | M12.6 真实多节点网络与长时间分区 |
 | 端到端管线 | [e2e REPORT](../../experiments/e2e-pipeline/REPORT.md)：适配器→投影→规划→SAP 校验→执行门→独立验证→预测核对，9/9 断言通过，CI 重放 | 真实适配器与物理执行（M9.2/M10） |
 | 两站点影子集成 | [two-site REPORT](../../experiments/two-site-shadow/REPORT.md)：站点 A 投影/规划，站点 B 共享库存/租约；超额预留与重叠租约阻断派发、干净对账放行，7/7 断言，CI 重放 | 真实多站点与网络（M9.2/M12.6） |
