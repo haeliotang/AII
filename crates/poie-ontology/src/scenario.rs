@@ -140,6 +140,11 @@ impl Scenario {
         Ok(graph::enumerate(&model, &query, limit))
     }
 
+    /// Exposes the patched model and query for an experiment harness (M3.2).
+    pub fn prepared(&self, case: &Case) -> Result<(Model, Query), ModelError> {
+        self.prepare(case)
+    }
+
     /// Traces the external dependencies of a case (PO §6.5, VEC §4.2).
     pub fn external_dependency_report(
         &self,
