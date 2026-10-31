@@ -85,6 +85,8 @@ name = "poie-viability"
 version = "0.1.0"
 dependencies = [
  "poie-ontology",
+ "serde",
+ "toml",
 ]
 
 [[package]]

@@ -10,10 +10,17 @@
 //! (§3.3) and the set-method exploration (§3.2) are the remaining M6 packages.
 
 pub mod method;
+pub mod metrics;
 pub mod query;
+pub mod report;
 pub mod verdict;
 
 pub use method::{enumerated_plan, sampled_plan, Method, MethodError, SamplePlan, Scenario, SplitMix64};
+pub use metrics::{
+    aggregate_external_inputs, independence, resilience, summarize_viability, sustainability, viability,
+    ConstraintViolation, IndependenceMetrics, MetricError, RecoveryPath, ResilienceMetrics, RunTrace, ServiceViability,
+    SustainabilityClaim, SustainabilityMetrics, TimeSample, ViabilitySummary,
+};
 pub use query::{
     Budget, DisturbanceSet, FixedEvent, InitialState, ModelRef, PolicyClass, Query, QueryError, ServiceLevel,
     StateRelatedRate,

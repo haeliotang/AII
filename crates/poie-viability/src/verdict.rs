@@ -7,9 +7,12 @@
 
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use crate::method::Method;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum VerdictKind {
     HeldOnTested,
     Counterexample,
@@ -32,7 +35,8 @@ impl VerdictKind {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Verdict {
     HeldOnTested { tested_scenarios: usize, method: Method, uncovered: String },
     Counterexample { scenario_id: String, first_violation_s: f64, constraint: String, state: String },
