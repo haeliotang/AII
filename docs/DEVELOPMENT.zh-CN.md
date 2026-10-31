@@ -574,3 +574,4 @@ flowchart LR
 | 0.1.78 | 2026-10-31 | 维护手册（门禁、工具链/依赖升级、新增实验与测试、外部评审处置、发布清单）；复现记录更新至 a627cf5 |
 | 0.1.79 | 2026-10-31 | 每周/手动触发的定期验证工作流（verify-all 与 cargo-deny 分离 job） |
 | 0.1.80 | 2026-10-31 | scheduled workflow 手动触发时增加 fresh-clone job（runner 上验证干净克隆复现） |
+| 0.1.81 | 2026-10-31 | 手动 dispatch scheduled workflow 验证（4 job 全绿，含 runner 上的 fresh-clone） |

@@ -20,6 +20,8 @@ scripts/check-fresh-clone.sh
 | 运行时长 | 约 62 秒（含全新 `target/` 构建与全部重放） |
 | 结果 | `ALL GATES PASSED` + `FRESH CLONE REPRODUCTION PASSED` |
 
+CI runner 上亦已复现：手动 dispatch scheduled workflow 的 [run 41245856574](https://github.com/haeliotang/poieweave/actions/runs/41245856574) 中 `fresh-clone` job 成功（Ubuntu runner、干净克隆内运行完整套件）。
+
 覆盖内容与 `verify-all.sh` 相同：格式、clippy、全部 Rust/Python 测试、rustdoc（警告即错误）、Markdown 链接、实验重放覆盖、测试矩阵计数、Base-01/Base-02、时间版与摘要、VEC 报告、H1 结构层/时间版、H2 开发/留出、H3、H4、联邦分区、e2e、TCP、两站点、影子运行、`cargo-deny`。
 
 ## 边界（不要过度解读）
