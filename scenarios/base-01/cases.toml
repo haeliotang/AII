@@ -1,0 +1,136 @@
+# Autonomous Base-01 — structural cases, v0.1
+# Each case patches the base model, runs one capability-graph query, and
+# states the expected verdict and root causes BEFORE the run (pre-registered).
+# Run: cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml
+
+schema = "poie.scenario-cases/0.1"
+model = "model.toml"
+
+[[case]]
+id = "S0"
+title = "Baseline: restore water with the spare sleeve"
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.expect]
+verdict = "candidate"
+route_includes = ["replace-sleeve-p1"]
+route_excludes = ["turn-sleeve-p1"]
+
+[[case]]
+id = "S1"
+title = "No accepted spare: machine and inspect a sleeve"
+description = "lot-sleeve-02 is quarantined and must not be used even though it is physically present."
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item" }
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-sleeve-p1", "inspect-sleeve-p1", "replace-sleeve-p1"]
+
+[[case]]
+id = "S2"
+title = "No spare and lathe failed: the repair needs the lathe itself"
+description = """
+Viewed separately, each capability exists: the robot can repair the lathe, \
+and the lathe can make the nut it needs. Jointly, making the nut requires \
+the failed lathe. Expected root cause: cycle on lathe-1."""
+goal = { service = "potable-water" }
+min_verification = "modeled"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item" }
+asset_status = { "lathe-1" = "failed" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "cycle", subject = "lathe-1" }]
+
+[[case]]
+id = "S3"
+title = "Common cause: bus-1 fails"
+description = """
+A spare sleeve and a spare breaker are both in stock. The pump needs bus-1; \
+the only robot that can replace the breaker depends on charger-1, which is \
+fed by bus-1. Expected root cause: cycle on bus-1."""
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+asset_status = { "bus-1" = "failed" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "cycle", subject = "bus-1" }]
+
+[[case]]
+id = "S4"
+title = "Stale pump evidence: unknown is not healthy"
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+asset_status = { "pump-p1" = "unknown" }
+[case.expect]
+verdict = "unknown"
+root_causes = [{ kind = "unknown_state", subject = "pump-p1" }]
+
+[[case]]
+id = "S5"
+title = "Machining route only declared, not demonstrated"
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item" }
+process_verification = { "turn-sleeve-p1" = "declared" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "below_verification", subject = "turn-sleeve-p1" }]
+
+[[case]]
+id = "S6"
+title = "Not enough bronze bar"
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item", "lot-bronze" = "1 kg" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "bronze-bar" }]
+
+[[case]]
+id = "S7"
+title = "Cutting inserts exhausted: irreducible external dependency"
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item", "lot-insert" = "0 item" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "cutting-insert" }]
+
+[[case]]
+id = "S8"
+title = "Two sleeves: one from stock, one manufactured"
+goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
+min_verification = "demonstrated"
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-sleeve-p1", "inspect-sleeve-p1"]
+
+[[case]]
+id = "S9"
+title = "Four sleeves: bronze runs out on the third machined part"
+description = "1 from stock + 3 machined needs 3.6 kg bronze; 3 kg in stock. Guards against double allocation."
+goal = { obtain = { resource = "sleeve-p1", quantity = "4 item" } }
+min_verification = "demonstrated"
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "bronze-bar" }]
+
+[[case]]
+id = "S10"
+title = "Energy budget too small for the machining route"
+description = "Turning 2 kWh + inspection 0.1 kWh + replacement 0.5 kWh = 2.6 kWh > 2 kWh stored."
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item", "lot-energy" = "2 kWh" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "electric-energy" }]
