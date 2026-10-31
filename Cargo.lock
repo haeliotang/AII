@@ -171,6 +171,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-shadow-run"
+version = "0.1.0"
+dependencies = [
+ "poie-ontology",
+ "poie-plan",
+ "poie-runtime",
+ "poie-state",
+]
+
+[[package]]
 name = "poie-sim"
 version = "0.1.0"
 dependencies = [

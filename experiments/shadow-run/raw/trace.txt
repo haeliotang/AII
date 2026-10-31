@@ -1,0 +1,6 @@
+observations=9
+planned=1
+dispatched=false
+would_do_not_observed=1
+observed_not_planned=1
+assertions_failed=0

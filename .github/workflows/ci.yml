@@ -73,6 +73,12 @@ jobs:
           diff /tmp/two-site/REPORT.md experiments/two-site-shadow/REPORT.md
           diff /tmp/two-site/raw/trace.txt experiments/two-site-shadow/raw/trace.txt
 
+      - name: Shadow run demo (M9.4)
+        run: |
+          cargo run --locked -q -p poie-shadow-run -- --write /tmp/shadow
+          diff /tmp/shadow/REPORT.md experiments/shadow-run/REPORT.md
+          diff /tmp/shadow/raw/trace.txt experiments/shadow-run/raw/trace.txt
+
       - name: Base-01 timed cases and replay digests
         run: |
           cargo run --locked -q -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml

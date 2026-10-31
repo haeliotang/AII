@@ -1,0 +1,14 @@
+[package]
+name = "poie-shadow-run"
+version = "0.1.0"
+description = "Shadow-run demo (M9.4): plan on projected field state, record actions only, compare with an operator log."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+poie-ontology = { path = "../../../crates/poie-ontology", version = "0.1.0" }
+poie-plan = { path = "../../../crates/poie-plan", version = "0.1.0" }
+poie-runtime = { path = "../../../crates/poie-runtime", version = "0.1.0" }
+poie-state = { path = "../../../crates/poie-state", version = "0.1.0" }

@@ -137,3 +137,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增 Rust 过程桥客户端随机性质测试（`crates/poie-process/tests/bridge_properties.rs`，40 trials + 超时）：随机有效/越界参数与故障注入（不收敛、数值失败、单位错误、守恒破坏、崩溃）下验证错误分类、成功响应必须通过单位/守恒校验且带 `synthetic`、缺失解释器归为崩溃、慢模型在 deadline+1s 被杀并报 Timeout。
 - 2026-10-31：新增测试矩阵自动校验 `scripts/check-test-matrix.py` 并纳入 CI/`verify-all.sh`：解析 `docs/status/test-matrix.zh-CN.md` 的 crate 计数与合计，运行 `cargo test --list` 实际计数比对；同时把矩阵总计拆分为"库 crate 270 + 实验 runner 6 = 总计 276"，避免口径混淆。
 - 2026-10-31：新增[外部邀约模板](../status/outreach-templates.zh-CN.md)：为 M1.8/M1.9/M1.10/M3.3/M9.0/M9.2/M9.6/M10/M11.6/M12.6 各提供可直接复制的中文正文（M1.8 另附英文短版），含材料链接、时间与验收标准；从 external-actions 链接。
+- 2026-10-31：新增 M9.4 影子运行端到端演示（`experiments/shadow-run`）：模拟现场观测→投影（泵退化、车床故障）→影子规划→`dispatched=false`→与模拟操作者日志对比，覆盖 `would_do_not_observed` 与 `observed_not_planned` 两类分歧；显式 guard 拒绝影子模式派发；7/7 断言，报告/轨迹加入 CI 与 `verify-all.sh` 重放。
