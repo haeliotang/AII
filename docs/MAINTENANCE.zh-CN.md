@@ -25,6 +25,8 @@ scripts/check-fresh-clone.sh   # 干净克隆内再跑一遍（约 1 分钟，�
 
 **合并规则**：PR 必须 CI 全绿再合并；合并后再确认 `main` 的最新 CI run 成功。若合并后才发现失败，立即开修复 PR（fix-forward），不等待。
 
+**定期验证**：`.github/workflows/scheduled.yml` 每周一 04:17 UTC（也可手动 `workflow_dispatch`）运行完整的 `verify-all.sh`（跳过 deny，由独立 job 执行）与 `cargo-deny` 两个检查；advisories 只报告不阻塞（`continue-on-error`），许可/禁用/来源违规会失败。它用于捕获"新发布的公告/依赖来源变化"，不替代每次合并的 CI。
+
 ## 2. 工具链
 
 - CI 固定 `dtolnay/rust-toolchain@1.94.0`；本地参考环境同为 1.94.0。
