@@ -125,11 +125,13 @@ pub fn plan(request: &PlanningRequest<'_>) -> Result<Plan, PlanError> {
     let mut goals_met = Vec::new();
     let mut goals_unmet = Vec::new();
     let mut restored: BTreeSet<String> = BTreeSet::new();
+    let mut next_action_id: usize = 0;
 
     let mut ordered: Vec<&PlanningGoal> = request.goals.iter().collect();
     ordered.sort_by_key(|goal| std::cmp::Reverse(goal.priority));
 
-    for goal in ordered {
+    for (goal_index, goal) in ordered.iter().enumerate() {
+        let goal = *goal;
         let label = goal_label(&goal.goal);
         let mut met = false;
         for _round in 0..8 {
@@ -147,6 +149,12 @@ pub fn plan(request: &PlanningRequest<'_>) -> Result<Plan, PlanError> {
                         if actions.len() >= request.max_actions {
                             goals_unmet
                                 .push(GoalFailure { goal: label.clone(), reason: "action budget exhausted".into() });
+                            for remaining in ordered.iter().skip(goal_index + 1) {
+                                goals_unmet.push(GoalFailure {
+                                    goal: goal_label(&remaining.goal),
+                                    reason: "action budget exhausted".into(),
+                                });
+                            }
                             return finish(request, actions, goals_met, goals_unmet, cursor);
                         }
                         let id = format!("step{}-{}", position + 1, step.process);
@@ -156,15 +164,17 @@ pub fn plan(request: &PlanningRequest<'_>) -> Result<Plan, PlanError> {
                             .ok_or_else(|| PlanError::Schedule(format!("missing schedule entry {id}")))?;
                         if end_s > request.horizon_s {
                             goals_unmet.push(GoalFailure { goal: label.clone(), reason: "horizon exceeded".into() });
-                            return finish(request, actions, goals_met, goals_unmet, cursor);
+                            met = true;
+                            break;
                         }
                         let process = working
                             .process(&step.process)
                             .ok_or_else(|| PlanError::Model(format!("unknown process {:?}", step.process)))?;
                         let preconditions = preconditions(process, step);
                         let target = step.occupies.first().cloned().unwrap_or_else(|| "site".to_string());
+                        next_action_id += 1;
                         actions.push(PlannedAction {
-                            action_id: format!("{}-{}-{}", label, position + 1, step.process),
+                            action_id: format!("{label}-{next_action_id}-{}", step.process),
                             process: step.process.clone(),
                             target,
                             runs: step.runs,
@@ -180,6 +190,21 @@ pub fn plan(request: &PlanningRequest<'_>) -> Result<Plan, PlanError> {
                             restores: step.restores.clone(),
                             verification: step.verification,
                         });
+                    }
+                    if goals_unmet.iter().any(|failure| failure.goal == label) {
+                        break;
+                    }
+                    // Apply the planned restores to the working model so later
+                    // goals do not plan the same repair again.
+                    let mut restore_patch = Patch::default();
+                    for step in &result.steps {
+                        for asset in &step.restores {
+                            restore_patch.asset_status.insert(asset.clone(), AssetStatus::Available);
+                        }
+                    }
+                    if !restore_patch.asset_status.is_empty() {
+                        working =
+                            working.patched(&restore_patch).map_err(|error| PlanError::Model(error.to_string()))?;
                     }
                     cursor = cursor.max(report.instances.iter().map(|instance| instance.end_s).fold(cursor, f64::max));
                     if let Some(deadline) = goal.deadline_s {
@@ -226,6 +251,12 @@ pub fn plan(request: &PlanningRequest<'_>) -> Result<Plan, PlanError> {
                                     goal: label.clone(),
                                     reason: "action budget exhausted".into(),
                                 });
+                                for remaining in ordered.iter().skip(goal_index + 1) {
+                                    goals_unmet.push(GoalFailure {
+                                        goal: goal_label(&remaining.goal),
+                                        reason: "action budget exhausted".into(),
+                                    });
+                                }
                                 return finish(request, actions, goals_met, goals_unmet, cursor);
                             }
                             let id = format!("restore-{asset}-{position}-{}", step.process);
@@ -239,8 +270,9 @@ pub fn plan(request: &PlanningRequest<'_>) -> Result<Plan, PlanError> {
                             let process = working
                                 .process(&step.process)
                                 .ok_or_else(|| PlanError::Model(format!("unknown process {:?}", step.process)))?;
+                            next_action_id += 1;
                             actions.push(PlannedAction {
-                                action_id: format!("restore-{asset}-{}", step.process),
+                                action_id: format!("restore-{asset}-{next_action_id}-{}", step.process),
                                 process: step.process.clone(),
                                 target: asset.clone(),
                                 runs: step.runs,
