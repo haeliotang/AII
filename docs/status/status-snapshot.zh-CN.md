@@ -29,7 +29,7 @@
 
 - 每次合并：CI（fmt/clippy/test/rustdoc/Python/链接/矩阵/重放覆盖/全部场景与实验/`cargo-deny`）全绿后合并，并确认 `main` CI run 成功。
 - 本地一键：`scripts/verify-all.sh`。
-- 干净克隆：`scripts/check-fresh-clone.sh` —— 最近在 `50b1e32` 上通过（约 1 分钟）。
+- 干净克隆：`scripts/check-fresh-clone.sh` —— 最近在 `8d6e8f5` 上通过（约 1 分钟）。
 - GitHub runner：手动 dispatch scheduled workflow 的 [run 41246880552](https://github.com/haeliotang/poieweave/actions/runs/41246880552) 五个 job 全绿（verify-all、release tests、fresh-clone、advisories、licenses/bans/sources）。
 - 定期：每周一 04:17 UTC scheduled workflow（`verify-all` + `cargo test --release` + `cargo-deny`；手动触发时额外 fresh-clone）。
 
