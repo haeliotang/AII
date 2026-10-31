@@ -1,0 +1,40 @@
+# cargo-deny policy. Rationale: docs/adr/0001-open-source-boundary.zh-CN.md §5.
+# Core dependencies must use licenses compatible with Apache-2.0.
+# MPL-2.0 needs a per-crate exception recorded here; GPL/AGPL are not allowed.
+
+[graph]
+all-features = true
+
+[advisories]
+# Unmaintained or vulnerable crates fail the advisories check.
+ignore = []
+
+[licenses]
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.93
+# The allow list is the policy, not a list of what is currently used.
+unused-allowed-license = "allow"
+# Per-crate exceptions (e.g. MPL-2.0) go here, each with a comment saying why.
+exceptions = []
+
+[licenses.private]
+# Workspace crates are not published yet; their license is still checked.
+ignore = false
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

@@ -4,6 +4,7 @@
 
 The name comes from Greek *poiesis* (making) and *autopoiesis* (a system that produces and maintains itself). The project was named **AII** until 2026-10-31; see [ADR-0002](docs/adr/0002-rename-to-poieweave.zh-CN.md).
 
+[![CI](https://github.com/haeliotang/poieweave/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/haeliotang/poieweave/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 ### Build the open foundation for self-sustaining industrial systems.
