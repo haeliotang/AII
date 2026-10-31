@@ -44,6 +44,8 @@ echo "== two-site shadow integration =="
 cargo run --locked -q -p poie-two-site-shadow -- --write "$tmp/two-site"
 diff "$tmp/two-site/REPORT.md" experiments/two-site-shadow/REPORT.md
 diff "$tmp/two-site/raw/trace.txt" experiments/two-site-shadow/raw/trace.txt
+echo "== Python model and bridge tests =="
+python3 -m unittest discover -s python/poie_models -p "test_*.py" -v
 echo "== rustdoc (warnings as errors) =="
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --offline
 echo "== dependency policy =="
