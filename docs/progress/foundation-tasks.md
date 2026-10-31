@@ -26,19 +26,19 @@ M4 状态与事件内核：**已完成**（M4.1–M4.9）。SAP 升为 **v0.2-dr
 
 M5 时间维度与 Base-01 v0.2：**已完成**（M5.1–M5.7）。PO 升为 **v0.3-draft**（schema `poie.physical-ontology/0.3`、`poie.scenario-cases/0.3`），§8 只保留未解决项；时间版 Base-01（20 例）与摘要逐位校验、离散事件仿真（守恒/扰动/电池）、调度与时间线均完成；M5.7 时间版 H1 复测以弱形式支持 H1（时间盲基线漏判 3/7、联合依赖漏判 2/5，时间版自身错误 0/20，内部证据）。阶段门槛仍受 M1.8/M1.9/M1.10 与 M3.3 外部事项阻塞。
 
-M6 可行性评估 v1：**已完成**（VEC 升为 v0.2-draft）——查询/六类结论/表述约束、抽样/枚举与种子、四组指标（截尾/防作弊）、机读/人读报告、恢复路径桥接均已完成（`crates/poie-viability` 32 个单元测试）；Base-01 v0.2 的 20 个时间版场景已生成符合 VEC §7 的报告（[report.toml](../experiments/vec-base01/report.toml) / [report.md](../experiments/vec-base01/report.md)，74 条指标，CI 校验可重放）；集合/证书方法经评估不实现（[ADR-0004](../adr/0004-set-based-viability-scope.zh-CN.md)）。
+M6 可行性评估 v1：**已完成**（VEC 升为 v0.2-draft）——查询/六类结论/表述约束、抽样/枚举与种子、四组指标（截尾/防作弊）、机读/人读报告、恢复路径桥接均已完成（`crates/poie-viability` 32 个单元测试）；Base-01 v0.2 的 20 个时间版场景已生成符合 VEC §7 的报告（[report.toml](../../experiments/vec-base01/report.toml) / [report.md](../../experiments/vec-base01/report.md)，74 条指标，CI 校验可重放）；集合/证书方法经评估不实现（[ADR-0004](../adr/0004-set-based-viability-scope.zh-CN.md)）。
 
 M7 过程模型桥接：**已完成**（M7.1–M7.5）——JSON-line 子进程桥接（超时杀进程、9 类失败分类）、简化水处理模型（ADR-0005，合成未校准）、单位/守恒/适用范围校验、校准数据计划；Base-01 报告的供水服务水平由过程模型计算（0.9），报告含 `model_provenance`（synthetic + validity）与 process 指标（78 条），CI 重放校验。
 
-M8 联合规划与 H2 实验：**已完成**——M8.1–M8.6 完成；开发集 16 场景（A/B1/B2/B3 均 14/16）、留出集 8 场景首次运行（均 5/8）；按预登记判定 **H2 不被支持（负结果，0pp < 15pp）**，[REPORT.md](../experiments/h2-joint-planning/REPORT.md) 含消融（短时域 4/16）、全部运行、SAP 校验 100% 与复现清单；Autonomy 阶段（M6–M8）完成，Foundation 门槛仍受外部事项阻塞。
+M8 联合规划与 H2 实验：**已完成**——M8.1–M8.6 完成；开发集 16 场景（A/B1/B2/B3 均 14/16）、留出集 8 场景首次运行（均 5/8）；按预登记判定 **H2 不被支持（负结果，0pp < 15pp）**，[REPORT.md](../../experiments/h2-joint-planning/REPORT.md) 含消融（短时域 4/16）、全部运行、SAP 校验 100% 与复现清单；Autonomy 阶段（M6–M8）完成，Foundation 门槛仍受外部事项阻塞。
 
 M9 适配器与只读影子运行：**进行中**——M9.1 只读适配器契约、M9.3 离线本地运行时（JSONL 日志/投影/证据过期/健康自检/断连处理）、M9.4 影子规划（只记录不派发，计划 vs 操作者对比）、M9.5 预测核对（窗口内外/误差/截尾）已完成库级实现（`crates/poie-runtime`，12 个测试，模拟只读适配器）；M9.0 合规复核、M9.2 真实适配器（Ditto/AAS/ROS 2）、M9.6 物理试验台依赖外部基础设施与人工安全评审。
 
-M10 有界执行与 H3 实验：**进行中**——M10.1–M10.3、M10.5 库级完成；M10.4 模拟 H3 已先登记后运行：14/14 场景通过（未登记物理重复 0、重复投递重复被登记、ACK 丢失/崩溃转 outcome_unknown、断网/接管/降级 0 派发），[REPORT.sim.md](../experiments/h3-bounded-execution/REPORT.sim.md) 与 CI 重放校验；**物理试验台、真实故障与安全演练待外部条件，M10 不标记完成**。
+M10 有界执行与 H3 实验：**进行中**——M10.1–M10.3、M10.5 库级完成；M10.4 模拟 H3 已先登记后运行：14/14 场景通过（未登记物理重复 0、重复投递重复被登记、ACK 丢失/崩溃转 outcome_unknown、断网/接管/降级 0 派发），[REPORT.sim.md](../../experiments/h3-bounded-execution/REPORT.sim.md) 与 CI 重放校验；**物理试验台、真实故障与安全演练待外部条件，M10 不标记完成**。
 
-M11 扩张核算与 H4 实验：**进行中**——M11.1–M11.3 库级完成；M11.4 切屑回收熔炉提案；M11.5 H4 模拟运行完成（结构获得 1、失去 0；时域层持平；建造期检查通过；判定**不确定**：建造消耗未在库存扣除、外部依赖 furnace-module 未闭合），[H4 REPORT](../experiments/h4-expansion/REPORT.md) 与 CI 重放；**M11.6 物理实施待外部条件，M11 不标记完成**（退出条件要求 `demonstrated_gain`）。
+M11 扩张核算与 H4 实验：**进行中**——M11.1–M11.3 库级完成；M11.4 切屑回收熔炉提案；M11.5 H4 模拟运行完成（结构获得 1、失去 0；时域层持平；建造期检查通过；判定**不确定**：建造消耗未在库存扣除、外部依赖 furnace-module 未闭合），[H4 REPORT](../../experiments/h4-expansion/REPORT.md) 与 CI 重放；**M11.6 物理实施待外部条件，M11 不标记完成**（退出条件要求 `demonstrated_gain`）。
 
-M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 库级模拟（`crates/poie-federation`，7 个测试）；M12.5 [Base-02](../scenarios/base-02/model.toml) 共享仓库/运输场景 8/8 预登记案例通过；M12.6 模拟分区/重连 6/6 场景通过（[REPORT.sim.md](../experiments/federation-partition/REPORT.sim.md)，CI 重放）；**真实多节点复测仍待外部网络环境，M12 不标记完成**。
+M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 库级模拟（`crates/poie-federation`，7 个测试）；M12.5 [Base-02](../../scenarios/base-02/model.toml) 共享仓库/运输场景 8/8 预登记案例通过；M12.6 模拟分区/重连 6/6 场景通过（[REPORT.sim.md](../../experiments/federation-partition/REPORT.sim.md)，CI 重放）；**真实多节点复测仍待外部网络环境，M12 不标记完成**。
 
 阶段门槛证据与外部行动（2026-10-31）：新增 [证据包](../status/stage-gates.zh-CN.md)（Foundation/Autonomy/Embodiment 的逐条证据、复现命令、阻塞项）、[外部行动清单](../status/external-actions.zh-CN.md)（M1.8/M1.9/M1.10/M3.3/M9.0/M9.2/M9.6/M10/M11.6/M12.6 的所需材料与验收）、[外部用例模板](../status/case-contribution-template.zh-CN.md) 与 `scripts/verify-all.sh`；本地脚本已运行通过。
 
@@ -130,3 +130,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增 VEC 报告随机防作弊校验测试（`crates/poie-viability/tests/report_properties.rs`）：合法报告 TOML 往返一致且可生成人类摘要；对 schema/空字段/horizon/seeds/成本/空 runs/分区和/场景 id/预算/过度声称/置信区间/指标值/单位/可持续性缺产出/来源/附件共 16 类单字段变异逐一断言被拒绝，并抽查拒绝原因命中对应规则。
 - 2026-10-31：新增图求解器随机不变量测试（`crates/poie-ontology/tests/graph_properties.rs`，120 trials + 默认深度全目标检查）：验证判定与阻断分类一致（Candidate 无阻断、Blocked 有根因、SearchLimit 必有深度阻断、Unknown 必有未知状态阻断）、候选步骤内部一致（步骤引用只向后、提供者/路线验证等级不低于查询下限）、弱化验证等级不会丢失候选、加强验证等级不会产生候选、更大深度不会丢失候选。
 - 2026-10-31：新增[测试与证据矩阵](../status/test-matrix.zh-CN.md)：按 crate 列出 269 个已列出的 Rust 测试与随机性质 trials、场景/实验重放、CI 步骤及里程碑对应关系，并从 stage-gates/README/开发文档链接。
+- 2026-10-31：新增 Markdown 相对链接检查 `scripts/check-docs.py` 并纳入 CI/`verify-all.sh`：扫描全部 Markdown 相对链接/图片（跳过代码块、外链、锚点），首次运行发现并修复 **38 处**路径错误（ADR/specification/experiments/progress 相对路径与 PREREG 链接），现全部链接可解析。

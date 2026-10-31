@@ -37,6 +37,8 @@ jobs:
         run: cargo test --locked
       - name: rustdoc (warnings as errors)
         run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --offline
+      - name: Markdown relative links
+        run: python3 scripts/check-docs.py
       - name: Python model and bridge tests (M7)
         run: python3 -m unittest discover -s python/poie_models -p "test_*.py" -v
       - name: Base-01 pre-registered cases

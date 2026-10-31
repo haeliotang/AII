@@ -3,7 +3,7 @@
 - 状态：提议（M7 开发中，待 M7 退出复核确认）
 - 日期：2026-10-31
 - 决策者：项目维护者（AI 代理起草，人类可推翻）
-- 相关：[开发文档 M7](../DEVELOPMENT.zh-CN.md)、[python/poie_models](../../python/poie_models/README.md)、[VEC §9](../specifications/viability-expansion.zh-CN.md)
+- 相关：[开发文档 M7](../DEVELOPMENT.zh-CN.md)、[python/poie_models](../../python/poie_models/README.md)、[VEC §9](../../specifications/viability-expansion.zh-CN.md)
 - 取代/被取代：无
 
 ## 1. 背景

@@ -3,7 +3,7 @@
 - 状态：提议（M6.6 评估完成，待 M6 退出复核确认）
 - 日期：2026-10-31
 - 决策者：项目维护者（AI 代理起草，人类可推翻）
-- 相关：[VEC §3.2](../specifications/viability-expansion.zh-CN.md)、[M6.6](../DEVELOPMENT.zh-CN.md)、[ADR-0003](0003-append-only-local-log.zh-CN.md)
+- 相关：[VEC §3.2](../../specifications/viability-expansion.zh-CN.md)、[M6.6](../DEVELOPMENT.zh-CN.md)、[ADR-0003](0003-append-only-local-log.zh-CN.md)
 - 取代/被取代：无
 
 ## 1. 背景
