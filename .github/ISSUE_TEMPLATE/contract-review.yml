@@ -1,0 +1,82 @@
+name: Contract review comment
+description: "M1.8 reviewer comment: a question, ambiguity, gap, or counterexample in a draft contract."
+title: "[review] "
+labels: ["kind:spec"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reviewing a draft contract. The most useful comments make the
+        contract **rejectable**: either a counterexample, an ambiguity that changes
+        implementation behaviour, or a clause that cannot be checked.
+
+        The maintainers will record a disposition for every comment: **accepted**
+        (contract change + version bump), **rejected** (with a reason), or
+        **deferred** (with the condition that would reopen it). See
+        `docs/status/contract-self-audit.zh-CN.md` for the open questions we already know about.
+
+  - type: dropdown
+    id: contract
+    attributes:
+      label: Contract
+      options:
+        - Physical Ontology (v0.3-draft)
+        - State and Action Protocol (v0.2-draft)
+        - Viability and Expansion Contract (v0.2-draft)
+        - ADR
+    validations:
+      required: true
+
+  - type: input
+    id: clause
+    attributes:
+      label: Clause and version
+      description: File, section, and version string you reviewed.
+      placeholder: specifications/state-action-protocol.zh-CN.md §6.3, poie.record/0.2
+    validations:
+      required: true
+
+  - type: textarea
+    id: concern
+    attributes:
+      label: The question, ambiguity, or gap
+      description: State what a reader/implementer cannot decide from the contract as written.
+    validations:
+      required: true
+
+  - type: textarea
+    id: counterexample
+    attributes:
+      label: Counterexample or failing scenario (optional, preferred)
+      description: The smallest model/scenario/sequence that shows two defensible interpretations diverge.
+      placeholder: |
+        Two sites grant overlapping leases; the contract does not say which one wins after reconnect.
+        Expected: both preserved with a conflict record.
+        Observed in reference implementation: both preserved and reported.
+
+  - type: textarea
+    id: consequence
+    attributes:
+      label: Why it matters
+      description: Safety, auditability, implementation divergence, or testability — what breaks if this stays ambiguous?
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested clarification (optional)
+
+  - type: input
+    id: background
+    attributes:
+      label: Reviewer background (optional)
+      description: Domain background helps us judge the concern; no personal details are required.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: This comment is about the contract, not a request to weaken a recorded expectation.
+          required: true
+        - label: I have not included security-sensitive details in this issue.
+          required: true

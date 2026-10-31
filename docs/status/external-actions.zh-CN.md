@@ -6,6 +6,7 @@
 
 - **需要谁**：2–3 位领域外读者（工业自动化、过程安全、分布式系统/形式化方法背景各一为佳）。
 - **审读材料**：[Physical Ontology v0.3-draft](../../specifications/physical-ontology.zh-CN.md)、[State & Action Protocol v0.2-draft](../../specifications/state-action-protocol.zh-CN.md)、[Viability & Expansion Contract v0.2-draft](../../specifications/viability-expansion.zh-CN.md)。
+- **问题包**：[契约自审与外部评审问题包](contract-self-audit.zh-CN.md)（逐条开放问题、反例方向、建议评审顺序）；评论模板 [contract-review](../../.github/ISSUE_TEMPLATE/contract-review.yml)。
 - **审读方式**：按"能否构造反例"审读，而非文风；每条意见登记为 GitHub issue（模板 `contract-review`）。
 - **验收**：评审意见全部登记，并逐条标注**接受 / 拒绝（附理由）/ 推迟**（DEVELOPMENT M1.8）。
 - **请求**：指定评审者与期望完成日期；仓库维护者负责响应与修订。
