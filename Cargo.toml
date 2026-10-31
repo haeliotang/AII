@@ -17,6 +17,7 @@ members = [
     "experiments/h3-bounded-execution/runner",
     "experiments/h4-expansion/runner",
     "experiments/federation-partition/runner",
+    "experiments/e2e-pipeline/runner",
     "experiments/vec-base01/runner",
 ]
 
