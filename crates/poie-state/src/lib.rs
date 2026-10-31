@@ -20,16 +20,24 @@
 //!   (dispatched -> outcome_unknown, authorized -> re-review, ...).
 //! - [`isolation`]: simulation branches can never dispatch a field action
 //!   (SAP §7).
+//! - [`ownership`]: command ownership, leases and clock-skew detection (SAP §6.1).
+//! - [`reservations`]: site-local inventory reservations with partition-safe
+//!   remote requests (SAP §6.2).
+//! - [`bridge`]: projected asset statuses feed the physical-ontology model used
+//!   by capability-graph queries (SAP §8).
 //!
-//! Not implemented yet: command ownership leases, partitions and site-to-site
-//! reconciliation (SAP §6), and the ontology bridge (§8). Facts and intentions
-//! remain separate records; nothing here sends a command to real equipment.
+//! Not implemented yet: site-to-site log exchange and reconciliation (SAP §6.4,
+//! M12). Facts and intentions remain separate records; nothing here sends a
+//! command to real equipment.
 
 pub mod action;
+pub mod bridge;
 pub mod executor;
 pub mod isolation;
 pub mod log;
+pub mod ownership;
 pub mod projection;
 pub mod record;
 pub mod recovery;
+pub mod reservations;
 pub mod review;
