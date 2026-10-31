@@ -170,10 +170,10 @@ fn expected_state(records: &[Record], policy: EvidencePolicy, now_ms: i64) -> Pr
                 asset_evidence.insert(record.envelope.subject.clone(), (status.as_str(), event_time));
             }
             Payload::Observation { value: ObservationValue::Quantity(quantity), .. }
-            | Payload::Estimate { value: quantity, .. } => {
-                if quantity.value_si.is_finite() {
-                    lot_evidence.insert(record.envelope.subject.clone(), (quantity.value_si, event_time));
-                }
+            | Payload::Estimate { value: quantity, .. }
+                if quantity.value_si.is_finite() =>
+            {
+                lot_evidence.insert(record.envelope.subject.clone(), (quantity.value_si, event_time));
             }
             _ => {}
         }
