@@ -14,10 +14,10 @@
 | `poie-process` | 7 | Rust 客户端 40 trials（故障/超时分类）；Python 侧 9 个 unittest | M7 |
 | `poie-runtime` | 13 | 运行时/断连 80 trials | M9 |
 | `poie-exec` | 13 | 执行门 120 trials | M10 |
-| `poie-expansion` | 9 | 结构 40/时序 40 trials | M11 |
+| `poie-expansion` | 11 | 结构 40/时序 40 trials；提案 TOML 变异不 panic（120） | M11 |
 | `poie-federation` | 10 | HLC 80 trials；分区/重连 120 trials | M12 |
 
-**库 crate 测试合计：282 个已列出的测试**；另有实验 runner 6 个（`poie-h1-baseline` 5、`poie-vec-base01` 1），总计 288。
+**库 crate 测试合计：284 个已列出的测试**；另有实验 runner 6 个（`poie-h1-baseline` 5、`poie-vec-base01` 1），总计 290。
 
 ## 2. 场景与实验重放
 
