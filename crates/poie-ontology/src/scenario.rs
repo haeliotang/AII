@@ -13,6 +13,10 @@ use crate::model::{Model, ModelError, Patch, Verification};
 
 pub const CASES_SCHEMA: &str = "poie.scenario-cases/0.2";
 
+/// Disturbance types used to stratify the H1 structural experiment (PREREG §4).
+pub const KNOWN_TAGS: [&str; 7] =
+    ["common-cause", "cycle", "stock-contention", "quality-gate", "verification", "unknown", "other"];
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CasesDoc {
@@ -72,6 +76,9 @@ pub struct Case {
     pub max_depth: Option<usize>,
     #[serde(default)]
     pub patch: Patch,
+    /// Disturbance type(s) for experiment stratification (PREREG §4).
+    #[serde(default)]
+    pub tags: Vec<String>,
     pub expect: Expectation,
 }
 
@@ -109,6 +116,7 @@ impl Scenario {
                 return Err(ModelError(format!("duplicate case id {:?}", c.id)));
             }
         }
+        validate_case_tags(&doc.cases)?;
         Ok(Scenario { path: cases_path.to_path_buf(), model, cases: doc.cases })
     }
 
@@ -200,6 +208,25 @@ fn resolve_goal(model: &Model, goal: &GoalDoc) -> Result<Goal, ModelError> {
     })
 }
 
+/// Every case must carry at least one known disturbance tag (PREREG §4).
+fn validate_case_tags(cases: &[Case]) -> Result<(), ModelError> {
+    for case in cases {
+        if case.tags.is_empty() {
+            return Err(ModelError(format!("case {}: at least one disturbance tag is required", case.id)));
+        }
+        for tag in &case.tags {
+            if !KNOWN_TAGS.contains(&tag.as_str()) {
+                return Err(ModelError(format!(
+                    "case {}: unknown tag {tag:?}; known tags: {}",
+                    case.id,
+                    KNOWN_TAGS.join(", ")
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn check(
     expect: &Expectation,
     result: &QueryResult,
@@ -246,4 +273,39 @@ fn check(
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn case(toml_text: &str) -> Case {
+        toml::from_str(toml_text).unwrap()
+    }
+
+    fn with_tags(tags: &str) -> String {
+        format!(
+            r#"
+id = "SX"
+title = "x"
+goal = {{ service = "water" }}
+min_verification = "demonstrated"
+{tags}
+[expect]
+verdict = "candidate"
+"#
+        )
+    }
+
+    #[test]
+    fn cases_must_have_a_known_disturbance_tag() {
+        let untagged = case(&with_tags(""));
+        assert!(validate_case_tags(std::slice::from_ref(&untagged)).is_err());
+
+        let bogus = case(&with_tags("tags = [\"bogus\"]"));
+        assert!(validate_case_tags(std::slice::from_ref(&bogus)).is_err());
+
+        let ok = case(&with_tags("tags = [\"common-cause\"]"));
+        assert!(validate_case_tags(&[ok]).is_ok());
+    }
 }

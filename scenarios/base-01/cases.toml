@@ -11,6 +11,7 @@ id = "S0"
 title = "Baseline: restore water with the spare sleeve"
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["other"]
 [case.expect]
 verdict = "candidate"
 route_includes = ["replace-sleeve-p1"]
@@ -22,6 +23,7 @@ title = "No accepted spare: machine and inspect a sleeve"
 description = "lot-sleeve-02 is quarantined and must not be used even though it is physically present."
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item" }
 [case.expect]
@@ -37,6 +39,7 @@ and the lathe can make the nut it needs. Jointly, making the nut requires \
 the failed lathe. Expected root cause: cycle on lathe-1."""
 goal = { service = "potable-water" }
 min_verification = "modeled"
+tags = ["cycle"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item" }
 asset_status = { "lathe-1" = "failed" }
@@ -53,6 +56,7 @@ the only robot that can replace the breaker depends on charger-1, which is \
 fed by bus-1. Expected root cause: cycle on bus-1."""
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["common-cause"]
 [case.patch]
 asset_status = { "bus-1" = "failed" }
 [case.expect]
@@ -64,6 +68,7 @@ id = "S4"
 title = "Stale pump evidence: unknown is not healthy"
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["unknown"]
 [case.patch]
 asset_status = { "pump-p1" = "unknown" }
 [case.expect]
@@ -75,6 +80,7 @@ id = "S5"
 title = "Machining route only declared, not demonstrated"
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["verification"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item" }
 process_verification = { "turn-sleeve-p1" = "declared" }
@@ -87,6 +93,7 @@ id = "S6"
 title = "Not enough bronze bar"
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item", "lot-bronze" = "1 kg" }
 [case.expect]
@@ -98,6 +105,7 @@ id = "S7"
 title = "Cutting inserts exhausted: irreducible external dependency"
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item", "lot-insert" = "0 item" }
 [case.expect]
@@ -109,6 +117,7 @@ id = "S8"
 title = "Two sleeves: one from stock, one manufactured"
 goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.expect]
 verdict = "candidate"
 route_includes = ["turn-sleeve-p1", "inspect-sleeve-p1"]
@@ -119,6 +128,7 @@ title = "Four sleeves: bronze runs out on the third machined part"
 description = "1 from stock + 3 machined needs 3.6 kg bronze; 3 kg in stock. Guards against double allocation."
 goal = { obtain = { resource = "sleeve-p1", quantity = "4 item" } }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.expect]
 verdict = "blocked"
 root_causes = [{ kind = "missing_resource", subject = "bronze-bar" }]
@@ -129,6 +139,7 @@ title = "Energy budget too small for the machining route"
 description = "Turning 2 kWh + inspection 0.1 kWh + replacement 0.5 kWh = 2.6 kWh > 2 kWh stored."
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item", "lot-energy" = "2 kWh" }
 [case.expect]
@@ -148,6 +159,7 @@ repaired. Expected: candidate via replace-bus-breaker, then replace-sleeve-p1. \
 Base-01 v0.1 model is unchanged; the standby feed exists only in this case."""
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["common-cause"]
 [case.patch]
 asset_status = { "bus-1" = "failed" }
 asset_requires = { "charger-1" = [] }
@@ -174,6 +186,7 @@ the unavailable standby feed. The charger cannot be made usable, so the bus \
 breaker cannot be replaced and the pump cannot be restored."""
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["common-cause"]
 [case.patch]
 asset_status = { "bus-1" = "failed", "emergency-bus" = "failed" }
 asset_requires = { "charger-1" = [] }
@@ -206,6 +219,7 @@ from both. Expected: candidate via turn-sleeve-p1 + inspect-sleeve-p1 and \
 inspect-blank."""
 goal = { obtain = { resource = "sleeve-p1", quantity = "3 item" } }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.patch]
 lot_quantity = { "lot-bronze" = "2 kg" }
 
@@ -246,6 +260,7 @@ two source-level root causes, not a false candidate. Expected: blocked with \
 missing_resource bronze-bar and missing_resource sleeve-blank."""
 goal = { obtain = { resource = "sleeve-p1", quantity = "4 item" } }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.patch]
 lot_quantity = { "lot-bronze" = "2 kg" }
 
@@ -291,6 +306,7 @@ without repairing it first. Expected: candidate via turn-lathe-nut, with the ste
 marked as using a degraded asset."""
 goal = { obtain = { resource = "lathe-nut", quantity = "1 item" } }
 min_verification = "modeled"
+tags = ["other"]
 [case.patch]
 asset_status = { "lathe-1" = "degraded" }
 asset_degraded = { "lathe-1" = { occupiable = true, allowed_processes = ["turn-lathe-nut"], max_occupations = 1 } }
@@ -309,6 +325,7 @@ blocked with a degraded_restriction root cause on lathe-1 (no other process make
 lathe-nut)."""
 goal = { obtain = { resource = "lathe-nut", quantity = "2 item" } }
 min_verification = "modeled"
+tags = ["other"]
 [case.patch]
 asset_status = { "lathe-1" = "degraded" }
 asset_degraded = { "lathe-1" = { occupiable = true, allowed_processes = ["turn-lathe-nut"], max_occupations = 1 } }
@@ -330,6 +347,7 @@ candidate; conservative allocation must report the blocked route. Expected: \
 blocked with missing_resource bronze-bar."""
 goal = { obtain = { resource = "sleeve-p1", quantity = "1 item" } }
 min_verification = "demonstrated"
+tags = ["quality-gate"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item", "lot-bronze" = "2 kg" }
 process_verification = { "inspect-sleeve-p1" = "declared" }
@@ -367,6 +385,7 @@ sleeve. Expected: candidate whose route reworks the rejects first, then inspects
 at least two steps (rework-sleeve-p1, inspect-sleeve-yield)."""
 goal = { obtain = { resource = "sleeve-p1", quantity = "1 item" } }
 min_verification = "demonstrated"
+tags = ["quality-gate"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item", "lot-bronze" = "0 kg" }
 process_verification = { "inspect-sleeve-p1" = "declared" }
@@ -422,6 +441,7 @@ be rejected even though the process is verified. Expected: blocked with \
 capability_below_verification on sleeve-replacement."""
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["verification"]
 [case.patch]
 asset_capability_verification = { "robot-m1" = { "sleeve-replacement" = "declared" } }
 [case.expect]
@@ -438,6 +458,7 @@ route's weakest verification is the capability level (modeled), not the process 
 level. Expected: candidate via replace-sleeve-p1."""
 goal = { service = "potable-water" }
 min_verification = "modeled"
+tags = ["verification"]
 [case.patch]
 asset_capability_verification = { "robot-m1" = { "sleeve-replacement" = "modeled" } }
 [case.expect]
@@ -457,6 +478,7 @@ route's consumption, external dependencies and weakest verification. Expected: \
 candidate, at least 2 distinct routes."""
 goal = { obtain = { resource = "sleeve-p1", quantity = "1 item" } }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item" }
 
@@ -498,6 +520,7 @@ because it was asked for several; at most one distinct route exists. Expected: \
 candidate with at most 1 route."""
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["other"]
 [case.expect]
 verdict = "candidate"
 route_includes = ["replace-sleeve-p1"]
@@ -516,6 +539,7 @@ including indirect consumables such as cutting inserts and grease. Expected: \
 candidate with external dependencies from both routes."""
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item" }
 
@@ -558,9 +582,219 @@ external cutting-insert dependency, not stay silent. Expected: blocked with \
 external_dependencies = [cutting-insert]."""
 goal = { service = "potable-water" }
 min_verification = "demonstrated"
+tags = ["stock-contention"]
 [case.patch]
 lot_quantity = { "lot-sleeve-01" = "0 item", "lot-insert" = "0 item" }
 [case.expect]
 verdict = "blocked"
 root_causes = [{ kind = "missing_resource", subject = "cutting-insert" }]
 external_dependencies = ["cutting-insert"]
+
+# --- M3.3 expansion (added 2026-10-31; expectations written before the first run) ---
+
+[[case]]
+id = "S25"
+title = "One spare plus exactly one machined sleeve"
+description = "Two sleeves are requested: one is in stock and bronze (1.2 kg) is exactly enough for one turning run."
+goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
+min_verification = "demonstrated"
+tags = ["stock-contention"]
+[case.patch]
+lot_quantity = { "lot-bronze" = "1.2 kg" }
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-sleeve-p1", "inspect-sleeve-p1"]
+
+[[case]]
+id = "S26"
+title = "One spare but not enough bronze for the second sleeve"
+description = "Same as S25 but bronze is 1.1 kg, just short of the 1.2 kg turning run."
+goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
+min_verification = "demonstrated"
+tags = ["stock-contention"]
+[case.patch]
+lot_quantity = { "lot-bronze" = "1.1 kg" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "bronze-bar" }]
+
+[[case]]
+id = "S27"
+title = "Quarantined spare forces the manufactured route"
+description = "The only sleeve lot is quarantined and must not be allocated; the sleeve must be machined and inspected."
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+tags = ["quality-gate"]
+[case.patch]
+lot_quality = { "lot-sleeve-01" = "quarantined" }
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-sleeve-p1", "inspect-sleeve-p1"]
+
+[[case]]
+id = "S28"
+title = "Rejected spare and no cutting inserts"
+description = "The spare is rejected, so it must be manufactured, but there are no cutting inserts left."
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+tags = ["quality-gate"]
+[case.patch]
+lot_quality = { "lot-sleeve-01" = "rejected" }
+lot_quantity = { "lot-insert" = "0 item" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "cutting-insert" }]
+
+[[case]]
+id = "S29"
+title = "Turning is only declared, the query requires verified"
+description = "Without a spare the machining route is needed, but turn-sleeve-p1 is declared while min_verification is verified."
+goal = { service = "potable-water" }
+min_verification = "verified"
+tags = ["verification"]
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item" }
+process_verification = { "turn-sleeve-p1" = "declared" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "below_verification", subject = "turn-sleeve-p1" }]
+
+[[case]]
+id = "S30"
+title = "Turn verified but the robot's machine-tending skill is demonstrated"
+description = "The turning process itself is verified, but the robot only provides machine-tending at demonstrated level, below the verified threshold."
+goal = { service = "potable-water" }
+min_verification = "verified"
+tags = ["verification"]
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item" }
+process_verification = { "turn-sleeve-p1" = "verified" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "capability_below_verification", subject = "machine-tending" }]
+
+[[case]]
+id = "S31"
+title = "Restoring the lathe needs the lathe itself"
+description = "The failed lathe can only get a new cross-slide nut from itself, and no nut is in stock. The turning process is only modeled, so the threshold is modeled."
+goal = { restore = "lathe-1" }
+min_verification = "modeled"
+tags = ["cycle"]
+[case.patch]
+asset_status = { "lathe-1" = "failed" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "cycle", subject = "lathe-1" }]
+
+[[case]]
+id = "S32"
+title = "Bus failure with no spare breaker"
+description = "The bus is failed and the breaker store is empty: the common-cause cycle is blocked and a missing external breaker is reported."
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+tags = ["common-cause"]
+[case.patch]
+asset_status = { "bus-1" = "failed" }
+lot_quantity = { "lot-breaker" = "0 item" }
+[case.expect]
+verdict = "blocked"
+root_causes = [
+  { kind = "cycle", subject = "bus-1" },
+  { kind = "missing_resource", subject = "breaker-b1" },
+]
+
+[[case]]
+id = "S33"
+title = "Unknown filter status is not healthy"
+description = "The filter unit's status evidence is missing; restoring it cannot be claimed."
+goal = { restore = "filter-1" }
+min_verification = "demonstrated"
+tags = ["unknown"]
+[case.patch]
+asset_status = { "filter-1" = "unknown" }
+[case.expect]
+verdict = "unknown"
+root_causes = [{ kind = "unknown_state", subject = "filter-1" }]
+
+[[case]]
+id = "S34"
+title = "Unknown bus status propagates through the pump"
+description = "The pump depends on the bus; with the bus status unknown the water service is unknown, not failed."
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+tags = ["unknown"]
+[case.patch]
+asset_status = { "bus-1" = "unknown" }
+[case.expect]
+verdict = "unknown"
+root_causes = [{ kind = "unknown_state", subject = "bus-1" }]
+
+[[case]]
+id = "S35"
+title = "Turn a lathe nut while the lathe is healthy"
+description = "A direct structural candidate: the healthy lathe can turn a replacement cross-slide nut."
+goal = { obtain = { resource = "lathe-nut", quantity = "1 item" } }
+min_verification = "modeled"
+tags = ["other"]
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-lathe-nut"]
+
+[[case]]
+id = "S36"
+title = "Degraded lathe allowed to turn two nuts under policy"
+description = "The lathe is degraded but the policy allows turn-lathe-nut to occupy it up to two times on one route."
+goal = { obtain = { resource = "lathe-nut", quantity = "2 item" } }
+min_verification = "modeled"
+tags = ["other"]
+[case.patch]
+asset_status = { "lathe-1" = "degraded" }
+asset_degraded = { "lathe-1" = { occupiable = true, allowed_processes = ["turn-lathe-nut"], max_occupations = 2 } }
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-lathe-nut"]
+
+[[case]]
+id = "S37"
+title = "Bronze bar itself is an irreducible external input"
+description = "Asking for more bronze than the 3 kg in stock can only be answered by external input."
+goal = { obtain = { resource = "bronze-bar", quantity = "5 kg" } }
+min_verification = "demonstrated"
+tags = ["other"]
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "bronze-bar" }]
+
+[[case]]
+id = "S38"
+title = "Two machined sleeves plus one from stock"
+description = "Three sleeves are requested: one in stock, two machined; bronze (3 kg) covers two turning runs (2.4 kg)."
+goal = { obtain = { resource = "sleeve-p1", quantity = "3 item" } }
+min_verification = "demonstrated"
+tags = ["stock-contention"]
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-sleeve-p1", "inspect-sleeve-p1"]
+
+[[case]]
+id = "S39"
+title = "Emergency feed unblocks the cycle but not the missing breaker"
+description = "The charger has an emergency feed, so the robot can work during the bus failure, but there is no spare breaker to replace."
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+tags = ["common-cause"]
+[case.patch]
+asset_status = { "bus-1" = "failed" }
+lot_quantity = { "lot-breaker" = "0 item" }
+asset_requires = { "charger-1" = [] }
+asset_requires_any = { "charger-1" = ["bus-1", "emergency-bus"] }
+
+[[case.patch.add_asset]]
+id = "emergency-bus"
+kind = "power-bus"
+status = "available"
+description = "Standby feed for charger-1, case-only. Not part of the v0.2 base model."
+
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "breaker-b1" }]

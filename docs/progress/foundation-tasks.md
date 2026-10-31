@@ -10,8 +10,8 @@ M1 工作包 10 个，已完成 7 个（M1.1–M1.7），剩余 3 个（M1.8–M
 | 工作包 | 状态 | 证据 / 备注 |
 | --- | --- | --- |
 | M1.1–M1.3 三份契约 v0.1-draft | 完成 | `specifications/`；PO 已在 M2 升为 v0.2-draft |
-| M1.4 能力图原型 | 完成 | `crates/poie-ontology`，43 个单元测试 |
-| M1.5 Base-01 结构场景 | 完成 | 25 个预登记用例全部一致；16 个集成测试 |
+| M1.4 能力图原型 | 完成 | `crates/poie-ontology`，44 个单元测试 |
+| M1.5 Base-01 结构场景 | 完成 | 40 个预登记用例全部一致；16 个集成测试 |
 | M1.6 持续集成 | 完成 | PR #2；`main` CI [run #2](https://github.com/haeliotang/poieweave/actions/runs/41222603966) 为绿 |
 | M1.7 贡献指南 | 完成 | `CONTRIBUTING.md`（DCO、测试门、契约变更流程）、`DCO`、`SECURITY.md`、三类 issue 模板；GitHub 私有漏洞报告已启用 |
 | M1.8 契约外部评审 | 未开始 | 需外部读者审读并登记 issue |
@@ -20,7 +20,7 @@ M1 工作包 10 个，已完成 7 个（M1.1–M1.7），剩余 3 个（M1.8–M
 
 M2 本体 v0.2：**已完成**（M2.1–M2.8）。PO 升为 v0.2-draft（schema `poie.physical-ontology/0.2`，场景用例 schema 升为 0.2）：OR 支撑、多来源补足、降级占用、保守合格率与返工、能力验证等级、路线枚举、外部依赖上溯全部并入正文；S11–S24 共 14 个预登记用例逐条覆盖 M2.1–M2.7；S0–S10 的预期与首跑结果未改；运行时间基线见 [m2-baseline.md](m2-baseline.md)。
 
-M3 H1 结构层实验：**实验已登记**（[PREREG.md](../../experiments/h1-structural/PREREG.md)，先于任何运行），**逐设备基线已实现**（`experiments/h1-structural/baseline/`，5 个单元测试）；用例扩充至 ≥40、分层标签、留出集与运行报告未开始；外部用例配额（≥1/4）依赖外部贡献，仍未满足。
+M3 H1 结构层实验：**实验已登记**（[PREREG.md](../../experiments/h1-structural/PREREG.md)，先于任何运行），**逐设备基线已实现**（`experiments/h1-structural/baseline/`，5 个单元测试），**用例已扩充到 40 例并全部打上分层 tags**（加载器校验）；留出集与运行报告未开始；外部用例配额（≥1/4）依赖外部贡献，仍未满足。
 
 ## 初期工作清单（2026-10-31 完成）
 
@@ -60,3 +60,4 @@ M3 H1 结构层实验：**实验已登记**（[PREREG.md](../../experiments/h1-s
 - 2026-10-31：M2.7（外部依赖上溯）完成：PO §6.3 规则 15、§6.5 与 VEC §4.2 明确"全部候选路线取并集、无路线时回退阻断根因"；实现 `external_dependency_report`（每条依赖标注出现的路线与单条路线最大消耗量）与 CLI `--external-deps N`；用例新增 `external_dependencies` 预登记断言；单元测试 40→42、集成测试 15→16；Base-01 新增 S23（双来源供水，并集 5 项外部依赖）与 S24（blocked 时回退根因报告 cutting-insert），预登记后首次运行即一致。
 - 2026-10-31：M2.8 完成、M2 退出复核通过：PO 版本升为 0.2-draft（§8 只保留未解决条目；schema 字符串升至 `poie.physical-ontology/0.2`，用例 schema 升至 `poie.scenario-cases/0.2`）；S11–S24 覆盖 M2.1–M2.7 各至少 2 例（S11 为 S3 的应急供电改进版）；用脚本比对 `7b163ad` 与当前 `cases.toml`，确认 S0–S10 的预登记预期与首跑结果未改；`--timings` 记录 25 个用例的 release 运行时间（合计 8.437 ms，中位数 0.095 ms，见 docs/progress/m2-baseline.md）。M2 退出条件逐项满足。
 - 2026-10-31：M3.1/M3.2 完成：H1 结构层实验登记 `experiments/h1-structural/PREREG.md` 在任何运行前提交（问题、基线精确定义、指标、分层、留出集程序与决策规则）；新增 `poie-h1-baseline` 实验 crate（逐设备检查、不递归、不共享账本），含 5 个单元测试，其中一个回归测试确认基线看不到共因循环。尚无实验结果；按登记，需先扩充到 ≥40 用例并选定留出集后再运行。
+- 2026-10-31：M3.3 内部分层扩充完成：Base-01 从 25 例扩充到 40 例（新增 S25–S39），每例带 `tags`（common-cause / cycle / stock-contention / quality-gate / verification / unknown / other），场景加载器拒绝缺少或未知标签；分层计数记入场景规范 §4.2。首次运行发现 3 处预期错误并修正（S31/S35 的 `turn-lathe-nut` 实为 modeled、门槛应为 modeled；S37 的青铜请求量小于库存），理由记录于场景规范 §4.1，符合"先判断是模型、实现还是预期错了"的纪律。留出集尚未选定；PREREG 补记了 CI 全量执行导致的留出集弱隔离偏差。
