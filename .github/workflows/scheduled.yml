@@ -30,6 +30,19 @@ jobs:
           SKIP_DENY: "1"
         run: scripts/verify-all.sh
 
+  fresh-clone:
+    name: fresh-clone reproduction (manual dispatch only)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@1.94.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Clone and run the full suite in the clone
+        run: scripts/check-fresh-clone.sh
+
   deny:
     name: cargo-deny (${{ matrix.checks }})
     runs-on: ubuntu-latest

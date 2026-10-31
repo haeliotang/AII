@@ -146,3 +146,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增全新克隆复现脚本 `scripts/check-fresh-clone.sh` 并记录结果（[fresh-clone-repro](../status/fresh-clone-repro.zh-CN.md)）：在仓库内临时目录干净克隆 `a6413e8`、运行完整 `verify-all.sh`，约 62 秒通过（`ALL GATES PASSED` + `FRESH CLONE REPRODUCTION PASSED`）；边界（依赖本地 registry 缓存、单平台、工具链固定）已写明。
 - 2026-10-31：新增维护手册 `docs/MAINTENANCE.zh-CN.md`（门禁、工具链/依赖升级、新增场景/实验的预登记与重放要求、测试与文档变更、外部评审处置、发布前清单、故障处理），从 README/CONTRIBUTING 链接；干净克隆复现记录更新至 `a627cf5`。
 - 2026-10-31：新增定期验证工作流 `.github/workflows/scheduled.yml`（每周一 04:17 UTC + 手动触发）：`verify-all.sh`（`SKIP_DENY=1`）与 `cargo-deny` 分离 job，advisories 非阻塞、许可/禁用/来源违规失败；`verify-all.sh` 支持 `SKIP_DENY=1`；维护手册补充定期验证说明。
+- 2026-10-31：scheduled workflow 手动触发时新增 `fresh-clone` job（`if: workflow_dispatch`）：在 runner 上运行 `scripts/check-fresh-clone.sh`，无本地环境也可验证干净克隆复现；定时触发不运行该 job 以控制成本。
