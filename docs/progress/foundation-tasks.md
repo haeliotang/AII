@@ -18,6 +18,8 @@ M1 工作包 10 个，已完成 6 个（M1.1–M1.6），剩余 4 个（M1.7–M
 | M1.9 开源边界 | 部分 | `cargo-deny` 已随 M1.6 落地；`NOTICE` 未添加；ADR-0001 仍为"提议" |
 | M1.10 名称落地 | 部分 | 已改名（ADR-0002 已接受）；商标检索未开始 |
 
+## 初期工作清单（2026-10-31 完成）
+
 | # | 任务 | 产物 | 状态 |
 | --- | --- | --- | --- |
 | 1 | Physical Ontology 契约 v0.1-draft | `specifications/physical-ontology.zh-CN.md` | 已完成草案 |
