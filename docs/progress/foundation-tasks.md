@@ -134,3 +134,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增 HLC 随机不变量测试（`crates/poie-federation/tests/hlc_properties.rs`，80 trials × 60 操作）：tick/observe 与独立 HLC 规格 oracle 逐步一致、时钟永不回退、observe 严格超过远端与本地前值、物理时间不低于墙钟、逻辑计数器饱和不回绕；另含同一操作序列的可复现性检查。
 - 2026-10-31：新增[契约自审与外部评审问题包](../status/contract-self-audit.zh-CN.md)：逐份契约列出 §8/§10 开放问题、自审补充问题与反例方向、建议评审顺序与处置流程；新增 `.github/ISSUE_TEMPLATE/contract-review.yml`，并在 M1.8 外部行动中链接。
 - 2026-10-31：新增记录层随机不变量测试（`crates/poie-state/tests/record_properties.rs`，120 trials）：随机信封损坏下验证错误分类（schema/kind/subject/site/source）、九类 payload 全部可构造且 JSON 往返一致、kind 不匹配一律拒绝、record id 解析往返、live/simulation 命名空间隔离、验证独立性判定。
+- 2026-10-31：新增 Rust 过程桥客户端随机性质测试（`crates/poie-process/tests/bridge_properties.rs`，40 trials + 超时）：随机有效/越界参数与故障注入（不收敛、数值失败、单位错误、守恒破坏、崩溃）下验证错误分类、成功响应必须通过单位/守恒校验且带 `synthetic`、缺失解释器归为崩溃、慢模型在 deadline+1s 被杀并报 Timeout。
