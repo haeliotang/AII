@@ -1,0 +1,204 @@
+# Autonomous Base-01 — pre-registered timed cases, v0.1 (M5.6)
+# Expectations were written before the first run.
+# Run: cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml
+
+schema = "poie.timed-cases/0.1"
+scenario = "scenario.toml"
+
+[[case]]
+id = "T0"
+title = "Repair the pump before its predicted failure"
+description = "One spare sleeve is in stock and the default repair takes 3 h; the pump's failure is predicted from 4 h, so the repair must finish by then."
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+start = "0 s"
+deadline = "prediction"
+[case.expect]
+verdict = "feasible"
+completion_le = "4 h"
+
+[[case]]
+id = "T1"
+title = "Starting the same repair at 3 h finishes after the predicted failure"
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+start = "3 h"
+deadline = "prediction"
+[case.expect]
+verdict = "too_late"
+
+[[case]]
+id = "T2"
+title = "Machining a second sleeve needs more energy than the night battery holds"
+description = "Only 1 kWh is in the battery until 8 h; the turning route needs 2 kWh."
+goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
+min_verification = "demonstrated"
+start = "0 s"
+[case.expect]
+verdict = "insufficient_resource"
+
+[[case]]
+id = "T3"
+title = "After the PV arrives, one spare plus one machined sleeve is feasible"
+goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
+min_verification = "demonstrated"
+start = "8 h"
+deadline = "14 h"
+[case.expect]
+verdict = "feasible"
+completion_le = "14 h"
+
+[[case]]
+id = "T4"
+title = "The same plan misses a 12 h deadline"
+goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
+min_verification = "demonstrated"
+start = "8 h"
+deadline = "12 h"
+[case.expect]
+verdict = "too_late"
+
+[[case]]
+id = "T5"
+title = "A failed pump can still be restored after the PV arrives"
+description = "At 8 h the pump has worn out, but replace-sleeve-p1 restores failed assets; the bus is still available."
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+start = "8 h"
+[case.expect]
+verdict = "feasible"
+
+[[case]]
+id = "T6"
+title = "A failed lathe needs the lathe itself for its new nut"
+goal = { restore = "lathe-1" }
+min_verification = "demonstrated"
+start = "13 h"
+[case.expect]
+verdict = "blocked"
+
+[[case]]
+id = "T7"
+title = "No status evidence for the PV array"
+goal = { restore = "pv-1" }
+min_verification = "demonstrated"
+start = "0 s"
+[case.expect]
+verdict = "unknown"
+
+[[case]]
+id = "T8"
+title = "Repair from 3 h finishes exactly at the 6 h wear-out"
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+start = "3 h"
+deadline = "6 h"
+[case.expect]
+verdict = "feasible"
+completion_le = "6 h"
+
+[[case]]
+id = "T9"
+title = "Repair from 3 h misses a 5 h deadline"
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+start = "3 h"
+deadline = "5 h"
+[case.expect]
+verdict = "too_late"
+
+[[case]]
+id = "T10"
+title = "Machining at 4 h still runs on the night battery"
+goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
+min_verification = "demonstrated"
+start = "4 h"
+[case.expect]
+verdict = "insufficient_resource"
+
+[[case]]
+id = "T11"
+title = "After the bus fails, the water service is blocked by the common-cause cycle"
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+start = "17 h"
+[case.expect]
+verdict = "blocked"
+
+[[case]]
+id = "T12"
+title = "Restore the degraded pump from stock within 5 h"
+goal = { restore = "pump-p1" }
+min_verification = "demonstrated"
+start = "0 s"
+deadline = "5 h"
+[case.expect]
+verdict = "feasible"
+completion_le = "5 h"
+
+[[case]]
+id = "T13"
+title = "Four sleeves exceed the bronze budget at 8 h"
+goal = { obtain = { resource = "sleeve-p1", quantity = "4 item" } }
+min_verification = "demonstrated"
+start = "8 h"
+[case.expect]
+verdict = "blocked"
+
+[[case]]
+id = "T14"
+title = "Restore the failed pump after the PV arrives"
+goal = { restore = "pump-p1" }
+min_verification = "demonstrated"
+start = "10 h"
+[case.expect]
+verdict = "feasible"
+
+[[case]]
+id = "T15"
+title = "At 11 h the bronze has left the site"
+goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
+min_verification = "demonstrated"
+start = "11 h"
+[case.expect]
+verdict = "insufficient_resource"
+
+[[case]]
+id = "T16"
+title = "Restoring the pump at 10 h misses a 12 h deadline"
+goal = { restore = "pump-p1" }
+min_verification = "demonstrated"
+start = "10 h"
+deadline = "12 h"
+[case.expect]
+verdict = "too_late"
+
+[[case]]
+id = "T17"
+title = "The post-PV plan finishes exactly at its 12.5 h deadline"
+goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
+min_verification = "demonstrated"
+start = "8 h"
+deadline = "12.5 h"
+[case.expect]
+verdict = "feasible"
+completion_le = "12.5 h"
+
+[[case]]
+id = "T18"
+title = "After the bus fails, restoring it needs the robot the bus powers"
+goal = { restore = "bus-1" }
+min_verification = "demonstrated"
+start = "17 h"
+[case.expect]
+verdict = "blocked"
+
+[[case]]
+id = "T19"
+title = "Turn one lathe nut on the night battery (exactly 1 kWh)"
+goal = { obtain = { resource = "lathe-nut", quantity = "1 item" } }
+min_verification = "modeled"
+start = "0 s"
+[case.expect]
+verdict = "feasible"
+completion_le = "3 h"

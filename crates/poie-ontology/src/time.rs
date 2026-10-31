@@ -94,6 +94,12 @@ impl AssetTimeline {
         self.predicted_failure
     }
 
+    /// Status from explicit changes only: predictions are warnings and do not
+    /// change the current status.
+    pub fn explicit_status_at(&self, t_s: f64) -> AssetStatus {
+        self.changes.iter().rev().find(|change| change.at_s <= t_s).map(|change| change.status).unwrap_or(self.initial)
+    }
+
     /// Status at `t_s` under the rules in the module docs.
     pub fn status_at(&self, t_s: f64) -> TimelineStatus {
         let latest = self.changes.iter().rev().find(|change| change.at_s <= t_s);
@@ -211,6 +217,15 @@ mod tests {
         timeline.schedule_change(70.0, AssetStatus::Failed).unwrap();
         assert_eq!(timeline.status_at(90.0), TimelineStatus::Known(AssetStatus::Failed));
         assert_eq!(timeline.status_at(150.0), TimelineStatus::Known(AssetStatus::Failed));
+    }
+
+    #[test]
+    fn explicit_status_ignores_predictions() {
+        let mut timeline = AssetTimeline::new("bus-1", AssetStatus::Available);
+        timeline.predict_failure(TimeWindow::new(60.0, 120.0).unwrap()).unwrap();
+        timeline.schedule_change(100.0, AssetStatus::Degraded).unwrap();
+        assert_eq!(timeline.explicit_status_at(90.0), AssetStatus::Available);
+        assert_eq!(timeline.explicit_status_at(110.0), AssetStatus::Degraded);
     }
 
     #[test]
