@@ -1,7 +1,7 @@
 # 时间版场景：Autonomous Base-01（M5.6）
 
 版本：0.1 / 2026-10-31
-依据：[Physical Ontology v0.2-draft](../../specifications/physical-ontology.zh-CN.md) §3.8–3.11 · [开发文档](../../docs/DEVELOPMENT.zh-CN.md) M5
+依据：[Physical Ontology v0.3-draft](../../specifications/physical-ontology.zh-CN.md) §3.8–3.11 · [开发文档](../../docs/DEVELOPMENT.zh-CN.md) M5
 
 ## 1. 目的
 

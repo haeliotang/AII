@@ -11,7 +11,7 @@ use crate::graph::{
 };
 use crate::model::{Model, ModelError, Patch, Verification};
 
-pub const CASES_SCHEMA: &str = "poie.scenario-cases/0.2";
+pub const CASES_SCHEMA: &str = "poie.scenario-cases/0.3";
 
 /// Disturbance types used to stratify the H1 structural experiment (PREREG §4).
 pub const KNOWN_TAGS: [&str; 7] =

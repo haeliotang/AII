@@ -153,7 +153,7 @@ mod tests {
     fn model(body: &str) -> Model {
         let text = format!(
             r#"
-schema = "poie.physical-ontology/0.2"
+schema = "poie.physical-ontology/0.3"
 name = "baseline-test"
 {body}
 "#

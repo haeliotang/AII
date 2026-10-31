@@ -1,7 +1,7 @@
 # 场景规范：Autonomous Base-01（结构层 v0.1）
 
 版本：0.2 / 2026-10-31（M2 表达力用例 S11–S24）
-依据：[Physical Ontology v0.2-draft](../../specifications/physical-ontology.zh-CN.md) §6 · [研究纲领](../../docs/research/FOUNDATIONS.zh-CN.md) §8
+依据：[Physical Ontology v0.3-draft](../../specifications/physical-ontology.zh-CN.md) §6 · [研究纲领](../../docs/research/FOUNDATIONS.zh-CN.md) §8
 
 ## 1. 目的
 

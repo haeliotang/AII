@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 use crate::units::{self, Dimension, Quantity, Unit};
 
-pub const MODEL_SCHEMA: &str = "poie.physical-ontology/0.2";
+pub const MODEL_SCHEMA: &str = "poie.physical-ontology/0.3";
 pub const DEFAULT_MASS_TOLERANCE: f64 = 0.01;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -864,7 +864,7 @@ mod tests {
     fn doc(extra: &str) -> ModelDoc {
         let text = format!(
             r#"
-schema = "poie.physical-ontology/0.2"
+schema = "poie.physical-ontology/0.3"
 name = "test"
 
 [[resource]]
