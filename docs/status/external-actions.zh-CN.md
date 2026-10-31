@@ -1,6 +1,6 @@
 # 外部行动清单（需要发起方/评审者/现场参与）
 
-本清单列出**只有外部参与才能推进**的事项、所需材料与验收方式。仓库内证据见 [stage-gates](stage-gates.zh-CN.md)。
+本清单列出**只有外部参与才能推进**的事项、所需材料与验收方式。仓库内证据见 [stage-gates](stage-gates.zh-CN.md)。每项的**可直接发送邀约文本**见 [outreach-templates](outreach-templates.zh-CN.md)。
 
 ## A. M1.8 三份契约的外部评审（最高优先级）
 
