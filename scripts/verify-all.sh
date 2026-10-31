@@ -32,6 +32,10 @@ echo "== federation partition replay =="
 cargo run --locked -q -p poie-federation-partition -- --write "$tmp/fed"
 diff "$tmp/fed/REPORT.sim.md" experiments/federation-partition/REPORT.sim.md
 diff "$tmp/fed/raw/partition.txt" experiments/federation-partition/raw/partition.txt
+echo "== end-to-end pipeline demo =="
+cargo run --locked -q -p poie-e2e -- --write "$tmp/e2e"
+diff "$tmp/e2e/REPORT.md" experiments/e2e-pipeline/REPORT.md
+diff "$tmp/e2e/raw/trace.txt" experiments/e2e-pipeline/raw/trace.txt
 echo "== dependency policy =="
 cargo deny check licenses bans sources
 echo "ALL GATES PASSED"

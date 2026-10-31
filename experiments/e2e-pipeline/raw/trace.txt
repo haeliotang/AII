@@ -1,0 +1,7 @@
+step1	observations=9	pump=Degraded
+step2	actions=1	completion_s=10800
+step3	dispatched=true	state=acknowledged	verified_by=pump-status-sensor
+step4	outcome=RecordedOnly { reason: "human takeover is active" }	physical=0
+step5	outcome=Fallback { reason: "runtime is degraded; site controls take over" }	physical=0
+step6	observed=2	censored=1	inside=1
+assertions_failed=0
