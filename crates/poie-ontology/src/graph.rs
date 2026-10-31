@@ -53,6 +53,7 @@ pub enum BlockerKind {
     Cycle,
     BelowVerification,
     NoCapabilityProvider,
+    CapabilityBelowVerification,
     NoAlternativeSupport,
     DegradedRestriction,
     DepthExceeded,
@@ -67,6 +68,7 @@ impl BlockerKind {
             BlockerKind::Cycle => "cycle",
             BlockerKind::BelowVerification => "below_verification",
             BlockerKind::NoCapabilityProvider => "no_capability_provider",
+            BlockerKind::CapabilityBelowVerification => "capability_below_verification",
             BlockerKind::NoAlternativeSupport => "no_alternative_support",
             BlockerKind::DegradedRestriction => "degraded_restriction",
             BlockerKind::DepthExceeded => "depth_exceeded",
@@ -106,8 +108,8 @@ pub struct Step {
     pub verification: Verification,
     pub allocations: Vec<Allocation>,
     pub occupies: Vec<String>,
-    /// (capability, chosen provider)
-    pub providers: Vec<(String, String)>,
+    /// (capability, chosen provider, provider capability verification level)
+    pub providers: Vec<(String, String, Verification)>,
     pub outputs: Vec<(String, f64)>,
     pub restores: Vec<String>,
     /// Assets occupied while degraded under a policy (§6.3 rule 11).
@@ -126,9 +128,18 @@ impl QueryResult {
         self.blockers.iter().filter(|b| b.root)
     }
 
-    /// Weakest verification level among the route's processes.
+    /// Weakest verification level on the route: process levels and the
+    /// capability levels of the providers each step relies on (§6.3 rule 13).
     pub fn route_verification(&self) -> Option<Verification> {
-        self.steps.iter().map(|s| s.verification).min()
+        let mut weakest: Option<Verification> = None;
+        for step in &self.steps {
+            let mut level = step.verification;
+            for (_, _, capability_level) in &step.providers {
+                level = level.min(*capability_level);
+            }
+            weakest = Some(weakest.map_or(level, |current| current.min(level)));
+        }
+        weakest
     }
 }
 
@@ -580,11 +591,21 @@ impl<'m> Solver<'m> {
                 let mut alt_errs = Vec::new();
                 let mut found = false;
                 for a in candidates {
+                    let level = model.assets[a].capability_verification(cap);
+                    if level < self.min {
+                        alt_errs.push(self.blocker(
+                            BlockerKind::CapabilityBelowVerification,
+                            cap,
+                            format!("{a} provides {cap} at {level}; the query requires at least {}", self.min),
+                            true,
+                        ));
+                        continue;
+                    }
                     let mut trial = ledger.clone();
                     match self.restore(a, &mut trial) {
                         Ok(()) => {
                             *ledger = trial;
-                            chosen.push((cap.clone(), a.clone()));
+                            chosen.push((cap.clone(), a.clone(), level));
                             found = true;
                             break;
                         }
@@ -700,7 +721,7 @@ pub fn render(model: &Model, result: &QueryResult) -> String {
         } else {
             let _ = writeln!(
                 out,
-                "  structural candidate (time, capacity and concurrency NOT checked); weakest step: {}",
+                "  structural candidate (time, capacity and concurrency NOT checked); weakest verification: {}",
                 result.route_verification().map(|v| v.to_string()).unwrap_or_default()
             );
         }
@@ -710,8 +731,8 @@ pub fn render(model: &Model, result: &QueryResult) -> String {
             if !s.occupies.is_empty() {
                 let _ = writeln!(out, "       occupies: {}", s.occupies.join(", "));
             }
-            for (cap, a) in &s.providers {
-                let _ = writeln!(out, "       capability {cap} <- {a}");
+            for (cap, a, level) in &s.providers {
+                let _ = writeln!(out, "       capability {cap} <- {a} [{level}]");
             }
             for a in &s.allocations {
                 let from = match &a.source {
@@ -1128,6 +1149,55 @@ quality = "accepted"
         let r = solve(&m, &obtain_query("good", "1 item"));
         assert_eq!(r.verdict, Verdict::Blocked, "{}", render(&m, &r));
         assert!(r.root_causes().any(|b| b.kind == BlockerKind::MissingResource && b.subject == "raw"));
+    }
+
+    const CAPABILITY_MODEL: &str = r#"
+[[asset]]
+id = "worker"
+kind = "robot"
+status = "available"
+provides = ["repair"]
+LEVEL_PLACEHOLDER
+
+[[asset]]
+id = "machine"
+kind = "pump"
+status = "degraded"
+
+[[process]]
+id = "fix"
+restores = ["machine"]
+requires_capabilities = ["repair"]
+verification = "demonstrated"
+"#;
+
+    fn capability_model(level: &str) -> Model {
+        model_from_toml(&CAPABILITY_MODEL.replace("LEVEL_PLACEHOLDER", level))
+    }
+
+    #[test]
+    fn capability_level_below_the_query_threshold_blocks_the_provider() {
+        let m = capability_model("capability_verification = { \"repair\" = \"declared\" }");
+        let mut query = restore_query("machine");
+        query.min_verification = Verification::Demonstrated;
+        let r = solve(&m, &query);
+        assert_eq!(r.verdict, Verdict::Blocked, "{}", render(&m, &r));
+        assert!(r.root_causes().any(|b| b.kind == BlockerKind::CapabilityBelowVerification && b.subject == "repair"));
+        assert!(!r.steps.iter().any(|s| s.process == "fix"));
+    }
+
+    #[test]
+    fn route_verification_includes_capability_levels() {
+        let m = capability_model("capability_verification = { \"repair\" = \"modeled\" }");
+        let mut query = restore_query("machine");
+        query.min_verification = Verification::Modeled;
+        let r = solve(&m, &query);
+        assert_eq!(r.verdict, Verdict::Candidate, "{}", render(&m, &r));
+        assert_eq!(r.route_verification(), Some(Verification::Modeled));
+        assert!(r.steps[0]
+            .providers
+            .iter()
+            .any(|(cap, worker, level)| { cap == "repair" && worker == "worker" && *level == Verification::Modeled }));
     }
 
     #[test]
