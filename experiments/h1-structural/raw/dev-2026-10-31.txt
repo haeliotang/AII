@@ -1,0 +1,40 @@
+case	truth	poieweave	baseline	class	tags	expected_roots	baseline_roots	poie_roots	baseline_root_match	poie_root_match
+S1	candidate	candidate	blocked	false_block	stock-contention		sleeve-p1		0/0	0/0
+S5	blocked	blocked	blocked	agree	verification	turn-sleeve-p1	sleeve-p1	turn-sleeve-p1	0/1	1/1
+S6	blocked	blocked	blocked	agree	stock-contention	bronze-bar	sleeve-p1	bronze-bar	0/1	1/1
+S7	blocked	blocked	blocked	agree	stock-contention	cutting-insert	sleeve-p1	cutting-insert	0/1	1/1
+S8	candidate	candidate	blocked	false_block	stock-contention		sleeve-p1		0/0	0/0
+S9	blocked	blocked	blocked	agree	stock-contention	bronze-bar	sleeve-p1	bronze-bar	0/1	1/1
+S11	candidate	candidate	candidate	agree	common-cause				0/0	0/0
+S12	blocked	blocked	candidate	missed_blocking	common-cause	bus-1,emergency-bus		bus-1,emergency-bus	0/2	2/2
+S13	candidate	candidate	blocked	false_block	stock-contention		sleeve-p1		0/0	0/0
+S14	blocked	blocked	blocked	agree	stock-contention	bronze-bar,sleeve-blank	sleeve-p1	bronze-bar,sleeve-blank	0/2	2/2
+S15	candidate	candidate	blocked	false_block	other		lathe-nut		0/0	0/0
+S16	blocked	blocked	blocked	agree	other	lathe-1	lathe-nut	lathe-1	0/1	1/1
+S17	blocked	blocked	blocked	agree	quality-gate	bronze-bar	sleeve-p1	bronze-bar,inspect-sleeve-p1	0/1	1/1
+S18	candidate	candidate	blocked	false_block	quality-gate		sleeve-p1		0/0	0/0
+S19	blocked	blocked	candidate	missed_blocking	verification	sleeve-replacement		sleeve-replacement	0/1	1/1
+S21	candidate	candidate	blocked	false_block	stock-contention		sleeve-p1		0/0	0/0
+S22	candidate	candidate	candidate	agree	other				0/0	0/0
+S25	candidate	candidate	blocked	false_block	stock-contention		sleeve-p1		0/0	0/0
+S26	blocked	blocked	blocked	agree	stock-contention	bronze-bar	sleeve-p1	bronze-bar	0/1	1/1
+S27	candidate	candidate	blocked	false_block	quality-gate		sleeve-p1		0/0	0/0
+S28	blocked	blocked	blocked	agree	quality-gate	cutting-insert	sleeve-p1	cutting-insert	0/1	1/1
+S29	blocked	blocked	blocked	agree	verification	turn-sleeve-p1	sleeve-p1	turn-sleeve-p1	0/1	1/1
+S30	blocked	blocked	blocked	agree	verification	machine-tending	sleeve-p1	machine-tending	0/1	1/1
+S31	blocked	blocked	blocked	agree	cycle	lathe-1	lathe-nut	lathe-1	0/1	1/1
+S34	unknown	unknown	candidate	missed_blocking	unknown	bus-1		bus-1	0/1	1/1
+S35	candidate	candidate	blocked	false_block	other		lathe-nut		0/0	0/0
+S36	candidate	candidate	blocked	false_block	other		lathe-nut		0/0	0/0
+S37	blocked	blocked	blocked	agree	other	bronze-bar	bronze-bar	bronze-bar	1/1	1/1
+S38	candidate	candidate	blocked	false_block	stock-contention		sleeve-p1		0/0	0/0
+S39	blocked	blocked	candidate	missed_blocking	common-cause	breaker-b1		breaker-b1	0/1	1/1
+
+overall                n=30  agree=15  missed=4  /17  (0.235) false=11 /13  (0.846) roots base=1/19 poie=19/19
+common-cause           n=3   agree=1   missed=2  /2   (1.000) false=0  /1   (0.000) roots base=0/3 poie=3/3
+cycle                  n=1   agree=1   missed=0  /1   (0.000) false=0  /0   (0.000) roots base=0/1 poie=1/1
+other                  n=6   agree=3   missed=0  /2   (0.000) false=3  /4   (0.750) roots base=1/2 poie=2/2
+quality-gate           n=4   agree=2   missed=0  /2   (0.000) false=2  /2   (1.000) roots base=0/2 poie=2/2
+stock-contention       n=11  agree=5   missed=0  /5   (0.000) false=6  /6   (1.000) roots base=0/6 poie=6/6
+unknown                n=1   agree=0   missed=1  /1   (1.000) false=0  /0   (0.000) roots base=0/1 poie=1/1
+verification           n=4   agree=3   missed=1  /4   (0.250) false=0  /0   (0.000) roots base=0/4 poie=4/4

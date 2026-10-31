@@ -3,11 +3,11 @@
 //!
 //! Usage: poie-h1-baseline <cases.toml> [CASE_ID ...]
 //!
-//! This prints one line per case (truth, Poieweave verdict, baseline verdict,
-//! classification, root-cause match) and a summary. It does not change any
-//! case or contract; see experiments/h1-structural/PREREG.md for the protocol.
+//! Prints one line per case (truth, Poieweave verdict, baseline verdict,
+//! classification, root-cause matching, tags) and a summary overall and per
+//! disturbance stratum. See experiments/h1-structural/PREREG.md.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -42,7 +42,6 @@ fn classify(truth: Verdict, baseline: Verdict) -> Classification {
     } else if !truth_blocked && baseline_blocked {
         Classification::FalseBlock
     } else {
-        // search_limit vs blocked/unknown differences do not occur in the baseline.
         Classification::Agree
     }
 }
@@ -50,6 +49,71 @@ fn classify(truth: Verdict, baseline: Verdict) -> Classification {
 fn root_match(expected: &[String], actual: &BTreeSet<String>) -> (usize, usize) {
     let matched = expected.iter().filter(|subject| actual.contains(subject.as_str())).count();
     (matched, expected.len())
+}
+
+#[derive(Clone, Default)]
+struct Stats {
+    cases: usize,
+    agree: usize,
+    missed: usize,
+    false_block: usize,
+    non_candidate: usize,
+    candidate: usize,
+    baseline_root_matched: usize,
+    poie_root_matched: usize,
+    root_expected: usize,
+}
+
+impl Stats {
+    fn add(
+        &mut self,
+        truth: Verdict,
+        class: Classification,
+        baseline_roots: (usize, usize),
+        poie_roots: (usize, usize),
+    ) {
+        self.cases += 1;
+        match class {
+            Classification::Agree => self.agree += 1,
+            Classification::MissedBlocking => self.missed += 1,
+            Classification::FalseBlock => self.false_block += 1,
+        }
+        if matches!(truth, Verdict::Blocked | Verdict::Unknown) {
+            self.non_candidate += 1;
+        } else {
+            self.candidate += 1;
+        }
+        self.baseline_root_matched += baseline_roots.0;
+        self.poie_root_matched += poie_roots.0;
+        self.root_expected += baseline_roots.1;
+    }
+
+    fn line(&self, label: &str) -> String {
+        let miss_rate = if self.non_candidate == 0 { 0.0 } else { self.missed as f64 / self.non_candidate as f64 };
+        let false_rate = if self.candidate == 0 { 0.0 } else { self.false_block as f64 / self.candidate as f64 };
+        let base_root = if self.root_expected == 0 {
+            "-".to_string()
+        } else {
+            format!("{}/{}", self.baseline_root_matched, self.root_expected)
+        };
+        let poie_root = if self.root_expected == 0 {
+            "-".to_string()
+        } else {
+            format!("{}/{}", self.poie_root_matched, self.root_expected)
+        };
+        format!(
+            "{label:<22} n={cases:<3} agree={agree:<3} missed={missed:<3}/{non_candidate:<3} ({miss_rate:.3}) false={false_block:<3}/{candidate:<3} ({false_rate:.3}) roots base={base_root} poie={poie_root}",
+            label = label,
+            cases = self.cases,
+            agree = self.agree,
+            missed = self.missed,
+            non_candidate = self.non_candidate,
+            false_block = self.false_block,
+            candidate = self.candidate,
+            base_root = base_root,
+            poie_root = poie_root,
+        )
+    }
 }
 
 fn main() -> ExitCode {
@@ -67,14 +131,11 @@ fn main() -> ExitCode {
         }
     };
 
-    println!("case\ttruth\tpoieweave\tbaseline\tclass\texpected_roots\tmatched_roots\troot_rate");
-    let mut missed = 0usize;
-    let mut false_block = 0usize;
-    let mut agree = 0usize;
-    let mut truth_blocked = 0usize;
-    let mut truth_candidate = 0usize;
-    let mut root_expected = 0usize;
-    let mut root_matched = 0usize;
+    println!(
+        "case\ttruth\tpoieweave\tbaseline\tclass\ttags\texpected_roots\tbaseline_roots\tpoie_roots\tbaseline_root_match\tpoie_root_match"
+    );
+    let mut overall = Stats::default();
+    let mut by_tag: BTreeMap<String, Stats> = BTreeMap::new();
     let mut ran = 0usize;
 
     for case in &scenario.cases {
@@ -101,52 +162,47 @@ fn main() -> ExitCode {
         let base = baseline::check(&model, &query);
         let class = classify(truth, base.verdict);
 
-        if matches!(truth, Verdict::Blocked | Verdict::Unknown) {
-            truth_blocked += 1;
-        } else {
-            truth_candidate += 1;
-        }
-        match class {
-            Classification::Agree => agree += 1,
-            Classification::MissedBlocking => missed += 1,
-            Classification::FalseBlock => false_block += 1,
-        }
-
         let expected_roots: Vec<String> = case.expect.root_causes.iter().map(|b| b.subject.clone()).collect();
         let baseline_roots: BTreeSet<String> = base.blockers.iter().map(|b| b.subject.clone()).collect();
-        let (matched, total) = root_match(&expected_roots, &baseline_roots);
-        root_expected += total;
-        root_matched += matched;
-        let rate = if total == 0 { String::from("-") } else { format!("{matched}/{total}") };
+        let poie_roots: BTreeSet<String> = run.result.root_causes().map(|b| b.subject.clone()).collect();
+        let baseline_match = root_match(&expected_roots, &baseline_roots);
+        let poie_match = root_match(&expected_roots, &poie_roots);
 
         println!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}/{}\t{}",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}/{}\t{}/{}",
             case.id,
             truth.as_str(),
             poie.as_str(),
             base.verdict.as_str(),
             class.as_str(),
+            case.tags.join(","),
             expected_roots.join(","),
-            matched,
-            total,
-            rate
+            sorted(&baseline_roots),
+            sorted(&poie_roots),
+            baseline_match.0,
+            baseline_match.1,
+            poie_match.0,
+            poie_match.1
         );
+
+        overall.add(truth, class, baseline_match, poie_match);
+        for tag in &case.tags {
+            by_tag.entry(tag.clone()).or_default().add(truth, class, baseline_match, poie_match);
+        }
     }
 
     if ran == 0 {
         eprintln!("no case matched {selected:?}");
         return ExitCode::from(2);
     }
-
-    let non_candidate = truth_blocked;
-    let miss_rate = if non_candidate == 0 { 0.0 } else { missed as f64 / non_candidate as f64 };
-    let false_rate = if truth_candidate == 0 { 0.0 } else { false_block as f64 / truth_candidate as f64 };
-    let root_rate = if root_expected == 0 { 0.0 } else { root_matched as f64 / root_expected as f64 };
     println!();
-    println!("cases: {ran}");
-    println!("agreement: {agree}/{ran}");
-    println!("missed_blocking: {missed}/{non_candidate} (rate {miss_rate:.3})");
-    println!("false_block: {false_block}/{truth_candidate} (rate {false_rate:.3})");
-    println!("baseline root-subject match: {root_matched}/{root_expected} (rate {root_rate:.3})");
+    println!("{}", overall.line("overall"));
+    for (tag, stats) in &by_tag {
+        println!("{}", stats.line(tag));
+    }
     ExitCode::SUCCESS
+}
+
+fn sorted(set: &BTreeSet<String>) -> String {
+    set.iter().cloned().collect::<Vec<_>>().join(",")
 }

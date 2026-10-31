@@ -20,7 +20,7 @@ M1 工作包 10 个，已完成 7 个（M1.1–M1.7），剩余 3 个（M1.8–M
 
 M2 本体 v0.2：**已完成**（M2.1–M2.8）。PO 升为 v0.2-draft（schema `poie.physical-ontology/0.2`，场景用例 schema 升为 0.2）：OR 支撑、多来源补足、降级占用、保守合格率与返工、能力验证等级、路线枚举、外部依赖上溯全部并入正文；S11–S24 共 14 个预登记用例逐条覆盖 M2.1–M2.7；S0–S10 的预期与首跑结果未改；运行时间基线见 [m2-baseline.md](m2-baseline.md)。
 
-M3 H1 结构层实验：**实验已登记**（[PREREG.md](../../experiments/h1-structural/PREREG.md)，先于任何运行），**逐设备基线已实现**（`experiments/h1-structural/baseline/`，5 个单元测试），**用例已扩充到 40 例并全部打上分层 tags**（加载器校验）；留出集与运行报告未开始；外部用例配额（≥1/4）依赖外部贡献，仍未满足。
+M3 H1 结构层实验：**实验已登记**（[PREREG.md](../../experiments/h1-structural/PREREG.md)），**基线已实现**，**40 例分层用例**，**留出集已选定**（[HOLDOUT.md](../../experiments/h1-structural/HOLDOUT.md)，10/40，先于最终评估提交）；开发集（30 例）已运行并存档，最终评估与报告待做；外部用例配额（≥1/4）依赖外部贡献，仍未满足。
 
 ## 初期工作清单（2026-10-31 完成）
 
@@ -61,3 +61,4 @@ M3 H1 结构层实验：**实验已登记**（[PREREG.md](../../experiments/h1-s
 - 2026-10-31：M2.8 完成、M2 退出复核通过：PO 版本升为 0.2-draft（§8 只保留未解决条目；schema 字符串升至 `poie.physical-ontology/0.2`，用例 schema 升至 `poie.scenario-cases/0.2`）；S11–S24 覆盖 M2.1–M2.7 各至少 2 例（S11 为 S3 的应急供电改进版）；用脚本比对 `7b163ad` 与当前 `cases.toml`，确认 S0–S10 的预登记预期与首跑结果未改；`--timings` 记录 25 个用例的 release 运行时间（合计 8.437 ms，中位数 0.095 ms，见 docs/progress/m2-baseline.md）。M2 退出条件逐项满足。
 - 2026-10-31：M3.1/M3.2 完成：H1 结构层实验登记 `experiments/h1-structural/PREREG.md` 在任何运行前提交（问题、基线精确定义、指标、分层、留出集程序与决策规则）；新增 `poie-h1-baseline` 实验 crate（逐设备检查、不递归、不共享账本），含 5 个单元测试，其中一个回归测试确认基线看不到共因循环。尚无实验结果；按登记，需先扩充到 ≥40 用例并选定留出集后再运行。
 - 2026-10-31：M3.3 内部分层扩充完成：Base-01 从 25 例扩充到 40 例（新增 S25–S39），每例带 `tags`（common-cause / cycle / stock-contention / quality-gate / verification / unknown / other），场景加载器拒绝缺少或未知标签；分层计数记入场景规范 §4.2。首次运行发现 3 处预期错误并修正（S31/S35 的 `turn-lathe-nut` 实为 modeled、门槛应为 modeled；S37 的青铜请求量小于库存），理由记录于场景规范 §4.1，符合"先判断是模型、实现还是预期错了"的纪律。留出集尚未选定；PREREG 补记了 CI 全量执行导致的留出集弱隔离偏差。
+- 2026-10-31：M3.4 完成：以种子 `poieweave-h1-2026-10-31`、按 `SHA-256("<种子>:<用例>")` 字典序抽取 10/40 留出集（S0、S2、S3、S4、S10、S20、S23、S24、S32、S33），名单在任何最终评估运行前提交到 HOLDOUT.md；harness 增加分层统计与两种方法的根因 subject 匹配。开发集（30 例）首次运行结果存档于 `experiments/h1-structural/raw/dev-2026-10-31.txt`：基线一致 15/30、漏判 4/17、误判 11/13；Poieweave 根因匹配 19/19，基线 1/19。该结果仅记录，结论留待含留出集的最终评估。PREREG 同时记录了 harness 冒烟运行早于留出集提交的偏差。
