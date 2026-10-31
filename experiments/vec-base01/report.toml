@@ -5,7 +5,7 @@ horizon_s = 86400.0
 seeds = []
 solver_version = "poie-viability 0.1.0 + poie-sim timed 0.1.0"
 solver_settings = "finite fixed-trajectory set (20 pre-registered cases); no random sampling"
-actual_cost_s = 0.008994958
+actual_cost_s = 1.551941125
 metric_definition_version = "vec-metrics/0.1"
 confidence_intervals = []
 
@@ -20,6 +20,12 @@ contract_version = "viability-expansion/0.2"
 development = 20
 holdout = 0
 holdout_viewed_in_development = false
+
+[[model_provenance]]
+id = "water-treatment"
+version = "0.1.0"
+synthetic = true
+validity = "filter_loading 0-0.9; inlet_flow_m3_h 5-15; turbidity_ntu 5-50"
 
 [[runs]]
 scenario_id = "T0"
@@ -498,7 +504,7 @@ censored = false
 group = "resilience"
 name = "service_loss"
 service = "potable-water"
-value = 82800.0
+value = 66240.0
 unit = "level·s"
 censored = false
 
@@ -514,7 +520,7 @@ censored = true
 group = "resilience"
 name = "service_loss"
 service = "obtain:sleeve-p1"
-value = 86400.0
+value = 69120.0
 unit = "level·s"
 censored = false
 
@@ -546,7 +552,7 @@ censored = false
 group = "resilience"
 name = "service_loss"
 service = "obtain:sleeve-p1"
-value = 115200.0
+value = 92160.0
 unit = "level·s"
 censored = false
 
@@ -578,7 +584,7 @@ censored = false
 group = "resilience"
 name = "service_loss"
 service = "restore:lathe-1"
-value = 86400.0
+value = 69120.0
 unit = "level·s"
 censored = false
 
@@ -594,7 +600,7 @@ censored = true
 group = "resilience"
 name = "service_loss"
 service = "restore:pv-1"
-value = 86400.0
+value = 69120.0
 unit = "level·s"
 censored = false
 
@@ -626,7 +632,7 @@ censored = false
 group = "resilience"
 name = "service_loss"
 service = "potable-water"
-value = 97200.0
+value = 77760.0
 unit = "level·s"
 censored = false
 
@@ -642,7 +648,7 @@ censored = true
 group = "resilience"
 name = "service_loss"
 service = "obtain:sleeve-p1"
-value = 86400.0
+value = 69120.0
 unit = "level·s"
 censored = false
 
@@ -658,7 +664,7 @@ censored = true
 group = "resilience"
 name = "service_loss"
 service = "potable-water"
-value = 86400.0
+value = 69120.0
 unit = "level·s"
 censored = false
 
@@ -690,7 +696,7 @@ censored = false
 group = "resilience"
 name = "service_loss"
 service = "obtain:sleeve-p1"
-value = 86400.0
+value = 69120.0
 unit = "level·s"
 censored = false
 
@@ -722,7 +728,7 @@ censored = false
 group = "resilience"
 name = "service_loss"
 service = "obtain:sleeve-p1"
-value = 86400.0
+value = 69120.0
 unit = "level·s"
 censored = false
 
@@ -738,7 +744,7 @@ censored = true
 group = "resilience"
 name = "service_loss"
 service = "restore:pump-p1"
-value = 122400.0
+value = 97920.0
 unit = "level·s"
 censored = false
 
@@ -770,7 +776,7 @@ censored = false
 group = "resilience"
 name = "service_loss"
 service = "restore:bus-1"
-value = 86400.0
+value = 69120.0
 unit = "level·s"
 censored = false
 
@@ -810,4 +816,32 @@ group = "independence"
 name = "local_coverage_covered"
 value = 0.0
 unit = "count"
+censored = false
+
+[[metrics]]
+group = "process"
+name = "water_service_level"
+value = 0.4800000000000001
+unit = "1"
+censored = false
+
+[[metrics]]
+group = "process"
+name = "calls"
+value = 20.0
+unit = "count"
+censored = false
+
+[[metrics]]
+group = "process"
+name = "failure_count"
+value = 0.0
+unit = "count"
+censored = false
+
+[[metrics]]
+group = "process"
+name = "synthetic"
+value = 1.0
+unit = "flag"
 censored = false

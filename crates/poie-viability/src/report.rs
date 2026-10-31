@@ -48,6 +48,7 @@ pub enum MetricGroup {
     Resilience,
     Sustainability,
     Production,
+    Process,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -71,6 +72,17 @@ pub struct ConfidenceInterval {
     pub method: String,
 }
 
+/// Provenance of an external model used by the analysis (M7): its identity,
+/// version, whether its parameters are synthetic, and its declared validity.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModelProvenance {
+    pub id: String,
+    pub version: String,
+    pub synthetic: bool,
+    pub validity: String,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MachineReport {
@@ -86,6 +98,9 @@ pub struct MachineReport {
     pub actual_cost_s: f64,
     pub metric_definition_version: String,
     pub confidence_intervals: Vec<ConfidenceInterval>,
+    /// External models used, with their synthetic flag and validity range.
+    #[serde(default)]
+    pub model_provenance: Vec<ModelProvenance>,
     /// Every run, including failures, timeouts and infeasible/numerical outcomes.
     pub runs: Vec<RunRecord>,
     pub metrics: Vec<MetricRecord>,
@@ -139,6 +154,14 @@ impl MachineReport {
         }
         if !self.actual_cost_s.is_finite() || self.actual_cost_s < 0.0 {
             errors.push(ReportError::Invalid("actual cost must be finite and non-negative".into()));
+        }
+        for provenance in &self.model_provenance {
+            if provenance.id.trim().is_empty()
+                || provenance.version.trim().is_empty()
+                || provenance.validity.trim().is_empty()
+            {
+                errors.push(ReportError::Invalid("model provenance needs id, version and validity".into()));
+            }
         }
         if self.runs.is_empty() {
             errors.push(ReportError::Invalid("all runs must be listed; the list is empty".into()));
@@ -215,6 +238,12 @@ impl MachineReport {
             self.partition.development, self.partition.holdout, self.partition.holdout_viewed_in_development
         ));
         out.push_str(&format!("solver: {} ({})\n", self.solver_version, self.solver_settings));
+        for provenance in &self.model_provenance {
+            out.push_str(&format!(
+                "model {} v{} (synthetic: {}; validity: {})\n",
+                provenance.id, provenance.version, provenance.synthetic, provenance.validity
+            ));
+        }
         let mut by_kind: BTreeMap<&str, usize> = BTreeMap::new();
         for run in &self.runs {
             *by_kind.entry(run.verdict.kind().as_str()).or_insert(0) += 1;
@@ -241,6 +270,7 @@ impl MachineReport {
                     MetricGroup::Resilience => "resilience",
                     MetricGroup::Sustainability => "sustainability",
                     MetricGroup::Production => "production",
+                    MetricGroup::Process => "process",
                 })
                 .collect();
             groups.sort_unstable();
@@ -302,6 +332,12 @@ mod tests {
                 low: 3600.0,
                 high: 7200.0,
                 method: "percentile bootstrap".into(),
+            }],
+            model_provenance: vec![ModelProvenance {
+                id: "water-treatment".into(),
+                version: "0.1.0".into(),
+                synthetic: true,
+                validity: "inlet_flow 5-15 m3/h; turbidity 5-50 NTU; filter_loading 0-0.9".into(),
             }],
             runs: vec![
                 RunRecord {
@@ -403,6 +439,20 @@ mod tests {
         assert!(summary.contains("censored"));
         assert!(summary.contains("not a claim of safety or robustness"));
         assert!(!summary.to_lowercase().contains("is safe"));
+    }
+
+    #[test]
+    fn model_provenance_is_visible_and_validated() {
+        let report = sample_report();
+        assert!(report.validate().is_ok());
+        let summary = report.human_summary().unwrap();
+        assert!(summary.contains("model water-treatment v0.1.0"));
+        assert!(summary.contains("synthetic: true"));
+        assert!(summary.contains("validity:"));
+
+        let mut broken = sample_report();
+        broken.model_provenance[0].validity.clear();
+        assert!(broken.validate().is_err());
     }
 
     #[test]

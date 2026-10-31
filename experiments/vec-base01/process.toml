@@ -1,0 +1,8 @@
+# Water-treatment process model used by the Base-01 v0.2 VEC report (M7).
+# The model is synthetic and uncalibrated; see python/poie_models/DATA.zh-CN.md.
+model = "water-treatment"
+version = "0.1.0"
+deadline_ms = 5000
+inlet_flow_m3_h = 12.0
+turbidity_ntu = 10.0
+filter_loading = 0.2
