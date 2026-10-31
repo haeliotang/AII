@@ -1,0 +1,89 @@
+name: Counterexample
+description: Report a case where the model, contract, or capability semantics give a wrong or unsupported answer.
+title: "[counterexample] "
+labels: ["kind:counterexample"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A counterexample is the most valuable contribution this project can receive.
+        The project gets stronger when its model is shown to be wrong, so negative
+        results are welcome — including cases where the answer looks plausible but the
+        reasoning is unsound.
+
+        Please keep the report minimal and reproducible. Do not open a public issue if
+        the problem could be a security vulnerability; use
+        [private reporting](https://github.com/haeliotang/poieweave/security/advisories/new) instead.
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What should the model answer, and on what grounds?
+      placeholder: |
+        Expected verdict: blocked
+        Expected root cause: missing_resource bronze-bar (external dependency)
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed result
+      description: Paste the actual output. Include the full verdict and the root-cause list if there is one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: The smallest model, inventory, goal, and command that shows the difference. A TOML snippet or a link is enough.
+      placeholder: |
+        Command: cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml
+        Case: S3
+    validations:
+      required: true
+
+  - type: input
+    id: contract
+    attributes:
+      label: Contract clause and version
+      description: Which normative clause is violated? Use the file and section, plus the version string.
+      placeholder: specifications/physical-ontology.zh-CN.md §8.3, poie.physical-ontology/0.1
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or version observed
+      description: The commit hash or version you ran.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reasoning
+    attributes:
+      label: Why the current answer is wrong
+      description: Physical reasoning, conservation argument, or logical inconsistency. This matters more than the output itself.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed fix or change (optional)
+      description: If you have one, sketch the contract or implementation change. It is fine to leave this empty.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have not weakened an existing expectation to make the output pass.
+          required: true
+        - label: I searched existing issues and cases for this problem.
+          required: true
+        - label: This report contains no security-sensitive details.
+          required: true

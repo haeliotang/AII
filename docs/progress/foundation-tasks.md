@@ -4,7 +4,7 @@
 
 ## 当前快照（2026-10-31）
 
-M1 工作包 10 个，已完成 6 个（M1.1–M1.6），剩余 4 个（M1.7–M1.10）。
+M1 工作包 10 个，已完成 7 个（M1.1–M1.7），剩余 3 个（M1.8–M1.10）。
 权威清单与退出条件见[开发文档 §2](../DEVELOPMENT.zh-CN.md#m1-契约草案与结构原型--基本完成)。
 
 | 工作包 | 状态 | 证据 / 备注 |
@@ -13,9 +13,9 @@ M1 工作包 10 个，已完成 6 个（M1.1–M1.6），剩余 4 个（M1.7–M
 | M1.4 能力图原型 | 完成 | `crates/poie-ontology`，13 个单元测试 |
 | M1.5 Base-01 结构场景 | 完成 | 11 个预登记用例全部一致；8 个集成测试 |
 | M1.6 持续集成 | 完成 | PR #2；`main` CI [run #2](https://github.com/haeliotang/poieweave/actions/runs/41222603966) 为绿 |
-| M1.7 贡献指南 | 未开始 | 需 `CONTRIBUTING.md`（含 DCO）、`SECURITY.md`、三类 issue 模板 |
+| M1.7 贡献指南 | 完成 | `CONTRIBUTING.md`（DCO、测试门、契约变更流程）、`DCO`、`SECURITY.md`、三类 issue 模板；GitHub 私有漏洞报告已启用 |
 | M1.8 契约外部评审 | 未开始 | 需外部读者审读并登记 issue |
-| M1.9 开源边界 | 部分 | `cargo-deny` 已随 M1.6 落地；`NOTICE` 未添加；ADR-0001 仍为"提议" |
+| M1.9 开源边界 | 部分 | 配套文件已齐（`NOTICE`、`DCO`、`SECURITY.md`、`cargo-deny`）；ADR-0001 仍为"提议"，待发起方确认 |
 | M1.10 名称落地 | 部分 | 已改名（ADR-0002 已接受）；商标检索未开始 |
 
 ## 初期工作清单（2026-10-31 完成）
@@ -44,3 +44,5 @@ M1 工作包 10 个，已完成 6 个（M1.1–M1.6），剩余 4 个（M1.7–M
 - 2026-10-31：进度对齐复核：`main` 上 CI [run #2](https://github.com/haeliotang/poieweave/actions/runs/41222603966) 为 `success`；本地 `cargo fmt --check`、`cargo clippy --all-targets -D warnings`、`cargo test`（21 项）、`cargo deny check licenses bans sources` 全部通过，与 CI 一致。
 - 2026-10-31：与计划文档逐项对照的差异：M1.9 的 `NOTICE`（ADR-0001 §5 标为"立即"）尚未添加；M1.7 的 `CONTRIBUTING.md`、`SECURITY.md`、DCO 与三类 issue 模板尚未创建；M1.8 外部评审、M1.10 商标检索尚未开始；GitHub 侧尚无 issue/里程碑，进度目前只记在本文与开发文档中。
 - 2026-10-31：注意：目录由 `Documents/AII` 改名后，旧 `target/` 缓存会让集成测试按旧路径找场景文件而失败；`cargo clean -p poie-ontology` 即可。
+- 2026-10-31：M1.7 完成：新增 `CONTRIBUTING.md`（含 DCO 说明与测试门要求）、`DCO`（DCO 1.1 全文）、`SECURITY.md`；`.github/ISSUE_TEMPLATE/` 下三类 issue 表单（反例 / 契约修改 / 实验提案）与 `config.yml`；创建 `kind:counterexample`、`kind:spec`、`kind:experiment` 标签；GitHub 私有漏洞报告已启用。README 的 Participate 一节已链接贡献指南与安全政策。
+- 2026-10-31：M1.9 配套文件齐备：`NOTICE` 已按 Apache-2.0 §4(d) 添加；`DCO`、`SECURITY.md` 随 M1.7 落地；`cargo-deny` 随 M1.6 落地。M1.9 仅剩 ADR-0001 的"已接受"状态确认（需 Inceptless）。

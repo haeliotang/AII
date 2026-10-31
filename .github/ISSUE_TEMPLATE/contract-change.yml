@@ -1,0 +1,87 @@
+name: Contract change
+description: Propose a correction, clarification, or new normative clause in one of the three contracts.
+title: "[contract] "
+labels: ["kind:spec"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Contracts move through `draft` → `candidate` → `stable` (development plan §1.2).
+        A normative change needs a motivation — normally a counterexample or a scenario
+        case — and lands together with implementation and tests (development plan §1.4–§1.5).
+
+  - type: dropdown
+    id: contract
+    attributes:
+      label: Contract
+      options:
+        - specifications/physical-ontology.zh-CN.md
+        - specifications/state-action-protocol.zh-CN.md
+        - specifications/viability-expansion.zh-CN.md
+        - docs/DEVELOPMENT.zh-CN.md (process)
+    validations:
+      required: true
+
+  - type: input
+    id: clause
+    attributes:
+      label: Clause and version
+      description: Section number and the version string of the contract.
+      placeholder: §6.3 rule 6, poie.physical-ontology/0.1
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: problem_type
+    attributes:
+      label: Kind of problem
+      options:
+        - label: Ambiguous — two incompatible readings are possible
+        - label: Incorrect — the normative statement is wrong
+        - label: Missing — a behaviour the project needs cannot be expressed
+        - label: Unnecessary — a clause carries no testable meaning
+        - label: Inconsistent with the implementation or with another contract
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong
+      description: Describe the defect and, if possible, the two readings or the concrete failure.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_text
+    attributes:
+      label: Proposed normative text
+      description: Write the clause as it should read. Normative statements use 必须 / must.
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivating case or counterexample
+      description: Link the issue, case name, or minimal model that shows why this change is needed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Which implementations, tests, scenarios, ADRs, or dependent clauses are affected? Does this change start a new contract version?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked that the clause is not already covered by an open issue or ADR.
+          required: true
+        - label: I understand that a normative change needs at least one test and one scenario case before it is accepted.
+          required: true
