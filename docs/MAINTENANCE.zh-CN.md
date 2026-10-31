@@ -29,6 +29,8 @@ scripts/check-fresh-clone.sh   # 干净克隆内再跑一遍（约 1 分钟，�
 
 **手动触发额外 job**：`workflow_dispatch` 时还会运行 `fresh-clone` job——在 runner 上执行 `scripts/check-fresh-clone.sh`（干净克隆内重跑完整套件），用于在没有本地环境时验证证据可复现；定时触发不会运行该 job（成本较高）。该 job 设置 `SKIP_DENY=1`（runner 无 `cargo-deny` 二进制，依赖检查由独立 deny job 负责）。
 
+验证记录：手动 dispatch [run 41245856574](https://github.com/haeliotang/poieweave/actions/runs/41245856574) 四个 job（verify-all、fresh-clone、advisories、licenses/bans/sources）全部成功。
+
 ## 2. 工具链
 
 - CI 固定 `dtolnay/rust-toolchain@1.94.0`；本地参考环境同为 1.94.0。
