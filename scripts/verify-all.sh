@@ -52,6 +52,10 @@ echo "== Python model and bridge tests =="
 python3 -m unittest discover -s python/poie_models -p "test_*.py" -v
 echo "== rustdoc (warnings as errors) =="
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --offline
+echo "== shadow run demo (M9.4) =="
+cargo run --locked -q -p poie-shadow-run -- --write "$tmp/shadow"
+diff "$tmp/shadow/REPORT.md" experiments/shadow-run/REPORT.md
+diff "$tmp/shadow/raw/trace.txt" experiments/shadow-run/raw/trace.txt
 echo "== dependency policy =="
 cargo deny check licenses bans sources
 echo "ALL GATES PASSED"
