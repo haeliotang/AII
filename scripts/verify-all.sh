@@ -46,6 +46,8 @@ diff "$tmp/two-site/REPORT.md" experiments/two-site-shadow/REPORT.md
 diff "$tmp/two-site/raw/trace.txt" experiments/two-site-shadow/raw/trace.txt
 echo "== Markdown relative links =="
 python3 scripts/check-docs.py
+echo "== experiment replay coverage =="
+python3 scripts/check-experiment-replays.py
 echo "== test matrix counts =="
 python3 scripts/check-test-matrix.py
 echo "== Python model and bridge tests =="

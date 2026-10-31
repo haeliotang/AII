@@ -142,3 +142,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：H1 时间版原始输出与 H2 开发集报告/原始输出纳入 CI 与 `verify-all.sh` 重放：`poie-h1-temporal` 输出与 `raw/dev-2026-11-01.txt` 逐字节一致；`poie-h2-joint-planning --dev --write` 的 `dev-report.md` 与 `raw/dev-raw.txt` 逐字节一致；留出集仍保持"首次运行记录"不重放。
 - 2026-10-31：H1 结构层全量/开发集/留出集原始输出纳入 CI 与 `verify-all.sh` 重放：`poie-h1-baseline` 的全量输出、按开发集 ID 重跑、按留出集 ID 重跑均与提交的原始文件逐字节一致。
 - 2026-10-31：H2 留出集报告/原始输出纳入 CI 与 `verify-all.sh` 重放（`--holdout --write` 逐字节一致）；明确该重放仅用于复现校验，不把留出集用于开发；至此所有已提交实验输出均有重放覆盖。
+- 2026-10-31：新增实验重放覆盖检查 `scripts/check-experiment-replays.py` 并纳入 CI/`verify-all.sh`：枚举 `experiments/*/raw/*` 与生成型报告（REPORT.md、REPORT.sim.md、*-report.md、report.toml），要求均在 CI 中被 diff 重放（手工分析报告显式列入白名单），并检查 CI 引用的实验路径均存在；当前 23 个 CI 路径有效、26 个生成产物全部覆盖。
