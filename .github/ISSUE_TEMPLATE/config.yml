@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Research foundations
+    url: https://github.com/haeliotang/poieweave/blob/main/docs/research/FOUNDATIONS.zh-CN.md
+    about: The problem boundary, hypotheses H1–H4, and the method the project follows.
+  - name: Development plan and milestone status
+    url: https://github.com/haeliotang/poieweave/blob/main/docs/DEVELOPMENT.zh-CN.md
+    about: What is done, what is next, and the exit conditions for each milestone.
+  - name: Open-source boundary (ADR-0001)
+    url: https://github.com/haeliotang/poieweave/blob/main/docs/adr/0001-open-source-boundary.zh-CN.md
+    about: What stays open, what may be closed, and the invariants that constrains.
+  - name: Contributing guide
+    url: https://github.com/haeliotang/poieweave/blob/main/CONTRIBUTING.md
+    about: How to submit counterexamples, cases, contract changes, and code (with DCO sign-off).
+  - name: Report a security vulnerability
+    url: https://github.com/haeliotang/poieweave/security/advisories/new
+    about: Do not disclose vulnerabilities in public issues; use private reporting.

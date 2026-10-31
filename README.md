@@ -165,6 +165,8 @@ Start with the [founding research document](docs/research/FOUNDATIONS.zh-CN.md).
 
 Use [issues](https://github.com/haeliotang/poieweave/issues) to discuss research questions and scoped implementation proposals. Proposed architecture should earn stability through experiments rather than being treated as a frozen specification.
 
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before sending a case or a pull request: contributions need a DCO sign-off (`git commit -s`), pre-registered expectations, and must pass the same gates CI runs. Report vulnerabilities privately, as described in [SECURITY.md](SECURITY.md) — not in a public issue.
+
 ## Open Source License
 
 Poieweave is released under the **Apache License, Version 2.0**.

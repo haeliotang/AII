@@ -1,0 +1,89 @@
+name: Experiment proposal
+description: Propose a pre-registered experiment, baseline, or disturbance set (H1–H4 or a new hypothesis).
+title: "[experiment] "
+labels: ["kind:experiment"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Experiments are pre-registered: expectations, metrics, and the development/holdout
+        split must be committed **before** the first run (development plan §1.4). Results that
+        do not support the hypothesis are as valuable as those that do, and all results —
+        failures, timeouts, infeasible runs — stay in the report.
+
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: State it as a falsifiable claim.
+      placeholder: The joint capability model detects recovery-blocking conditions that independent per-device scheduling misses.
+    validations:
+      required: true
+
+  - type: textarea
+    id: falsification
+    attributes:
+      label: What result would reject it
+      description: Define the outcome that counts against the hypothesis, before you run anything.
+    validations:
+      required: true
+
+  - type: textarea
+    id: baseline
+    attributes:
+      label: Baseline(s) and fairness conditions
+      description: How the comparison stays fair — same inputs, same budget, same disturbance set.
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Metrics and their definitions
+      description: Define each metric precisely, including units and tolerances.
+    validations:
+      required: true
+
+  - type: textarea
+    id: data
+    attributes:
+      label: Cases and dataset split
+      description: Which scenarios/cases, how many, and how the development and holdout sets are separated and sealed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: preregistration
+    attributes:
+      label: Pre-registration location
+      description: Where the PREREG file will live (e.g. experiments/<id>/PREREG.md) and when it will be committed.
+    validations:
+      required: true
+
+  - type: input
+    id: resources
+    attributes:
+      label: Compute and time budget
+      description: Rough resource estimate and the budget the comparison assumes.
+
+  - type: textarea
+    id: publication
+    attributes:
+      label: How results will be published
+      description: Report location, seeds, versions, and confirmation that failures and negative results will be included.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Related milestone
+      options:
+        - M3 — H1 structural
+        - M5 — H1 temporal re-test
+        - M8 — H2 joint planning
+        - M10 — H3 bounded execution
+        - M11 — H4 expansion
+        - New / other
+    validations:
+      required: true
