@@ -1,7 +1,7 @@
 # Poieweave 契约三：Viability & Expansion Contract（可行性与扩张契约）
 
 版本：0.1-draft / 2026-10-31
-状态：可反驳草案。v0.1 参考实现已覆盖结构层（能力图查询，见 Physical Ontology §6）；M6 正在实现时域部分：查询字段校验、六类结论与表述约束、`sampled`/`enumerated` 方法与种子管理、四组指标（含截尾与防作弊）与机读/人读报告清单（M6.1–M6.4 已完成）；结构层衔接与集合方法探索（M6.5–M6.6）及 v0.2 退出复核待做。
+状态：可反驳草案。v0.1 参考实现已覆盖结构层（能力图查询，见 Physical Ontology §6）；M6 已实现时域部分：查询字段校验、六类结论与表述约束、`sampled`/`enumerated` 方法与种子管理、四组指标（含截尾与防作弊）、机读/人读报告清单、结构层恢复路径衔接（M6.1–M6.5）；集合/证书方法经评估在 M6 不实现，见 [ADR-0004](../docs/adr/0004-set-based-viability-scope.zh-CN.md)（M6.6）。v0.2 退出复核待做。
 
 相关契约：[Physical Ontology](physical-ontology.zh-CN.md) · [State & Action Protocol](state-action-protocol.zh-CN.md)
 
