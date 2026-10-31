@@ -53,6 +53,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-sim"
+version = "0.1.0"
+dependencies = [
+ "poie-ontology",
+ "toml",
+]
+
+[[package]]
 name = "poie-state"
 version = "0.1.0"
 dependencies = [

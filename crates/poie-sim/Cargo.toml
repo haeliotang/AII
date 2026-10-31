@@ -1,0 +1,13 @@
+[package]
+name = "poie-sim"
+version = "0.1.0"
+description = "Discrete-event simulation for Poieweave: deterministic ordering, per-step conservation, disturbance trajectories and battery power limits."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+poie-ontology = { path = "../poie-ontology", version = "0.1.0" }
+
+[dev-dependencies]
+toml = "0.8"
