@@ -28,8 +28,8 @@ Our central question is simple:
 | [Physical Ontology](specifications/physical-ontology.zh-CN.md) | v0.1-draft. Units, entities, verification levels, capability-graph semantics, mass conservation. |
 | [State & Action Protocol](specifications/state-action-protocol.zh-CN.md) | v0.1-draft. Record types, action lifecycle, partition rules, 11 failure-injection cases. No implementation yet. |
 | [Viability & Expansion Contract](specifications/viability-expansion.zh-CN.md) | v0.1-draft. Query fields, verdict classes, four metric groups, expansion accounting. No implementation yet. |
-| [`crates/poie-ontology`](crates/poie-ontology) | Structural prototype: dimensioned quantities, model validation, mass balance, single-ledger capability-graph solver with root-cause reporting. |
-| [Base-01 scenario](scenarios/base-01/README.zh-CN.md) | Structural v0.1 with synthetic data and 11 cases whose expectations were written before the first run. All 11 match. This does not test hypothesis H1 yet; there is no baseline. |
+| [`crates/poie-ontology`](crates/poie-ontology) | Structural prototype: dimensioned quantities, model validation, mass balance, single-ledger capability-graph solver with root-cause reporting and alternative (`requires_any`) supports. |
+| [Base-01 scenario](scenarios/base-01/README.zh-CN.md) | Structural v0.1 with synthetic data and 13 cases whose expectations were written before the first run. All 13 match. This does not test hypothesis H1 yet; there is no baseline. |
 
 A `candidate` route from the prototype is structural only: it does not check time, capacity, concurrency, or physical execution.
 

@@ -119,6 +119,10 @@ pub struct AssetDoc {
     pub status_evidence: Option<String>,
     #[serde(default)]
     pub requires: Vec<String>,
+    /// Alternative supports: at least one must be usable. Combined with
+    /// `requires` as an AND of the two conditions (PO §3.1, §6.3 rule 9).
+    #[serde(default)]
+    pub requires_any: Vec<String>,
     #[serde(default)]
     pub provides: Vec<String>,
     #[serde(default)]
@@ -214,6 +218,7 @@ pub struct Asset {
     pub kind: String,
     pub status: AssetStatus,
     pub requires: Vec<String>,
+    pub requires_any: Vec<String>,
     pub provides: Vec<String>,
 }
 
@@ -356,6 +361,7 @@ impl Model {
                 kind: a.kind.clone(),
                 status: a.status,
                 requires: a.requires.clone(),
+                requires_any: a.requires_any.clone(),
                 provides: a.provides.clone(),
             };
             if assets.insert(a.id.clone(), asset).is_some() {
@@ -363,9 +369,18 @@ impl Model {
             }
         }
         for a in assets.values() {
-            for r in &a.requires {
+            for r in a.requires.iter().chain(&a.requires_any) {
                 if !assets.contains_key(r) {
                     bail!("asset {} requires unknown asset {r:?}", a.id);
+                }
+            }
+            let mut seen = BTreeSet::new();
+            for r in &a.requires_any {
+                if !seen.insert(r.as_str()) {
+                    bail!("asset {}: duplicate requires_any entry {r:?}", a.id);
+                }
+                if r == &a.id {
+                    bail!("asset {} lists itself in requires_any", a.id);
                 }
             }
             for c in &a.provides {
@@ -538,6 +553,24 @@ impl Model {
     /// Returns a copy of this model with `patch` applied and re-validated.
     pub fn patched(&self, patch: &Patch) -> Result<Model, ModelError> {
         let mut doc = self.doc.clone();
+        for asset in &patch.add_asset {
+            if doc.assets.iter().any(|a| a.id == asset.id) {
+                bail!("patch: asset {:?} already exists in the base model", asset.id);
+            }
+            doc.assets.push(asset.clone());
+        }
+        for (id, requires) in &patch.asset_requires {
+            let Some(a) = doc.assets.iter_mut().find(|a| &a.id == id) else {
+                bail!("patch: unknown asset {id:?}");
+            };
+            a.requires = requires.clone();
+        }
+        for (id, requires_any) in &patch.asset_requires_any {
+            let Some(a) = doc.assets.iter_mut().find(|a| &a.id == id) else {
+                bail!("patch: unknown asset {id:?}");
+            };
+            a.requires_any = requires_any.clone();
+        }
         for (id, status) in &patch.asset_status {
             let Some(a) = doc.assets.iter_mut().find(|a| &a.id == id) else {
                 bail!("patch: unknown asset {id:?}");
@@ -578,6 +611,15 @@ pub struct Patch {
     pub lot_quality: BTreeMap<String, LotQuality>,
     #[serde(default)]
     pub process_verification: BTreeMap<String, Verification>,
+    /// Replace an asset's AND supports.
+    #[serde(default)]
+    pub asset_requires: BTreeMap<String, Vec<String>>,
+    /// Replace an asset's alternative (OR) supports.
+    #[serde(default)]
+    pub asset_requires_any: BTreeMap<String, Vec<String>>,
+    /// Add assets that exist only in this case (e.g. a standby feed).
+    #[serde(default)]
+    pub add_asset: Vec<AssetDoc>,
 }
 
 fn check_requires_acyclic(assets: &BTreeMap<String, Asset>) -> Result<(), ModelError> {
@@ -599,6 +641,9 @@ fn check_requires_acyclic(assets: &BTreeMap<String, Asset>) -> Result<(), ModelE
         state.insert(id, 1);
         stack.push(id);
         for r in &assets[id].requires {
+            visit(r, assets, state, stack)?;
+        }
+        for r in &assets[id].requires_any {
             visit(r, assets, state, stack)?;
         }
         stack.pop();
@@ -767,6 +812,81 @@ requires = ["a"]
 "#))
         .unwrap_err();
         assert!(err.0.contains("cycle"), "{err}");
+    }
+
+    #[test]
+    fn alternative_supports_must_reference_existing_assets() {
+        let err = Model::from_doc(doc(r#"
+[[asset]]
+id = "a"
+kind = "x"
+status = "available"
+requires_any = ["missing"]
+"#))
+        .unwrap_err();
+        assert!(err.0.contains("unknown asset"), "{err}");
+    }
+
+    #[test]
+    fn duplicate_and_self_alternative_supports_are_rejected() {
+        let err = Model::from_doc(doc(r#"
+[[asset]]
+id = "a"
+kind = "x"
+status = "available"
+requires_any = ["a"]
+"#))
+        .unwrap_err();
+        assert!(err.0.contains("itself"), "{err}");
+
+        let err = Model::from_doc(doc(r#"
+[[asset]]
+id = "a"
+kind = "x"
+status = "available"
+requires_any = ["b", "b"]
+
+[[asset]]
+id = "b"
+kind = "x"
+status = "available"
+"#))
+        .unwrap_err();
+        assert!(err.0.contains("duplicate requires_any"), "{err}");
+    }
+
+    #[test]
+    fn cyclic_alternative_supports_are_rejected() {
+        let err = Model::from_doc(doc(r#"
+[[asset]]
+id = "a"
+kind = "x"
+status = "available"
+requires_any = ["b"]
+
+[[asset]]
+id = "b"
+kind = "x"
+status = "available"
+requires = ["a"]
+"#))
+        .unwrap_err();
+        assert!(err.0.contains("cycle"), "{err}");
+    }
+
+    #[test]
+    fn patch_can_add_an_asset_and_replace_supports() {
+        let m = Model::from_doc(doc("")).unwrap();
+        let patch: Patch = toml::from_str(
+            r#"
+asset_requires_any = { "lathe" = ["standby"] }
+add_asset = [{ id = "standby", kind = "power-bus", status = "available" }]
+"#,
+        )
+        .unwrap();
+        let m = m.patched(&patch).unwrap();
+        assert_eq!(m.assets["lathe"].requires_any, vec!["standby".to_string()]);
+        assert_eq!(m.assets["standby"].kind, "power-bus");
     }
 
     #[test]

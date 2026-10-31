@@ -51,6 +51,7 @@ pub enum BlockerKind {
     Cycle,
     BelowVerification,
     NoCapabilityProvider,
+    NoAlternativeSupport,
     DepthExceeded,
 }
 
@@ -63,6 +64,7 @@ impl BlockerKind {
             BlockerKind::Cycle => "cycle",
             BlockerKind::BelowVerification => "below_verification",
             BlockerKind::NoCapabilityProvider => "no_capability_provider",
+            BlockerKind::NoAlternativeSupport => "no_alternative_support",
             BlockerKind::DepthExceeded => "depth_exceeded",
         }
     }
@@ -292,6 +294,36 @@ impl<'m> Solver<'m> {
         for r in &asset.requires {
             if let Err(e) = self.restore(r, ledger) {
                 errs.extend(e);
+            }
+        }
+
+        // Alternative supports (§6.3 rule 9): at least one must be usable.
+        // Failures of individual alternatives are rolled back like OR processes.
+        if errs.is_empty() && !asset.requires_any.is_empty() {
+            let mut alt_errs = Vec::new();
+            let mut supported = false;
+            for alt in &asset.requires_any {
+                let mut trial = ledger.clone();
+                match self.restore(alt, &mut trial) {
+                    Ok(()) => {
+                        *ledger = trial;
+                        supported = true;
+                        break;
+                    }
+                    Err(e) => alt_errs.extend(e),
+                }
+            }
+            if !supported {
+                errs.push(self.blocker(
+                    BlockerKind::NoAlternativeSupport,
+                    id,
+                    format!(
+                        "{id} needs at least one usable alternative support ({}); none is usable",
+                        asset.requires_any.join(", ")
+                    ),
+                    false,
+                ));
+                errs.extend(alt_errs);
             }
         }
 
@@ -614,4 +646,175 @@ pub fn render(model: &Model, result: &QueryResult) -> String {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::Model;
+
+    fn model_with(assets: &str, lots: &str, processes: &str) -> Model {
+        let text = format!(
+            r#"
+schema = "poie.physical-ontology/0.1"
+name = "or-support-test"
+
+[[resource]]
+id = "energy"
+unit = "kWh"
+
+{assets}
+{lots}
+{processes}
+"#
+        );
+        Model::from_doc(toml::from_str(&text).unwrap()).unwrap()
+    }
+
+    fn restore_query(asset: &str) -> Query {
+        Query {
+            goal: Goal::Restore(asset.to_string()),
+            min_verification: Verification::Declared,
+            max_depth: DEFAULT_MAX_DEPTH,
+        }
+    }
+
+    fn alternatives(first: &str, second: &str) -> Model {
+        model_with(
+            &format!(
+                r#"
+[[asset]]
+id = "target"
+kind = "machine"
+status = "available"
+requires_any = ["alt-a", "alt-b"]
+
+[[asset]]
+id = "alt-a"
+kind = "feed"
+status = "{first}"
+
+[[asset]]
+id = "alt-b"
+kind = "feed"
+status = "{second}"
+"#
+            ),
+            "",
+            "",
+        )
+    }
+
+    #[test]
+    fn alternative_support_accepts_any_usable_alternative() {
+        let m = alternatives("failed", "available");
+        let r = solve(&m, &restore_query("target"));
+        assert_eq!(r.verdict, Verdict::Candidate, "{}", render(&m, &r));
+    }
+
+    #[test]
+    fn no_usable_alternative_is_reported() {
+        let m = alternatives("failed", "failed");
+        let r = solve(&m, &restore_query("target"));
+        assert_eq!(r.verdict, Verdict::Blocked);
+        let roots: Vec<(&BlockerKind, &str)> = r.root_causes().map(|b| (&b.kind, b.subject.as_str())).collect();
+        assert!(roots.contains(&(&BlockerKind::AssetUnavailable, "alt-a")), "{roots:?}");
+        assert!(roots.contains(&(&BlockerKind::AssetUnavailable, "alt-b")), "{roots:?}");
+        let summary = r.blockers.iter().find(|b| b.kind == BlockerKind::NoAlternativeSupport).expect("summary");
+        assert_eq!(summary.subject, "target");
+        assert!(!summary.root);
+        assert!(summary.detail.contains("alt-a, alt-b"), "{}", summary.detail);
+    }
+
+    #[test]
+    fn and_requirements_are_still_required_with_alternative_support() {
+        let with_and = |and_status: &str| {
+            model_with(
+                &format!(
+                    r#"
+[[asset]]
+id = "target"
+kind = "machine"
+status = "available"
+requires = ["and-support"]
+requires_any = ["alt-a", "alt-b"]
+
+[[asset]]
+id = "and-support"
+kind = "feed"
+status = "{and_status}"
+
+[[asset]]
+id = "alt-a"
+kind = "feed"
+status = "failed"
+
+[[asset]]
+id = "alt-b"
+kind = "feed"
+status = "available"
+"#
+                ),
+                "",
+                "",
+            )
+        };
+
+        let m = with_and("available");
+        assert_eq!(solve(&m, &restore_query("target")).verdict, Verdict::Candidate);
+
+        let m = with_and("failed");
+        let r = solve(&m, &restore_query("target"));
+        assert_eq!(r.verdict, Verdict::Blocked);
+        assert!(r.root_causes().any(|b| b.kind == BlockerKind::AssetUnavailable && b.subject == "and-support"));
+        // The OR list is not probed once the AND support has failed.
+        assert!(!r.blockers.iter().any(|b| b.kind == BlockerKind::NoAlternativeSupport));
+    }
+
+    #[test]
+    fn an_alternative_can_be_restored_by_a_process() {
+        let m = model_with(
+            r#"
+[[resource]]
+id = "part"
+unit = "item"
+mass_per_unit = "1 kg"
+
+[[asset]]
+id = "target"
+kind = "machine"
+status = "available"
+requires_any = ["alt-a", "alt-b"]
+
+[[asset]]
+id = "alt-a"
+kind = "feed"
+status = "failed"
+
+[[asset]]
+id = "alt-b"
+kind = "feed"
+status = "failed"
+"#,
+            r#"
+[[lot]]
+id = "lot-part"
+resource = "part"
+quantity = "1 item"
+quality = "accepted"
+"#,
+            r#"
+[[process]]
+id = "fix-alt-b"
+inputs = [{ resource = "part", quantity = "1 item" }]
+restores = ["alt-b"]
+asset_mass_change = "1 kg"
+verification = "declared"
+"#,
+        );
+        let r = solve(&m, &restore_query("target"));
+        assert_eq!(r.verdict, Verdict::Candidate, "{}", render(&m, &r));
+        assert_eq!(r.steps.len(), 1);
+        assert_eq!(r.steps[0].process, "fix-alt-b");
+    }
 }
