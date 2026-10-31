@@ -159,6 +159,15 @@ impl TimedVerdict {
     }
 }
 
+/// Where and why a timed case first violated its requirement; used by the VEC
+/// report runner to fill `first_violation_s` and the constraint name (M6).
+#[derive(Clone, Debug, PartialEq)]
+pub struct TimedViolation {
+    pub at_s: f64,
+    pub constraint: String,
+    pub detail: String,
+}
+
 /// One evaluated timed case.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TimedOutcome {
@@ -166,6 +175,7 @@ pub struct TimedOutcome {
     pub structural: Verdict,
     pub completion_s: Option<f64>,
     pub detail: String,
+    pub violation: Option<TimedViolation>,
 }
 
 impl TimedOutcome {
@@ -330,6 +340,7 @@ impl TimedRunner {
                     structural,
                     completion_s: None,
                     detail: structural_detail,
+                    violation: None,
                 });
             }
             Verdict::Unknown => {
@@ -338,6 +349,7 @@ impl TimedRunner {
                     structural,
                     completion_s: None,
                     detail: structural_detail,
+                    violation: None,
                 });
             }
             Verdict::SearchLimit => {
@@ -346,6 +358,7 @@ impl TimedRunner {
                     structural,
                     completion_s: None,
                     detail: structural_detail,
+                    violation: None,
                 });
             }
             Verdict::Candidate => {}
@@ -355,11 +368,17 @@ impl TimedRunner {
             .map_err(|error| TimedError(format!("case {}: {error}", case.id)))?;
         if !report.is_feasible() {
             let conflict = &report.conflicts[0];
+            let detail = format!("{} {} vs {}", conflict.asset, conflict.first, conflict.second);
             return Ok(TimedOutcome {
                 verdict: TimedVerdict::CapacityConflict,
                 structural,
                 completion_s: None,
-                detail: format!("{} {} vs {}", conflict.asset, conflict.first, conflict.second),
+                detail: detail.clone(),
+                violation: Some(TimedViolation {
+                    at_s: conflict.overlap.from_s,
+                    constraint: conflict.asset.clone(),
+                    detail,
+                }),
             });
         }
         let completion_s = report.instances.iter().map(|instance| instance.end_s).fold(start_s, f64::max);
@@ -378,17 +397,23 @@ impl TimedRunner {
                 *total += allocation.si;
                 let available = timeline.available_at(step_start);
                 if *total > available + 1e-6 {
+                    let detail = format!(
+                        "{} needs {}, only {} available at {:.0}s",
+                        allocation.resource,
+                        fmt_quantity(&allocation.resource, &self.scenario.model, *total),
+                        fmt_quantity(&allocation.resource, &self.scenario.model, available),
+                        step_start
+                    );
                     return Ok(TimedOutcome {
                         verdict: TimedVerdict::InsufficientResource,
                         structural,
                         completion_s: Some(completion_s),
-                        detail: format!(
-                            "{} needs {}, only {} available at {:.0}s",
-                            allocation.resource,
-                            fmt_quantity(&allocation.resource, &self.scenario.model, *total),
-                            fmt_quantity(&allocation.resource, &self.scenario.model, available),
-                            step_start
-                        ),
+                        detail: detail.clone(),
+                        violation: Some(TimedViolation {
+                            at_s: step_start,
+                            constraint: allocation.resource.clone(),
+                            detail,
+                        }),
                     });
                 }
             }
@@ -396,11 +421,13 @@ impl TimedRunner {
 
         if let Some(deadline) = deadline_s {
             if completion_s > deadline + 1e-6 {
+                let detail = format!("completion {:.0}s after deadline {:.0}s", completion_s, deadline);
                 return Ok(TimedOutcome {
                     verdict: TimedVerdict::TooLate,
                     structural,
                     completion_s: Some(completion_s),
-                    detail: format!("completion {:.0}s after deadline {:.0}s", completion_s, deadline),
+                    detail: detail.clone(),
+                    violation: Some(TimedViolation { at_s: deadline, constraint: "deadline".into(), detail }),
                 });
             }
         }
@@ -410,6 +437,7 @@ impl TimedRunner {
             structural,
             completion_s: Some(completion_s),
             detail: String::new(),
+            violation: None,
         })
     }
 

@@ -1,0 +1,13 @@
+[package]
+name = "poie-vec-base01"
+version = "0.1.0"
+description = "Generates and checks the VEC §7 feasibility report for the 20 timed Base-01 v0.2 scenarios."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+poie-ontology = { path = "../../../crates/poie-ontology", version = "0.1.0" }
+poie-sim = { path = "../../../crates/poie-sim", version = "0.1.0" }
+poie-viability = { path = "../../../crates/poie-viability", version = "0.1.0" }

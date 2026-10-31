@@ -16,7 +16,7 @@ pub mod query;
 pub mod report;
 pub mod verdict;
 
-pub use bridge::{attach_recovery_paths, recovery_path};
+pub use bridge::{attach_recovery_paths, goal_label, recovery_path, recovery_path_for_goal};
 pub use method::{enumerated_plan, sampled_plan, Method, MethodError, SamplePlan, Scenario, SplitMix64};
 pub use metrics::{
     aggregate_external_inputs, independence, resilience, summarize_viability, sustainability, viability,
