@@ -122,3 +122,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增规划器随机化不变量测试（`crates/poie-plan/tests/plan_properties.rs`，80 trials）：随机模型补丁/目标/时域/预算下验证动作有序、同资产不重叠、id 唯一、确定性、预算上限、每个目标恰好报告一次、所有计划可经 SAP 生命周期与派发前检查。测试发现并修复：预算/时域耗尽时剩余目标被静默丢弃（改为全部报告）、动作 id 可能重复（全局计数）、已规划的恢复未回写工作模型（导致后续目标重复规划）。
 - 2026-10-31：新增投影随机化不变量测试（`crates/poie-state/tests/projection_properties.rs`，120 trials）：随机观察/估计/更正/仿真命名空间/多站点序列，与独立契约 oracle 比对（确定性、每场址状态版本、更正抑制、仿真隔离、最新证据生效、证据过期）；CONTRIBUTING 增加工具链与 MSRV 说明（CI 用 stable；MSRV 未固定，代码依赖 1.82 的 `Option::is_none_or`，更旧版本未经 CI 验证）。
 - 2026-10-31：CI 工具链固定为 Rust 1.94.0（与参考开发环境一致），避免 clippy 版本漂移再次导致本地通过、CI 失败；同时修复 projection 性质测试在新版 clippy 下的 `collapsible_match` 告警（改为 match guard）。已发生的两次漂移（#38/#39、#57/#58）均记录在 PR 中。
+- 2026-10-31：新增调度与仿真随机不变量测试：调度（`crates/poie-ontology/tests/schedule_properties.rs`，120 trials）验证前置满足、动作时长保持、容量冲突的可靠性与完整性、确定性；仿真（`crates/poie-sim/tests/simulation_properties.rs`，80 trials）验证 digest 确定（含任意时间点分块运行）、守恒违规分类、外部流计数、库存核算与电池 SoC 边界。
