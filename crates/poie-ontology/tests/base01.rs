@@ -151,3 +151,21 @@ fn degraded_policy_marks_the_step_and_caps_occupations() {
         r.result.root_causes().collect::<Vec<_>>()
     );
 }
+
+#[test]
+fn yield_and_rework_are_accounted() {
+    let s = scenario();
+    let r = run(&s, "S18");
+    assert_eq!(r.result.verdict, Verdict::Candidate);
+    let route: Vec<&str> = r.result.steps.iter().map(|s| s.process.as_str()).collect();
+    assert_eq!(route, ["rework-sleeve-p1", "inspect-sleeve-yield"]);
+    // Two rejects reworked (2 x 1 kWh), then two inspection runs (2 x 0.1 kWh).
+    assert!((consumed(&r, "sleeve-p1-reject") - 2.0).abs() < 1e-9);
+    assert!((consumed(&r, "electric-energy") - 1.2 * 3.6e6).abs() < 1e-3);
+    let inspect = r.result.steps.iter().find(|s| s.process == "inspect-sleeve-yield").unwrap();
+    assert!(
+        inspect.outputs.iter().any(|(res, q)| res == "sleeve-p1-reject" && (*q - 1.0).abs() < 1e-9),
+        "{:?}",
+        inspect.outputs
+    );
+}

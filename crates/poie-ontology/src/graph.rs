@@ -446,8 +446,9 @@ impl<'m> Solver<'m> {
 
         let mut alt_errs = Vec::new();
         for &pi in producers {
+            let fraction = model.processes[pi].yield_fraction_for(resource);
             let per_run: f64 =
-                model.processes[pi].outputs.iter().filter(|f| f.resource == resource).map(|f| f.si).sum();
+                model.processes[pi].outputs.iter().filter(|f| f.resource == resource).map(|f| f.si * fraction).sum();
             let runs = (shortfall / per_run - 1e-9).ceil().max(1.0);
             if runs > MAX_RUNS {
                 alt_errs.push(self.blocker(
@@ -616,7 +617,16 @@ impl<'m> Solver<'m> {
             return Err(errs);
         }
         let index = ledger.steps.len();
-        let outputs: Vec<(String, f64)> = p.outputs.iter().map(|f| (f.resource.clone(), f.si * runs as f64)).collect();
+        let mut outputs: Vec<(String, f64)> = Vec::new();
+        for f in &p.outputs {
+            let fraction = p.yield_fraction_for(&f.resource);
+            outputs.push((f.resource.clone(), f.si * runs as f64 * fraction));
+            if let Some(spec) = &p.process_yield {
+                if spec.output == f.resource && fraction < 1.0 {
+                    outputs.push((spec.reject.clone(), f.si * runs as f64 * (1.0 - fraction)));
+                }
+            }
+        }
         for (r, amount) in &outputs {
             ledger.add(r, Source::Step(index), *amount);
         }
@@ -723,6 +733,13 @@ pub fn render(model: &Model, result: &QueryResult) -> String {
             }
             if !s.degraded.is_empty() {
                 let _ = writeln!(out, "       occupied while degraded (policy): {}", s.degraded.join(", "));
+            }
+            if let Some(spec) = model.process(&s.process).and_then(|p| p.process_yield.as_ref()) {
+                let _ = writeln!(
+                    out,
+                    "       planned yield: {} x {} (reject -> {})",
+                    spec.output, spec.fraction, spec.reject
+                );
             }
         }
     } else {
@@ -1022,6 +1039,95 @@ verification = "declared"
             "{:?}",
             r.root_causes().collect::<Vec<_>>()
         );
+    }
+
+    const YIELD_MAKE: &str = r#"
+[[resource]]
+id = "raw"
+unit = "kg"
+
+[[resource]]
+id = "good"
+unit = "item"
+mass_per_unit = "0.8 kg"
+
+[[resource]]
+id = "reject"
+unit = "item"
+mass_per_unit = "0.8 kg"
+
+[[process]]
+id = "make"
+inputs = [{ resource = "raw", quantity = "0.8 kg" }]
+outputs = [{ resource = "good", quantity = "1 item" }]
+verification = "declared"
+yield = { output = "good", fraction = 0.5, reject = "reject" }
+"#;
+
+    #[test]
+    fn yield_plans_extra_runs_and_records_rejects() {
+        let body = format!(
+            "{}\n{}",
+            YIELD_MAKE,
+            r#"
+[[lot]]
+id = "lot-raw"
+resource = "raw"
+quantity = "2 kg"
+quality = "accepted"
+"#
+        );
+        let m = model_from_toml(&body);
+        let r = solve(&m, &obtain_query("good", "1 item"));
+        assert_eq!(r.verdict, Verdict::Candidate, "{}", render(&m, &r));
+        assert_eq!(r.steps[0].runs, 2, "50% yield needs two runs for one good unit");
+        assert!(r.steps[0].outputs.iter().any(|(res, qty)| res == "reject" && (*qty - 1.0).abs() < 1e-9));
+        assert!(render(&m, &r).contains("planned yield: good x 0.5"));
+    }
+
+    #[test]
+    fn rework_route_recovers_rejects() {
+        let body = format!(
+            "{}\n{}",
+            YIELD_MAKE,
+            r#"
+[[lot]]
+id = "lot-reject"
+resource = "reject"
+quantity = "2 item"
+quality = "accepted"
+
+[[process]]
+id = "rework"
+inputs = [{ resource = "reject", quantity = "1 item" }]
+outputs = [{ resource = "raw", quantity = "0.8 kg" }]
+verification = "declared"
+"#
+        );
+        let m = model_from_toml(&body);
+        let r = solve(&m, &obtain_query("good", "1 item"));
+        assert_eq!(r.verdict, Verdict::Candidate, "{}", render(&m, &r));
+        let route: Vec<&str> = r.steps.iter().map(|s| s.process.as_str()).collect();
+        assert_eq!(route, ["rework", "make"], "{}", render(&m, &r));
+    }
+
+    #[test]
+    fn yield_capacity_is_not_overbooked() {
+        let body = format!(
+            "{}\n{}",
+            YIELD_MAKE,
+            r#"
+[[lot]]
+id = "lot-raw"
+resource = "raw"
+quantity = "1.2 kg"
+quality = "accepted"
+"#
+        );
+        let m = model_from_toml(&body);
+        let r = solve(&m, &obtain_query("good", "1 item"));
+        assert_eq!(r.verdict, Verdict::Blocked, "{}", render(&m, &r));
+        assert!(r.root_causes().any(|b| b.kind == BlockerKind::MissingResource && b.subject == "raw"));
     }
 
     #[test]

@@ -315,3 +315,96 @@ asset_degraded = { "lathe-1" = { occupiable = true, allowed_processes = ["turn-l
 [case.expect]
 verdict = "blocked"
 root_causes = [{ kind = "degraded_restriction", subject = "lathe-1" }]
+
+# --- M2.4 conservative yield and rework (added 2026-10-31; expectations written before the first run) ---
+
+[[case]]
+id = "S17"
+title = "50% yield needs two sleeves of raw stock, so the bronze budget runs out"
+description = """
+The deterministic inspection process is downgraded to declared, and a case-only \
+inspection process with a conservative yield of 0.5 replaces it: one good sleeve \
+now costs two raw sleeves and two turning runs. Bronze is 2 kg, enough for one \
+1.2 kg turning run, not two (2.4 kg). Naively assuming 1:1 would report a false \
+candidate; conservative allocation must report the blocked route. Expected: \
+blocked with missing_resource bronze-bar."""
+goal = { obtain = { resource = "sleeve-p1", quantity = "1 item" } }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item", "lot-bronze" = "2 kg" }
+process_verification = { "inspect-sleeve-p1" = "declared" }
+
+[[case.patch.add_resource]]
+id = "sleeve-p1-reject"
+unit = "item"
+mass_per_unit = "0.8 kg"
+
+[[case.patch.add_process]]
+id = "inspect-sleeve-yield"
+description = "Case-only inspection with 50% planned yield; rejects are a separate resource."
+inputs = [
+  { resource = "sleeve-p1-raw", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "0.1 kWh" },
+]
+outputs = [{ resource = "sleeve-p1", quantity = "1 item" }]
+occupies = ["gauge-1"]
+requires_capabilities = ["material-handling"]
+verification = "demonstrated"
+yield = { output = "sleeve-p1", fraction = 0.5, reject = "sleeve-p1-reject" }
+
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "bronze-bar" }]
+
+[[case]]
+id = "S18"
+title = "Rejected sleeves are reworked back into raw sleeves"
+description = """
+No bronze is available and no raw sleeve is in stock, but two rejected sleeves \
+from a previous batch are. The rework process turns each reject back into a raw \
+sleeve, and the 50%-yield inspection then converts two raw sleeves into one good \
+sleeve. Expected: candidate whose route reworks the rejects first, then inspects; \
+at least two steps (rework-sleeve-p1, inspect-sleeve-yield)."""
+goal = { obtain = { resource = "sleeve-p1", quantity = "1 item" } }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item", "lot-bronze" = "0 kg" }
+process_verification = { "inspect-sleeve-p1" = "declared" }
+
+[[case.patch.add_resource]]
+id = "sleeve-p1-reject"
+unit = "item"
+mass_per_unit = "0.8 kg"
+
+[[case.patch.add_lot]]
+id = "lot-reject"
+resource = "sleeve-p1-reject"
+quantity = "2 item"
+quality = "accepted"
+
+[[case.patch.add_process]]
+id = "inspect-sleeve-yield"
+description = "Case-only inspection with 50% planned yield; rejects are a separate resource."
+inputs = [
+  { resource = "sleeve-p1-raw", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "0.1 kWh" },
+]
+outputs = [{ resource = "sleeve-p1", quantity = "1 item" }]
+occupies = ["gauge-1"]
+requires_capabilities = ["material-handling"]
+verification = "demonstrated"
+yield = { output = "sleeve-p1", fraction = 0.5, reject = "sleeve-p1-reject" }
+
+[[case.patch.add_process]]
+id = "rework-sleeve-p1"
+description = "Case-only rework route: a rejected sleeve becomes a raw sleeve again."
+inputs = [
+  { resource = "sleeve-p1-reject", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "0.5 kWh" },
+]
+outputs = [{ resource = "sleeve-p1-raw", quantity = "1 item" }]
+verification = "demonstrated"
+
+[case.expect]
+verdict = "candidate"
+route_includes = ["rework-sleeve-p1", "inspect-sleeve-yield"]
