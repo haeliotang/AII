@@ -186,3 +186,16 @@ fn capability_level_limits_the_route_verification() {
     assert_eq!(r.result.verdict, Verdict::Candidate);
     assert_eq!(r.result.route_verification(), Some(Verification::Modeled));
 }
+
+#[test]
+fn enumeration_returns_distinct_routes_with_summaries() {
+    let s = scenario();
+    let case = s.cases.iter().find(|c| c.id == "S21").unwrap();
+    let routes = s.enumerate(case, 8).unwrap();
+    assert_eq!(routes.len(), 2, "{routes:?}");
+    assert!(routes.iter().any(|r| r.external_dependencies.iter().any(|d| d == "bronze-bar")));
+    assert!(routes.iter().any(|r| r.external_dependencies.iter().any(|d| d == "sleeve-blank")));
+    assert!(routes.iter().all(|r| r.verification.is_some()));
+    let r = run(&s, "S22");
+    assert_eq!(r.routes.len(), 1, "baseline has exactly one structural route");
+}

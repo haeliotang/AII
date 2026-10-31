@@ -443,3 +443,62 @@ asset_capability_verification = { "robot-m1" = { "sleeve-replacement" = "modeled
 [case.expect]
 verdict = "candidate"
 route_includes = ["replace-sleeve-p1"]
+
+# --- M2.6 multi-route enumeration (added 2026-10-31; expectations written before the first run) ---
+
+[[case]]
+id = "S21"
+title = "Two distinct structural routes reach one sleeve"
+description = """
+With no sleeve in stock, two producers can supply it: the machining route \
+(turn + inspect) and a case-only inspection of a pre-formed blank. The default \
+solve picks the machining route; enumeration must find both and summarise each \
+route's consumption, external dependencies and weakest verification. Expected: \
+candidate, at least 2 distinct routes."""
+goal = { obtain = { resource = "sleeve-p1", quantity = "1 item" } }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item" }
+
+[[case.patch.add_resource]]
+id = "sleeve-blank"
+unit = "item"
+mass_per_unit = "0.8 kg"
+
+[[case.patch.add_lot]]
+id = "lot-blank"
+resource = "sleeve-blank"
+quantity = "1 item"
+quality = "accepted"
+
+[[case.patch.add_process]]
+id = "inspect-blank"
+description = "Case-only second source: accept a pre-formed blank. Not part of the v0.1 base model."
+inputs = [
+  { resource = "sleeve-blank", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "0.1 kWh" },
+]
+outputs = [{ resource = "sleeve-p1", quantity = "1 item" }]
+occupies = ["gauge-1"]
+requires_capabilities = ["material-handling"]
+verification = "demonstrated"
+
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-sleeve-p1", "inspect-sleeve-p1"]
+min_routes = 2
+
+[[case]]
+id = "S22"
+title = "Enumeration does not fabricate extra routes"
+description = """
+The baseline water service has exactly one structural route: one spare sleeve \
+and one restorer for the pump. Enumeration must not invent alternatives just \
+because it was asked for several; at most one distinct route exists. Expected: \
+candidate with at most 1 route."""
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.expect]
+verdict = "candidate"
+route_includes = ["replace-sleeve-p1"]
+max_routes = 1
