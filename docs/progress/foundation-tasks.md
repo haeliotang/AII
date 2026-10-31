@@ -158,6 +158,7 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增候选路线枚举随机不变量测试（`crates/poie-ontology/tests/route_properties.rs`，120+80 trials）：枚举受 limit 约束、按签名去重、更大 limit 是更小枚举的前缀、非 candidate 无路线；每条路线消耗为正、外部依赖属于消耗集合、路线验证等级不低于查询下限；`external_dependency_report` 的依赖集合等于所有候选路线依赖的并集且无重复。
 - 2026-10-31：干净克隆复现记录刷新至 `8d6e8f5`（通过）；状态快照 §3 同步。
 - 2026-10-31：新增扩张提案解析健壮性测试（`crates/poie-expansion/tests/proposal_robustness.rs`，120 次随机变异）：proposal.toml 的行删除/复制/清空/字节破坏/截断/尾部残片变异后加载必须 Ok 或 Err 而非 panic；成功加载的提案 `expand` 也不得 panic；空/垃圾/缺失文件必须报错。
+- 2026-10-31：干净克隆复现记录刷新至 `aa62a83`（通过）；状态快照 §3 同步。
 - 2026-10-31：状态快照与干净克隆记录刷新至 `f17bf9f`（Rust 列表测试 284 = 库 278 + runner 6）；干净克隆在该提交上通过。
 - 2026-10-31：状态快照与干净克隆记录刷新至 `e8f72aa`：Rust 列表测试更新为 282（库 276 + runner 6），干净克隆在该提交上通过。
 - 2026-10-31：手动 dispatch scheduled workflow（[run 41246880552](https://github.com/haeliotang/poieweave/actions/runs/41246880552)）五个 job 全部成功：verify-all、release-mode test suite、fresh-clone（runner 上干净克隆复现）、advisories、licenses/bans/sources。
