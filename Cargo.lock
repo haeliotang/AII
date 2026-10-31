@@ -63,6 +63,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-process"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "poie-sim"
 version = "0.1.0"
 dependencies = [
