@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::action::{Action, ActionState};
 
 /// Version string carried by every record envelope (SAP §2.1).
-pub const RECORD_SCHEMA_VERSION: &str = "poie.record/0.1";
+pub const RECORD_SCHEMA_VERSION: &str = "poie.record/0.2";
 
 /// `<site>/<seq>` record identity (SAP §2.1).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

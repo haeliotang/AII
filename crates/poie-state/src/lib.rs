@@ -1,5 +1,5 @@
 //! Reference implementation of the Poieweave State & Action Protocol
-//! (`specifications/state-action-protocol.zh-CN.md`, v0.1-draft).
+//! (`specifications/state-action-protocol.zh-CN.md`, v0.2-draft).
 //!
 //! Implemented so far (milestone M4):
 //!
