@@ -199,3 +199,18 @@ fn enumeration_returns_distinct_routes_with_summaries() {
     let r = run(&s, "S22");
     assert_eq!(r.routes.len(), 1, "baseline has exactly one structural route");
 }
+
+#[test]
+fn external_dependencies_are_traced_across_routes_and_root_causes() {
+    let s = scenario();
+    let case = s.cases.iter().find(|c| c.id == "S23").unwrap();
+    let report = s.external_dependency_report(case, 8).unwrap();
+    assert_eq!(report.candidate_routes, 2);
+    for dependency in ["bronze-bar", "cutting-insert", "sleeve-blank", "grease", "electric-energy"] {
+        assert!(report.resources().contains(&dependency), "missing {dependency}: {:?}", report.resources());
+    }
+    let case = s.cases.iter().find(|c| c.id == "S24").unwrap();
+    let report = s.external_dependency_report(case, 8).unwrap();
+    assert_eq!(report.candidate_routes, 0);
+    assert!(report.dependencies.iter().any(|d| d.resource == "cutting-insert" && d.in_root_causes));
+}

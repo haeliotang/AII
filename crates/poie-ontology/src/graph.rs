@@ -826,6 +826,105 @@ pub fn render_routes(model: &Model, routes: &[CandidateRoute]) -> String {
     out
 }
 
+/// One external dependency found while tracing a query (PO §6.5, VEC §4.2).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExternalDependency {
+    pub resource: String,
+    /// 1-based indices of the enumerated candidate routes that consume it.
+    pub routes: Vec<usize>,
+    /// Largest single-route allocated quantity (SI).
+    pub max_si: f64,
+    /// True when the dependency appears in the root causes of a blocked query.
+    pub in_root_causes: bool,
+}
+
+/// External dependencies of a query, aggregated over candidate routes and, when
+/// there is no route, over the blocked root causes (PO §6.5, VEC §4.2).
+#[derive(Clone, Debug, Default)]
+pub struct ExternalDependencyReport {
+    pub candidate_routes: usize,
+    pub dependencies: Vec<ExternalDependency>,
+}
+
+impl ExternalDependencyReport {
+    pub fn resources(&self) -> Vec<&str> {
+        self.dependencies.iter().map(|dependency| dependency.resource.as_str()).collect()
+    }
+}
+
+/// Traces every external dependency a query relies on: resources with no local
+/// producing process that appear in any enumerated candidate route, or in the
+/// root causes of a blocked query. Indirect consumables (cutting inserts,
+/// gauges modelled as resources) are included because they appear in the route
+/// ledger (PO §6.5, VEC §4.2).
+pub fn external_dependency_report(model: &Model, query: &Query, limit: usize) -> ExternalDependencyReport {
+    let routes = enumerate(model, query, limit);
+    let mut dependencies: BTreeMap<String, ExternalDependency> = BTreeMap::new();
+    for (index, route) in routes.iter().enumerate() {
+        for resource in &route.external_dependencies {
+            let si = route.consumed.get(resource).copied().unwrap_or(0.0);
+            let dependency = dependencies.entry(resource.clone()).or_insert_with(|| ExternalDependency {
+                resource: resource.clone(),
+                routes: Vec::new(),
+                max_si: 0.0,
+                in_root_causes: false,
+            });
+            dependency.routes.push(index + 1);
+            dependency.max_si = dependency.max_si.max(si);
+        }
+    }
+    if routes.is_empty() {
+        let external: BTreeSet<&str> = model.external_resources().into_iter().collect();
+        for blocker in solve(model, query).root_causes() {
+            if blocker.kind == BlockerKind::MissingResource && external.contains(blocker.subject.as_str()) {
+                let dependency = dependencies.entry(blocker.subject.clone()).or_insert_with(|| ExternalDependency {
+                    resource: blocker.subject.clone(),
+                    routes: Vec::new(),
+                    max_si: 0.0,
+                    in_root_causes: true,
+                });
+                dependency.in_root_causes = true;
+            }
+        }
+    }
+    ExternalDependencyReport { candidate_routes: routes.len(), dependencies: dependencies.into_values().collect() }
+}
+
+/// Human-readable external-dependency trace.
+pub fn render_external_dependencies(model: &Model, report: &ExternalDependencyReport) -> String {
+    let mut out = String::new();
+    if report.candidate_routes == 0 {
+        let _ =
+            writeln!(out, "  external dependency trace: no candidate route; dependencies from blocked root causes:");
+    } else {
+        let _ = writeln!(
+            out,
+            "  external dependency trace ({} candidate route(s), {} dependency(ies)):",
+            report.candidate_routes,
+            report.dependencies.len()
+        );
+    }
+    for dependency in &report.dependencies {
+        let where_used = if dependency.in_root_causes {
+            "blocked root cause".to_string()
+        } else {
+            let routes: Vec<String> = dependency.routes.iter().map(|index| format!("route {index}")).collect();
+            routes.join(", ")
+        };
+        let amount = if dependency.routes.is_empty() {
+            String::new()
+        } else {
+            model
+                .resources
+                .get(&dependency.resource)
+                .map(|resource| format!(" (max {})", resource.fmt_amount(dependency.max_si)))
+                .unwrap_or_default()
+        };
+        let _ = writeln!(out, "    - {}: needs external input; in {}{}", dependency.resource, where_used, amount);
+    }
+    out
+}
+
 /// Human-readable report of a query result.
 pub fn render(model: &Model, result: &QueryResult) -> String {
     let mut out = String::new();
@@ -1350,6 +1449,31 @@ quality = "accepted"
         let m = model_from_toml(&single);
         let routes = enumerate(&m, &obtain_query("good", "1 item"), 8);
         assert_eq!(routes.len(), 1, "{routes:?}");
+    }
+
+    #[test]
+    fn external_dependencies_are_unioned_over_candidate_routes() {
+        let m = model_from_toml(TWO_PRODUCERS);
+        let report = external_dependency_report(&m, &obtain_query("r", "1 item"), 8);
+        assert_eq!(report.candidate_routes, 2);
+        let resources = report.resources();
+        assert!(resources.contains(&"a"), "{resources:?}");
+        assert!(resources.contains(&"b"), "{resources:?}");
+        let a = report.dependencies.iter().find(|d| d.resource == "a").expect("a");
+        let b = report.dependencies.iter().find(|d| d.resource == "b").expect("b");
+        assert_eq!(a.routes, vec![1]);
+        assert_eq!(b.routes, vec![2]);
+        assert!((a.max_si - 1.0).abs() < 1e-9);
+        assert!(!a.in_root_causes);
+    }
+
+    #[test]
+    fn blocked_query_reports_external_dependencies_from_root_causes() {
+        let m = model_from_toml(TWO_PRODUCERS);
+        let report = external_dependency_report(&m, &obtain_query("r", "3 item"), 8);
+        assert_eq!(report.candidate_routes, 0);
+        assert!(report.dependencies.iter().any(|d| d.resource == "a" && d.in_root_causes));
+        assert!(report.dependencies.iter().any(|d| d.resource == "b" && d.in_root_causes));
     }
 
     #[test]
