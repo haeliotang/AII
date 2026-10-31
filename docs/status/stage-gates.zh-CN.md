@@ -8,7 +8,7 @@
 scripts/verify-all.sh
 ```
 
-CI 固定使用 Rust 1.94.0（与参考开发环境一致，避免 clippy 版本漂移；升级需单独 PR）。脚本依次运行：格式、clippy、全测试、**rustdoc（警告即错误）**、Markdown 相对链接检查、测试矩阵计数校验、Base-01/Base-02 预登记用例、时间版用例与重放摘要、VEC 报告重放、H3 模拟重放、H4 报告重放、联邦分区模拟重放、本机 TCP 联邦演示、两站点影子集成、`cargo-deny`。
+CI 固定使用 Rust 1.94.0（与参考开发环境一致，避免 clippy 版本漂移；升级需单独 PR）。脚本依次运行：格式、clippy、全测试、**rustdoc（警告即错误）**、Markdown 相对链接检查、实验重放覆盖检查、测试矩阵计数校验、Base-01/Base-02 预登记用例、时间版用例与重放摘要、VEC 报告重放、H3 模拟重放、H4 报告重放、联邦分区模拟重放、本机 TCP 联邦演示、两站点影子集成、`cargo-deny`。
 
 ## 1. Foundation（M1–M5）
 

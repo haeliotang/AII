@@ -41,6 +41,8 @@ jobs:
         run: python3 scripts/check-docs.py
       - name: Test matrix counts
         run: python3 scripts/check-test-matrix.py
+      - name: Experiment replay coverage
+        run: python3 scripts/check-experiment-replays.py
       - name: Python model and bridge tests (M7)
         run: python3 -m unittest discover -s python/poie_models -p "test_*.py" -v
       - name: Base-01 pre-registered cases
