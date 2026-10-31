@@ -131,6 +131,8 @@ kind = "maintenance-robot"
 status = "available"
 requires = ["charger-1"]
 provides = ["sleeve-replacement", "machine-tending", "material-handling", "lathe-repair", "electrical-repair"]
+# Capability-level evidence (PO §3.6): the hull is a synthetic assumption.
+capability_verification = { "sleeve-replacement" = "verified", "material-handling" = "verified", "machine-tending" = "demonstrated", "lathe-repair" = "demonstrated", "electrical-repair" = "demonstrated" }
 description = "Only maintenance robot. v0.1 coarsely models its battery dependence as requiring charger-1."
 
 # --- Inventory -------------------------------------------------------------

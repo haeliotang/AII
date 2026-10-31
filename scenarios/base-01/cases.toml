@@ -408,3 +408,38 @@ verification = "demonstrated"
 [case.expect]
 verdict = "candidate"
 route_includes = ["rework-sleeve-p1", "inspect-sleeve-yield"]
+
+# --- M2.5 capability-level verification (added 2026-10-31; expectations written before the first run) ---
+
+[[case]]
+id = "S19"
+title = "The robot's sleeve-replacement skill is only declared"
+description = """
+The process replace-sleeve-p1 is verified, but the robot only claims the \
+sleeve-replacement capability at declared level: the skill itself has no \
+demonstration evidence. With min_verification = demonstrated, the provider must \
+be rejected even though the process is verified. Expected: blocked with \
+capability_below_verification on sleeve-replacement."""
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+asset_capability_verification = { "robot-m1" = { "sleeve-replacement" = "declared" } }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "capability_below_verification", subject = "sleeve-replacement" }]
+
+[[case]]
+id = "S20"
+title = "The same skill at modeled level passes a modeled threshold"
+description = """
+Same patch idea as S19, but the robot claims sleeve-replacement at modeled level \
+and the query asks only for modeled. The verified process is now usable, and the \
+route's weakest verification is the capability level (modeled), not the process \
+level. Expected: candidate via replace-sleeve-p1."""
+goal = { service = "potable-water" }
+min_verification = "modeled"
+[case.patch]
+asset_capability_verification = { "robot-m1" = { "sleeve-replacement" = "modeled" } }
+[case.expect]
+verdict = "candidate"
+route_includes = ["replace-sleeve-p1"]

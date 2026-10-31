@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 
 use poie_ontology::graph::{self, BlockerKind, Source, Verdict};
-use poie_ontology::model::MassBalance;
+use poie_ontology::model::{MassBalance, Verification};
 use poie_ontology::scenario::{CaseRun, Scenario};
 
 fn scenario() -> Scenario {
@@ -168,4 +168,21 @@ fn yield_and_rework_are_accounted() {
         "{:?}",
         inspect.outputs
     );
+}
+
+#[test]
+fn capability_level_limits_the_route_verification() {
+    let s = scenario();
+    let r = run(&s, "S19");
+    assert_eq!(r.result.verdict, Verdict::Blocked);
+    assert!(
+        r.result
+            .root_causes()
+            .any(|b| b.kind == BlockerKind::CapabilityBelowVerification && b.subject == "sleeve-replacement"),
+        "{:?}",
+        r.result.root_causes().collect::<Vec<_>>()
+    );
+    let r = run(&s, "S20");
+    assert_eq!(r.result.verdict, Verdict::Candidate);
+    assert_eq!(r.result.route_verification(), Some(Verification::Modeled));
 }

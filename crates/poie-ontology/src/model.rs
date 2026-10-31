@@ -125,6 +125,10 @@ pub struct AssetDoc {
     pub requires_any: Vec<String>,
     #[serde(default)]
     pub provides: Vec<String>,
+    /// Verification level of each provided capability (§3.6, §6.3 rule 13).
+    /// A capability without an entry is treated as `declared`.
+    #[serde(default)]
+    pub capability_verification: BTreeMap<String, Verification>,
     /// Policy for occupying this asset while it is `degraded` (§3.1, §6.3 rule 11).
     #[serde(default)]
     pub degraded: Option<DegradedPolicy>,
@@ -252,7 +256,17 @@ pub struct Asset {
     pub requires: Vec<String>,
     pub requires_any: Vec<String>,
     pub provides: Vec<String>,
+    /// Declared verification level per capability; undeclared means `declared`.
+    pub capability_verification: BTreeMap<String, Verification>,
     pub degraded: Option<DegradedPolicy>,
+}
+
+impl Asset {
+    /// Effective verification level of this asset's provision of `capability`
+    /// (§3.6). A capability without a declared level is weakest (`declared`).
+    pub fn capability_verification(&self, capability: &str) -> Verification {
+        self.capability_verification.get(capability).copied().unwrap_or(Verification::Declared)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -408,6 +422,7 @@ impl Model {
                 requires: a.requires.clone(),
                 requires_any: a.requires_any.clone(),
                 provides: a.provides.clone(),
+                capability_verification: a.capability_verification.clone(),
                 degraded: a.degraded.clone(),
             };
             if assets.insert(a.id.clone(), asset).is_some() {
@@ -431,6 +446,14 @@ impl Model {
             }
             for c in &a.provides {
                 check_slug("capability", c)?;
+            }
+            for capability in a.capability_verification.keys() {
+                if !a.provides.contains(capability) {
+                    bail!(
+                        "asset {}: capability_verification names capability {capability:?} that the asset does not provide",
+                        a.id
+                    );
+                }
             }
         }
         check_requires_acyclic(&assets)?;
@@ -696,6 +719,12 @@ impl Model {
             };
             a.degraded = Some(policy.clone());
         }
+        for (id, levels) in &patch.asset_capability_verification {
+            let Some(a) = doc.assets.iter_mut().find(|a| &a.id == id) else {
+                bail!("patch: unknown asset {id:?}");
+            };
+            a.capability_verification = levels.clone();
+        }
         for (id, status) in &patch.asset_status {
             let Some(a) = doc.assets.iter_mut().find(|a| &a.id == id) else {
                 bail!("patch: unknown asset {id:?}");
@@ -748,6 +777,9 @@ pub struct Patch {
     /// Replace an asset's degraded-use policy.
     #[serde(default)]
     pub asset_degraded: BTreeMap<String, DegradedPolicy>,
+    /// Replace per-capability verification levels of an asset.
+    #[serde(default)]
+    pub asset_capability_verification: BTreeMap<String, BTreeMap<String, Verification>>,
     /// Add resources, lots and processes that exist only in this case.
     #[serde(default)]
     pub add_resource: Vec<ResourceDoc>,
@@ -1112,6 +1144,20 @@ verification = "declared"
         .unwrap();
         assert_eq!(ok.process("turn").unwrap().yield_fraction_for("part"), 0.5);
         assert_eq!(ok.process("turn").unwrap().yield_fraction_for("bar"), 1.0);
+    }
+
+    #[test]
+    fn capability_verification_must_match_provided_capabilities() {
+        let mut d = doc("");
+        d.assets[0].capability_verification.insert("unprovided".into(), Verification::Verified);
+        let err = Model::from_doc(d).unwrap_err();
+        assert!(err.0.contains("does not provide"), "{err}");
+    }
+
+    #[test]
+    fn undeclared_capability_verification_defaults_to_declared() {
+        let m = Model::from_doc(doc("")).unwrap();
+        assert_eq!(m.assets["lathe"].capability_verification("anything"), Verification::Declared);
     }
 
     #[test]
