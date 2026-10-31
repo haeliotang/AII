@@ -1,0 +1,9 @@
+[package]
+name = "poie-state"
+version = "0.1.0"
+description = "Reference implementation of the State & Action Protocol: records, envelope, action state machine."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
