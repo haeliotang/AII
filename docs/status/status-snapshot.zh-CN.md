@@ -1,6 +1,6 @@
 # 当前状态快照（2026-10-31 UTC）
 
-本页是给发起方/外部评审者的一页式状态，数字截至 `main` = `50b1e32`（UTC 2026-10-31）。逐项证据与索引见 [stage-gates](stage-gates.zh-CN.md)、[test-matrix](test-matrix.zh-CN.md) 与 [external-actions](external-actions.zh-CN.md)。
+本页是给发起方/外部评审者的一页式状态；测试计数随代码更新（由 `check-test-matrix.py` 校验），最近一次干净克隆验证提交见 §3。逐项证据与索引见 [stage-gates](stage-gates.zh-CN.md)、[test-matrix](test-matrix.zh-CN.md) 与 [external-actions](external-actions.zh-CN.md)。
 
 ## 1. 里程碑
 
@@ -18,7 +18,7 @@
 
 | 项 | 当前值 |
 | --- | --- |
-| Rust 列表测试 | **286**（库 crate 280 + 实验 runner 6） |
+| Rust 列表测试 | **288**（库 crate 282 + 实验 runner 6） |
 | Python 桥测试 | 9（CI 执行） |
 | 随机性质测试 | 图求解 120、记录 120、投影 120、调度 120、仿真 80、VEC 60 轨迹 + 报告 20×16 变异、规划器 80、重规划/基线 80+20+60、HLC 80、联邦分区 120、执行门 120、运行时 80、扩张 40+40、桥 40 trials |
 | 预登记场景用例 | Base-01 40、Base-02 8、时间版 20 |
