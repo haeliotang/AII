@@ -1,6 +1,6 @@
 # 阶段门槛证据包（2026-10-31）
 
-当前一页式状态见 [status-snapshot](status-snapshot.zh-CN.md)。本文件汇总各阶段门槛的**已达成证据、复现方式与当前阻塞项**。所有数字来自本仓库提交，CI 逐项执行；`scripts/verify-all.sh` 可在本地一次重跑全部验证；干净克隆复现见 `scripts/check-fresh-clone.sh` 与 [fresh-clone-repro](fresh-clone-repro.zh-CN.md)。逐 crate/实验的测试与 CI 对应关系见 [测试与证据矩阵](test-matrix.zh-CN.md)。
+当前一页式状态见 [status-snapshot](status-snapshot.zh-CN.md)；自主范围审计见 [autonomous-scope-audit](autonomous-scope-audit.zh-CN.md)。本文件汇总各阶段门槛的**已达成证据、复现方式与当前阻塞项**。所有数字来自本仓库提交，CI 逐项执行；`scripts/verify-all.sh` 可在本地一次重跑全部验证；干净克隆复现见 `scripts/check-fresh-clone.sh` 与 [fresh-clone-repro](fresh-clone-repro.zh-CN.md)。逐 crate/实验的测试与 CI 对应关系见 [测试与证据矩阵](test-matrix.zh-CN.md)。
 
 ## 0. 一键复现
 

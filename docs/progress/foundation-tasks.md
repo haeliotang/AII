@@ -159,6 +159,7 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：干净克隆复现记录刷新至 `8d6e8f5`（通过）；状态快照 §3 同步。
 - 2026-10-31：新增扩张提案解析健壮性测试（`crates/poie-expansion/tests/proposal_robustness.rs`，120 次随机变异）：proposal.toml 的行删除/复制/清空/字节破坏/截断/尾部残片变异后加载必须 Ok 或 Err 而非 panic；成功加载的提案 `expand` 也不得 panic；空/垃圾/缺失文件必须报错。
 - 2026-10-31：干净克隆复现记录刷新至 `aa62a83`（通过）；状态快照 §3 同步。
+- 2026-10-31：新增[自主范围完成审计](../status/autonomous-scope-audit.zh-CN.md)：逐里程碑核对不需要外部参与的项均已完成并有证据/重放/检查器覆盖；剩余 M1.8/M1.9/M1.10/M3.3/M9.0/M9.2/M9.6/M10 物理/M11.6/M12.6 全部需要外部参与，已列出交接材料。
 - 2026-10-31：状态快照与干净克隆记录刷新至 `f17bf9f`（Rust 列表测试 284 = 库 278 + runner 6）；干净克隆在该提交上通过。
 - 2026-10-31：状态快照与干净克隆记录刷新至 `e8f72aa`：Rust 列表测试更新为 282（库 276 + runner 6），干净克隆在该提交上通过。
 - 2026-10-31：手动 dispatch scheduled workflow（[run 41246880552](https://github.com/haeliotang/poieweave/actions/runs/41246880552)）五个 job 全部成功：verify-all、release-mode test suite、fresh-clone（runner 上干净克隆复现）、advisories、licenses/bans/sources。

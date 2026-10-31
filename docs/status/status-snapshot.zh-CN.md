@@ -43,6 +43,8 @@
 | 3 | **M1.10 正式商标检索** | [ADR-0002 §7](../adr/0002-rename-to-poieweave.zh-CN.md) |
 | 4 | M9.0 合规复核；M9.2 真实适配器；M9.6/M10 试验台与安全演练；M11.6 物理实施；M12.6 真实多节点 | 见 [external-actions](external-actions.zh-CN.md) 与 [邀约文本](outreach-templates.zh-CN.md) |
 
+完整审计见 [autonomous-scope-audit](autonomous-scope-audit.zh-CN.md)：所有不需要外部参与的里程碑工作已完成；剩余项全部需要外部参与。
+
 ## 5. 建议的下一步（按解锁价值）
 
 1. 指定 M1.8 评审者（2–3 位）并发起审读；同日请发起方确认 ADR-0001（M1.9）；
