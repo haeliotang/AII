@@ -9,6 +9,7 @@ members = [
     "crates/poie-viability",
     "experiments/h1-structural/baseline",
     "experiments/h1-temporal/runner",
+    "experiments/h2-joint-planning/runner",
     "experiments/vec-base01/runner",
 ]
 
