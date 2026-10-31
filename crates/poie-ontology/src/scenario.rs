@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use crate::graph::{self, BlockerKind, Goal, Query, QueryResult, Verdict, DEFAULT_MAX_DEPTH};
+use crate::graph::{self, BlockerKind, CandidateRoute, Goal, Query, QueryResult, Verdict, DEFAULT_MAX_DEPTH};
 use crate::model::{Model, ModelError, Patch, Verification};
 
 pub const CASES_SCHEMA: &str = "poie.scenario-cases/0.1";
@@ -47,6 +47,12 @@ pub struct Expectation {
     /// Each must appear among the result's root causes.
     #[serde(default)]
     pub root_causes: Vec<ExpectedBlocker>,
+    /// Minimum number of distinct structural candidate routes to enumerate.
+    #[serde(default)]
+    pub min_routes: Option<usize>,
+    /// Maximum number of distinct structural candidate routes to enumerate.
+    #[serde(default)]
+    pub max_routes: Option<usize>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -74,6 +80,8 @@ pub struct CaseRun<'a> {
     pub case: &'a Case,
     pub model: Model,
     pub result: QueryResult,
+    /// Enumerated candidate routes, when the case asserts route counts.
+    pub routes: Vec<CandidateRoute>,
     /// Empty when the result matches the expectation.
     pub mismatches: Vec<String>,
 }
@@ -98,6 +106,29 @@ impl Scenario {
     }
 
     pub fn run<'a>(&self, case: &'a Case) -> Result<CaseRun<'a>, ModelError> {
+        let (model, query) = self.prepare(case)?;
+        let result = graph::solve(&model, &query);
+        let limit = case.expect.min_routes.unwrap_or(0).max(case.expect.max_routes.unwrap_or(0)).max(8);
+        let routes = if case.expect.min_routes.is_some() || case.expect.max_routes.is_some() {
+            if result.verdict == Verdict::Candidate {
+                graph::enumerate(&model, &query, limit)
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+        let mismatches = check(&case.expect, &result, &routes);
+        Ok(CaseRun { case, model, result, routes, mismatches })
+    }
+
+    /// Enumerates up to `limit` candidate routes for a case (PO §8.8).
+    pub fn enumerate(&self, case: &Case, limit: usize) -> Result<Vec<CandidateRoute>, ModelError> {
+        let (model, query) = self.prepare(case)?;
+        Ok(graph::enumerate(&model, &query, limit))
+    }
+
+    fn prepare(&self, case: &Case) -> Result<(Model, Query), ModelError> {
         let ctx = |e: ModelError| ModelError(format!("case {}: {e}", case.id));
         let model = self.model.patched(&case.patch).map_err(ctx)?;
         let goal = resolve_goal(&model, &case.goal).map_err(ctx)?;
@@ -111,9 +142,7 @@ impl Scenario {
             min_verification: case.min_verification,
             max_depth: case.max_depth.unwrap_or(DEFAULT_MAX_DEPTH),
         };
-        let result = graph::solve(&model, &query);
-        let mismatches = check(&case.expect, &result);
-        Ok(CaseRun { case, model, result, mismatches })
+        Ok((model, query))
     }
 }
 
@@ -144,8 +173,18 @@ fn resolve_goal(model: &Model, goal: &GoalDoc) -> Result<Goal, ModelError> {
     })
 }
 
-fn check(expect: &Expectation, result: &QueryResult) -> Vec<String> {
+fn check(expect: &Expectation, result: &QueryResult, routes: &[CandidateRoute]) -> Vec<String> {
     let mut out = Vec::new();
+    if let Some(min) = expect.min_routes {
+        if routes.len() < min {
+            out.push(format!("expected at least {min} candidate routes, found {}", routes.len()));
+        }
+    }
+    if let Some(max) = expect.max_routes {
+        if routes.len() > max {
+            out.push(format!("expected at most {max} candidate routes, found {}", routes.len()));
+        }
+    }
     if expect.verdict != result.verdict {
         out.push(format!("verdict: expected {}, got {}", expect.verdict.as_str(), result.verdict.as_str()));
     }

@@ -1,6 +1,6 @@
 //! Runs the cases of a scenario and reports each capability-graph result.
 //!
-//! Usage: poie-graph <cases.toml> [CASE_ID ...]
+//! Usage: poie-graph <cases.toml> [--routes N] [CASE_ID ...]
 //! Exits with status 1 if any selected case does not match its expectation.
 
 use std::path::PathBuf;
@@ -13,10 +13,24 @@ use poie_ontology::scenario::Scenario;
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
     let Some(path) = args.next() else {
-        eprintln!("usage: poie-graph <cases.toml> [CASE_ID ...]");
+        eprintln!("usage: poie-graph <cases.toml> [--routes N] [CASE_ID ...]");
         return ExitCode::from(2);
     };
-    let selected: Vec<String> = args.collect();
+    let mut selected: Vec<String> = Vec::new();
+    let mut routes_limit: Option<usize> = None;
+    while let Some(arg) = args.next() {
+        if arg == "--routes" {
+            match args.next().and_then(|value| value.parse().ok()) {
+                Some(n) => routes_limit = Some(n),
+                None => {
+                    eprintln!("--routes needs a number");
+                    return ExitCode::from(2);
+                }
+            }
+        } else {
+            selected.push(arg);
+        }
+    }
     let scenario = match Scenario::load(&PathBuf::from(&path)) {
         Ok(s) => s,
         Err(e) => {
@@ -63,6 +77,20 @@ fn main() -> ExitCode {
         let status = if run.mismatches.is_empty() { "PASS" } else { "FAIL" };
         println!("[{status}] {} — {} (min_verification = {})", case.id, case.title, case.min_verification);
         print!("{}", graph::render(&run.model, &run.result));
+        if let Some(limit) = routes_limit {
+            if run.result.verdict == graph::Verdict::Candidate {
+                match scenario.enumerate(case, limit) {
+                    Ok(routes) => {
+                        println!("  enumerated routes ({}):", routes.len());
+                        print!("{}", graph::render_routes(&run.model, &routes));
+                    }
+                    Err(e) => {
+                        eprintln!("error: {e}");
+                        return ExitCode::from(2);
+                    }
+                }
+            }
+        }
         for msg in &run.mismatches {
             println!("  !! {msg}");
         }

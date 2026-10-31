@@ -229,11 +229,19 @@ impl Frame {
 
 type Outcome<T = ()> = Result<T, Vec<Blocker>>;
 
+/// Deterministic rotation of an alternative list (enumeration ordering).
+fn rotated<T>(items: &[T], shift: usize) -> impl Iterator<Item = &T> {
+    let offset = if items.is_empty() { 0 } else { shift % items.len() };
+    items.iter().skip(offset).chain(items.iter().take(offset))
+}
+
 struct Solver<'m> {
     model: &'m Model,
     min: Verification,
     max_depth: usize,
     path: Vec<Frame>,
+    /// Rotates the order in which OR alternatives are tried, for enumeration.
+    shift: usize,
 }
 
 impl<'m> Solver<'m> {
@@ -339,7 +347,7 @@ impl<'m> Solver<'m> {
         if errs.is_empty() && !asset.requires_any.is_empty() {
             let mut alt_errs = Vec::new();
             let mut supported = false;
-            for alt in &asset.requires_any {
+            for alt in rotated(&asset.requires_any, self.shift) {
                 let mut trial = ledger.clone();
                 match self.restore(alt, &mut trial) {
                     Ok(()) => {
@@ -376,7 +384,7 @@ impl<'m> Solver<'m> {
             } else {
                 let mut alt_errs = Vec::new();
                 let mut done = false;
-                for &pi in restorers {
+                for &pi in rotated(restorers, self.shift) {
                     let mut trial = ledger.clone();
                     match self.run_process(pi, 1, &mut trial) {
                         Ok(()) => {
@@ -456,7 +464,7 @@ impl<'m> Solver<'m> {
         }
 
         let mut alt_errs = Vec::new();
-        for &pi in producers {
+        for &pi in rotated(producers, self.shift) {
             let fraction = model.processes[pi].yield_fraction_for(resource);
             let per_run: f64 =
                 model.processes[pi].outputs.iter().filter(|f| f.resource == resource).map(|f| f.si * fraction).sum();
@@ -498,7 +506,7 @@ impl<'m> Solver<'m> {
         while progressed && !units::approx_le(amount, trial.available(resource)) && attempts < MAX_TOPPING_STEPS {
             progressed = false;
             attempts += 1;
-            for &pi in producers {
+            for &pi in rotated(producers, self.shift) {
                 let mut candidate = trial.clone();
                 if self.run_process(pi, 1, &mut candidate).is_err() {
                     continue;
@@ -590,7 +598,7 @@ impl<'m> Solver<'m> {
             } else {
                 let mut alt_errs = Vec::new();
                 let mut found = false;
-                for a in candidates {
+                for a in rotated(candidates, self.shift) {
                     let level = model.assets[a].capability_verification(cap);
                     if level < self.min {
                         alt_errs.push(self.blocker(
@@ -677,7 +685,11 @@ fn dedup(blockers: Vec<Blocker>) -> Vec<Blocker> {
 }
 
 pub fn solve(model: &Model, query: &Query) -> QueryResult {
-    let mut solver = Solver { model, min: query.min_verification, max_depth: query.max_depth, path: Vec::new() };
+    solve_attempt(model, query, 0)
+}
+
+fn solve_attempt(model: &Model, query: &Query, shift: usize) -> QueryResult {
+    let mut solver = Solver { model, min: query.min_verification, max_depth: query.max_depth, path: Vec::new(), shift };
     let mut ledger = Ledger::new(model);
     let outcome = match &query.goal {
         Goal::Service(s) => solver.service(s, &mut ledger),
@@ -709,6 +721,109 @@ impl Verdict {
             Verdict::SearchLimit => "search_limit",
         }
     }
+}
+
+/// One structural candidate route with the summary needed for later ranking
+/// (PO §8.8, §6.3 rule 14).
+#[derive(Clone, Debug)]
+pub struct CandidateRoute {
+    pub steps: Vec<Step>,
+    pub verification: Option<Verification>,
+    /// Total allocated quantity (SI) per resource on the route.
+    pub consumed: BTreeMap<String, f64>,
+    /// Consumed resources with no local producing process (§6.5).
+    pub external_dependencies: Vec<String>,
+}
+
+impl CandidateRoute {
+    /// Stable identity used to deduplicate enumerated routes.
+    pub fn signature(&self) -> String {
+        let mut out = String::new();
+        for step in &self.steps {
+            let providers: Vec<String> = step.providers.iter().map(|(cap, a, _)| format!("{cap}<{a}")).collect();
+            let sources: Vec<String> = step
+                .allocations
+                .iter()
+                .map(|a| match &a.source {
+                    Source::Lot(lot) => format!("{}:lot:{lot}", a.resource),
+                    Source::Step(index) => format!("{}:step{index}", a.resource),
+                })
+                .collect();
+            out.push_str(&format!("{}x{}|{}|{};", step.process, step.runs, providers.join(","), sources.join(",")));
+        }
+        out
+    }
+}
+
+fn summarize_route(model: &Model, result: &QueryResult) -> CandidateRoute {
+    let mut consumed: BTreeMap<String, f64> = BTreeMap::new();
+    for step in &result.steps {
+        for allocation in &step.allocations {
+            *consumed.entry(allocation.resource.clone()).or_insert(0.0) += allocation.si;
+        }
+    }
+    let external: BTreeSet<&str> = model.external_resources().into_iter().collect();
+    let external_dependencies =
+        consumed.keys().filter(|resource| external.contains(resource.as_str())).cloned().collect();
+    CandidateRoute {
+        steps: result.steps.clone(),
+        verification: result.route_verification(),
+        consumed,
+        external_dependencies,
+    }
+}
+
+/// Enumerates up to `limit` distinct structural candidate routes (§8.8).
+///
+/// The solver is deterministic, so enumeration rotates the order in which OR
+/// alternatives (producers, restorers, capability providers, alternative
+/// supports) are tried across attempts and deduplicates the resulting routes.
+/// The search is deliberately bounded (64 attempts): it returns the routes it
+/// found, possibly fewer than `limit`, and does not claim exhaustiveness.
+pub fn enumerate(model: &Model, query: &Query, limit: usize) -> Vec<CandidateRoute> {
+    const MAX_ATTEMPTS: usize = 64;
+    let mut routes: Vec<CandidateRoute> = Vec::new();
+    let mut seen: BTreeSet<String> = BTreeSet::new();
+    if limit == 0 {
+        return routes;
+    }
+    for shift in 0..MAX_ATTEMPTS {
+        let result = solve_attempt(model, query, shift);
+        if result.verdict != Verdict::Candidate {
+            continue;
+        }
+        let route = summarize_route(model, &result);
+        if seen.insert(route.signature()) {
+            routes.push(route);
+            if routes.len() >= limit {
+                break;
+            }
+        }
+    }
+    routes
+}
+
+/// Human-readable list of enumerated routes and their per-route summaries.
+pub fn render_routes(model: &Model, routes: &[CandidateRoute]) -> String {
+    let mut out = String::new();
+    for (i, route) in routes.iter().enumerate() {
+        let weakest = route.verification.map(|v| v.to_string()).unwrap_or_else(|| "-".into());
+        let _ = writeln!(out, "  route {} ({} step(s), weakest verification: {weakest}):", i + 1, route.steps.len());
+        for (j, step) in route.steps.iter().enumerate() {
+            let runs = if step.runs > 1 { format!(" x{}", step.runs) } else { String::new() };
+            let _ = writeln!(out, "    {}. {}{} [{}]", j + 1, step.process, runs, step.verification);
+        }
+        let consumed: Vec<String> =
+            route.consumed.iter().map(|(r, si)| format!("{} {r}", model.resources[r].fmt_amount(*si))).collect();
+        let _ =
+            writeln!(out, "    consumes: {}", if consumed.is_empty() { "nothing".into() } else { consumed.join(", ") });
+        let _ = writeln!(
+            out,
+            "    external dependencies: {}",
+            if route.external_dependencies.is_empty() { "none".into() } else { route.external_dependencies.join(", ") }
+        );
+    }
+    out
 }
 
 /// Human-readable report of a query result.
@@ -1198,6 +1313,43 @@ verification = "demonstrated"
             .providers
             .iter()
             .any(|(cap, worker, level)| { cap == "repair" && worker == "worker" && *level == Verification::Modeled }));
+    }
+
+    #[test]
+    fn enumeration_finds_distinct_routes_with_their_external_dependencies() {
+        let m = model_from_toml(TWO_PRODUCERS);
+        let routes = enumerate(&m, &obtain_query("r", "1 item"), 4);
+        assert_eq!(routes.len(), 2, "{routes:?}");
+        let deps: Vec<Vec<String>> = routes.iter().map(|r| r.external_dependencies.clone()).collect();
+        assert!(deps.contains(&vec!["a".to_string()]), "{deps:?}");
+        assert!(deps.contains(&vec!["b".to_string()]), "{deps:?}");
+        let mut signatures: Vec<String> = routes.iter().map(|r| r.signature()).collect();
+        signatures.sort();
+        signatures.dedup();
+        assert_eq!(signatures.len(), 2);
+    }
+
+    #[test]
+    fn enumeration_respects_the_limit_and_does_not_invent_routes() {
+        let m = model_from_toml(TWO_PRODUCERS);
+        let limited = enumerate(&m, &obtain_query("r", "1 item"), 1);
+        assert_eq!(limited.len(), 1);
+
+        // A model with a single producer has exactly one structural route.
+        let single = format!(
+            "{}\n{}",
+            YIELD_MAKE,
+            r#"
+[[lot]]
+id = "lot-raw"
+resource = "raw"
+quantity = "2 kg"
+quality = "accepted"
+"#
+        );
+        let m = model_from_toml(&single);
+        let routes = enumerate(&m, &obtain_query("good", "1 item"), 8);
+        assert_eq!(routes.len(), 1, "{routes:?}");
     }
 
     #[test]
