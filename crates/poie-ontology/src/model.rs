@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 use crate::units::{self, Dimension, Quantity, Unit};
 
-pub const MODEL_SCHEMA: &str = "poie.physical-ontology/0.1";
+pub const MODEL_SCHEMA: &str = "poie.physical-ontology/0.2";
 pub const DEFAULT_MASS_TOLERANCE: f64 = 0.01;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -864,7 +864,7 @@ mod tests {
     fn doc(extra: &str) -> ModelDoc {
         let text = format!(
             r#"
-schema = "poie.physical-ontology/0.1"
+schema = "poie.physical-ontology/0.2"
 name = "test"
 
 [[resource]]
@@ -1158,6 +1158,14 @@ verification = "declared"
     fn undeclared_capability_verification_defaults_to_declared() {
         let m = Model::from_doc(doc("")).unwrap();
         assert_eq!(m.assets["lathe"].capability_verification("anything"), Verification::Declared);
+    }
+
+    #[test]
+    fn unknown_schema_is_rejected() {
+        let mut d = doc("");
+        d.schema = "poie.physical-ontology/0.1".into();
+        let err = Model::from_doc(d).unwrap_err();
+        assert!(err.0.contains("unsupported schema"), "{err}");
     }
 
     #[test]

@@ -1004,7 +1004,7 @@ mod tests {
     fn model_with(assets: &str, lots: &str, processes: &str) -> Model {
         let text = format!(
             r#"
-schema = "poie.physical-ontology/0.1"
+schema = "poie.physical-ontology/0.2"
 name = "or-support-test"
 
 [[resource]]
@@ -1122,7 +1122,7 @@ status = "available"
     fn model_from_toml(body: &str) -> Model {
         let text = format!(
             r#"
-schema = "poie.physical-ontology/0.1"
+schema = "poie.physical-ontology/0.2"
 name = "test"
 {body}
 "#

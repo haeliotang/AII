@@ -1,13 +1,13 @@
 # 场景规范：Autonomous Base-01（结构层 v0.1）
 
-版本：0.1 / 2026-10-31
-依据：[Physical Ontology v0.1-draft](../../specifications/physical-ontology.zh-CN.md) §6 · [研究纲领](../../docs/research/FOUNDATIONS.zh-CN.md) §8
+版本：0.2 / 2026-10-31（M2 表达力用例 S11–S24）
+依据：[Physical Ontology v0.2-draft](../../specifications/physical-ontology.zh-CN.md) §6 · [研究纲领](../../docs/research/FOUNDATIONS.zh-CN.md) §8
 
 ## 1. 目的
 
 Base-01 是 Poieweave 的第一个研究环境。它用最少的实体，覆盖"能源—生产—损耗—维护—恢复"的完整闭环，用来检验能力图的语义是否站得住。
 
-v0.1 只做**结构层**：给定当前资产状态和库存，判断关键服务能否找到一条资源上不冲突的恢复路线；如果找不到，指出根因。时间、容量、并发和随机故障不在本版范围（见 §6）。
+本版只做**结构层**：给定当前资产状态和库存，判断关键服务能否找到一条资源上不冲突的恢复路线；如果找不到，指出根因。时间、容量、并发和随机故障不在本版范围（见 §6）。
 
 **所有数值都是合成假设**，用于检验语义，不代表任何真实设备。
 

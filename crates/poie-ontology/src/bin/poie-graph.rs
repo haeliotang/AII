@@ -1,6 +1,6 @@
 //! Runs the cases of a scenario and reports each capability-graph result.
 //!
-//! Usage: poie-graph <cases.toml> [--routes N] [--external-deps N] [CASE_ID ...]
+//! Usage: poie-graph <cases.toml> [--routes N] [--external-deps N] [--timings] [CASE_ID ...]
 //! Exits with status 1 if any selected case does not match its expectation.
 
 use std::path::PathBuf;
@@ -19,8 +19,11 @@ fn main() -> ExitCode {
     let mut selected: Vec<String> = Vec::new();
     let mut routes_limit: Option<usize> = None;
     let mut external_limit: Option<usize> = None;
+    let mut timings = false;
     while let Some(arg) = args.next() {
-        if arg == "--routes" || arg == "--external-deps" {
+        if arg == "--timings" {
+            timings = true;
+        } else if arg == "--routes" || arg == "--external-deps" {
             match args.next().and_then(|value| value.parse().ok()) {
                 Some(n) if arg == "--routes" => routes_limit = Some(n),
                 Some(n) => external_limit = Some(n),
@@ -69,6 +72,7 @@ fn main() -> ExitCode {
             continue;
         }
         ran += 1;
+        let started = std::time::Instant::now();
         let run = match scenario.run(case) {
             Ok(r) => r,
             Err(e) => {
@@ -78,6 +82,9 @@ fn main() -> ExitCode {
         };
         let status = if run.mismatches.is_empty() { "PASS" } else { "FAIL" };
         println!("[{status}] {} — {} (min_verification = {})", case.id, case.title, case.min_verification);
+        if timings {
+            println!("  solve time: {:.3} ms", started.elapsed().as_secs_f64() * 1_000.0);
+        }
         print!("{}", graph::render(&run.model, &run.result));
         if let Some(limit) = routes_limit {
             if run.result.verdict == graph::Verdict::Candidate {
