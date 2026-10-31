@@ -152,5 +152,6 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：本地运行 `cargo test --release --locked` 全量通过（52 个测试套件，约 66 秒）；将该检查加入 scheduled workflow 的 `release-tests` job（每周 + 手动），用于捕获 release 构建独有差异。
 - 2026-10-31：新增追加日志随机不变量测试（`crates/poie-state/tests/log_properties.rs`，3 个测试）：随机追加/重开保持顺序与各场址序号、乱序追加被拒绝且不落盘、崩溃尾部（无换行残片）重开时截断并可继续追加、中段损坏行报 `Corrupt` 而非静默丢弃。
 - 2026-10-31：新增模型/用例 TOML 解析健壮性测试（`crates/poie-ontology/tests/parser_robustness.rs`，各 120 次随机变异）：对 model.toml 与 cases.toml 做随机行删除/复制/清空/字节破坏/截断/尾部残片变异，解析必须返回 Ok 或 Err 而非 panic；空输入与纯垃圾必须报错；未变异原件仍可加载。
+- 2026-10-31：状态快照与干净克隆记录刷新至 `f17bf9f`（Rust 列表测试 284 = 库 278 + runner 6）；干净克隆在该提交上通过。
 - 2026-10-31：状态快照与干净克隆记录刷新至 `e8f72aa`：Rust 列表测试更新为 282（库 276 + runner 6），干净克隆在该提交上通过。
 - 2026-10-31：手动 dispatch scheduled workflow（[run 41246880552](https://github.com/haeliotang/poieweave/actions/runs/41246880552)）五个 job 全部成功：verify-all、release-mode test suite、fresh-clone（runner 上干净克隆复现）、advisories、licenses/bans/sources。
