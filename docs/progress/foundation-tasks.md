@@ -116,3 +116,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增阶段门槛证据包与外部行动清单（`docs/status/`）及外部用例模板；`scripts/verify-all.sh` 汇总复现全部已声明门槛（格式/clippy/测试/Base-01/Base-02/时间版重放/VEC/H3/H4/联邦分区/依赖策略），本地运行通过。
 - 2026-10-31：端到端管线演示完成：`experiments/e2e-pipeline` 串联只读适配器→投影/证据过期→联合规划→SAP 校验→执行门（接管 RecordedOnly、降级 Fallback）→模拟执行→独立验证→预测核对；9/9 断言通过，报告/轨迹提交并加入 CI 与 `verify-all.sh` 重放。
 - 2026-10-31：本机 TCP 双进程联邦演示：`experiments/federation-tcp` 由父进程分配两个回环端口并并发启动两个子进程，双方通过真实 TCP socket 交换记录/预留/租约并对账；两个站点均报告 `over_reservation`、`double_ownership`、`duplicate_idempotency_key` 三类冲突，报告/原始输出提交并加入 CI 与 `verify-all.sh` 重放。明确标注 localhost/two-process，非真实多站点。
+- 2026-10-31：新增联邦随机化分区性质测试（`crates/poie-federation/tests/federation_properties.rs`，固定种子 120 trials）：验证交换前不泄漏对端记录、重连后各站持有并集、合并无丢失/无重复且因果有序、对账确定且可独立复核、预留/租约不被丢弃、重复交换幂等。
