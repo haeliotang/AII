@@ -54,6 +54,7 @@ pub enum BlockerKind {
     BelowVerification,
     NoCapabilityProvider,
     NoAlternativeSupport,
+    DegradedRestriction,
     DepthExceeded,
 }
 
@@ -67,6 +68,7 @@ impl BlockerKind {
             BlockerKind::BelowVerification => "below_verification",
             BlockerKind::NoCapabilityProvider => "no_capability_provider",
             BlockerKind::NoAlternativeSupport => "no_alternative_support",
+            BlockerKind::DegradedRestriction => "degraded_restriction",
             BlockerKind::DepthExceeded => "depth_exceeded",
         }
     }
@@ -108,6 +110,8 @@ pub struct Step {
     pub providers: Vec<(String, String)>,
     pub outputs: Vec<(String, f64)>,
     pub restores: Vec<String>,
+    /// Assets occupied while degraded under a policy (§6.3 rule 11).
+    pub degraded: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -141,6 +145,10 @@ struct Ledger {
     steps: Vec<Step>,
     /// Total already allocated per resource on this route (for reporting).
     allocated: BTreeMap<String, f64>,
+    /// Degraded assets used under a policy on this route.
+    degraded_used: BTreeSet<String>,
+    /// Occupations of degraded assets on this route (for `max_occupations`).
+    degraded_occupations: BTreeMap<String, u32>,
 }
 
 impl Ledger {
@@ -263,13 +271,29 @@ impl<'m> Solver<'m> {
     /// Makes asset `id` usable: itself available (or restored) and every
     /// asset it `requires` usable.
     fn restore(&mut self, id: &str, ledger: &mut Ledger) -> Outcome {
+        self.restore_with(id, ledger, None)
+    }
+
+    /// `degraded_process` is `Some(process)` when the caller may occupy the asset
+    /// rather than restore it; the policy decides whether that is allowed
+    /// (§3.1, §6.3 rule 11). A degraded-use asset is never cached as usable, so
+    /// every occupation is re-checked and counted.
+    fn restore_with(&mut self, id: &str, ledger: &mut Ledger, degraded_process: Option<&str>) -> Outcome {
         if ledger.usable.contains(id) {
             return Ok(());
         }
         let model = self.model;
         let asset = &model.assets[id];
         let frame = Frame::Restore(id.to_string());
-        let needs_repair = matches!(asset.status, AssetStatus::Degraded | AssetStatus::Failed);
+        let degraded_use = asset.status == AssetStatus::Degraded
+            && degraded_process.is_some_and(|process| {
+                asset.degraded.as_ref().is_some_and(|policy| {
+                    policy.occupiable
+                        && (policy.allowed_processes.is_empty()
+                            || policy.allowed_processes.iter().any(|p| p == process))
+                })
+            });
+        let needs_repair = !degraded_use && matches!(asset.status, AssetStatus::Degraded | AssetStatus::Failed);
         if needs_repair && self.on_path(&frame) {
             let mut b = self.blocker(
                 BlockerKind::Cycle,
@@ -366,11 +390,20 @@ impl<'m> Solver<'m> {
         }
         self.leave();
         if errs.is_empty() {
-            ledger.usable.insert(id.to_string());
+            if degraded_use {
+                ledger.degraded_used.insert(id.to_string());
+            } else {
+                ledger.usable.insert(id.to_string());
+            }
             Ok(())
         } else {
             Err(errs)
         }
+    }
+
+    /// Makes `asset` usable for `process`, honouring a degraded-use policy.
+    fn occupy(&mut self, asset: &str, process: &str, ledger: &mut Ledger) -> Outcome {
+        self.restore_with(asset, ledger, Some(process))
     }
 
     /// Allocates `amount` (SI) of `resource`, producing any shortfall.
@@ -500,10 +533,32 @@ impl<'m> Solver<'m> {
         }
 
         let mut errs = Vec::new();
+        let mut degraded_occupations: Vec<(String, u32)> = Vec::new();
         for a in &p.occupies {
-            if let Err(e) = self.restore(a, ledger) {
+            if let Err(e) = self.occupy(a, &p.id, ledger) {
                 errs.extend(e);
+                continue;
             }
+            if !ledger.degraded_used.contains(a) {
+                continue;
+            }
+            let Some(policy) = &model.assets[a].degraded else { continue };
+            if let Some(max) = policy.max_occupations {
+                let used = ledger.degraded_occupations.get(a).copied().unwrap_or(0);
+                if used + runs > max {
+                    errs.push(self.blocker(
+                        BlockerKind::DegradedRestriction,
+                        a,
+                        format!(
+                            "{a} is degraded; its policy allows at most {max} occupation(s) per route, \
+                             this step needs {runs} more (already {used})"
+                        ),
+                        true,
+                    ));
+                    continue;
+                }
+            }
+            degraded_occupations.push((a.clone(), runs));
         }
 
         let mut chosen = Vec::new();
@@ -565,6 +620,10 @@ impl<'m> Solver<'m> {
         for (r, amount) in &outputs {
             ledger.add(r, Source::Step(index), *amount);
         }
+        for (a, count) in &degraded_occupations {
+            *ledger.degraded_occupations.entry(a.clone()).or_default() += count;
+        }
+        let degraded: Vec<String> = degraded_occupations.iter().map(|(a, _)| a.clone()).collect();
         ledger.usable.extend(p.restores.iter().cloned());
         ledger.steps.push(Step {
             process: p.id.clone(),
@@ -575,6 +634,7 @@ impl<'m> Solver<'m> {
             providers: chosen,
             outputs,
             restores: p.restores.clone(),
+            degraded,
         });
         Ok(())
     }
@@ -660,6 +720,9 @@ pub fn render(model: &Model, result: &QueryResult) -> String {
             }
             if !s.restores.is_empty() {
                 let _ = writeln!(out, "       restores: {}", s.restores.join(", "));
+            }
+            if !s.degraded.is_empty() {
+                let _ = writeln!(out, "       occupied while degraded (policy): {}", s.degraded.join(", "));
             }
         }
     } else {
@@ -861,6 +924,105 @@ inputs = [{ resource = "b", quantity = "1 kg" }]
 outputs = [{ resource = "r", quantity = "1 item" }]
 verification = "demonstrated"
 "#;
+
+    const DEGRADED_LATHE: &str = r#"
+[[resource]]
+id = "raw"
+unit = "kg"
+
+[[resource]]
+id = "out"
+unit = "item"
+mass_per_unit = "1 kg"
+
+[[lot]]
+id = "lot-raw"
+resource = "raw"
+quantity = "4 kg"
+quality = "accepted"
+
+[[asset]]
+id = "lathe"
+kind = "lathe"
+status = "degraded"
+POLICY_PLACEHOLDER
+
+[[process]]
+id = "turn"
+inputs = [{ resource = "raw", quantity = "1 kg" }]
+outputs = [{ resource = "out", quantity = "1 item" }]
+occupies = ["lathe"]
+verification = "declared"
+"#;
+
+    fn degraded_lathe_with(policy: &str) -> Model {
+        model_from_toml(&DEGRADED_LATHE.replace("POLICY_PLACEHOLDER", policy))
+    }
+
+    #[test]
+    fn degraded_asset_is_not_occupied_without_a_policy() {
+        let m = degraded_lathe_with("");
+        let r = solve(&m, &obtain_query("out", "1 item"));
+        assert_eq!(r.verdict, Verdict::Blocked, "{}", render(&m, &r));
+        assert!(r.root_causes().any(|b| b.kind == BlockerKind::AssetUnavailable && b.subject == "lathe"));
+    }
+
+    #[test]
+    fn policy_allows_degraded_occupation_and_marks_the_step() {
+        let m = degraded_lathe_with("degraded = { occupiable = true }");
+        let r = solve(&m, &obtain_query("out", "1 item"));
+        assert_eq!(r.verdict, Verdict::Candidate, "{}", render(&m, &r));
+        assert_eq!(r.steps[0].degraded, vec!["lathe".to_string()]);
+        assert!(render(&m, &r).contains("occupied while degraded (policy): lathe"));
+    }
+
+    #[test]
+    fn policy_restricted_to_other_processes_falls_back_to_repair() {
+        let body = format!(
+            "{}\n{}",
+            DEGRADED_LATHE
+                .replace("POLICY_PLACEHOLDER", "degraded = { occupiable = true, allowed_processes = [\"other\"] }"),
+            r#"
+[[resource]]
+id = "raw2"
+unit = "kg"
+
+[[resource]]
+id = "out2"
+unit = "item"
+mass_per_unit = "1 kg"
+
+[[process]]
+id = "other"
+inputs = [{ resource = "raw2", quantity = "1 kg" }]
+outputs = [{ resource = "out2", quantity = "1 item" }]
+verification = "declared"
+"#
+        );
+        let m = model_from_toml(&body);
+        let r = solve(&m, &obtain_query("out", "1 item"));
+        assert_eq!(r.verdict, Verdict::Blocked, "{}", render(&m, &r));
+        // Falls back to restoring the asset, which no process does.
+        assert!(r.root_causes().any(|b| b.kind == BlockerKind::AssetUnavailable && b.subject == "lathe"));
+        assert!(!r.blockers.iter().any(|b| b.kind == BlockerKind::DegradedRestriction));
+    }
+
+    #[test]
+    fn policy_occupation_limit_is_enforced_per_route() {
+        let m = degraded_lathe_with("degraded = { occupiable = true, max_occupations = 2 }");
+        let r = solve(&m, &obtain_query("out", "2 item"));
+        assert_eq!(r.verdict, Verdict::Candidate, "{}", render(&m, &r));
+        assert_eq!(r.steps[0].runs, 2);
+
+        let m = degraded_lathe_with("degraded = { occupiable = true, max_occupations = 1 }");
+        let r = solve(&m, &obtain_query("out", "2 item"));
+        assert_eq!(r.verdict, Verdict::Blocked, "{}", render(&m, &r));
+        assert!(
+            r.root_causes().any(|b| b.kind == BlockerKind::DegradedRestriction && b.subject == "lathe"),
+            "{:?}",
+            r.root_causes().collect::<Vec<_>>()
+        );
+    }
 
     #[test]
     fn a_shortfall_can_be_covered_by_two_processes() {

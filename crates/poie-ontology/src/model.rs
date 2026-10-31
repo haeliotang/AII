@@ -125,8 +125,26 @@ pub struct AssetDoc {
     pub requires_any: Vec<String>,
     #[serde(default)]
     pub provides: Vec<String>,
+    /// Policy for occupying this asset while it is `degraded` (§3.1, §6.3 rule 11).
+    #[serde(default)]
+    pub degraded: Option<DegradedPolicy>,
     #[serde(default)]
     pub description: String,
+}
+
+/// When a `degraded` asset may still be occupied (§3.1, §6.3 rule 11).
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DegradedPolicy {
+    /// Allow occupation while degraded. Default: no.
+    #[serde(default)]
+    pub occupiable: bool,
+    /// Restrict occupation to these processes; empty means any process.
+    #[serde(default)]
+    pub allowed_processes: Vec<String>,
+    /// Maximum occupations within one candidate route; `None` means no cap.
+    #[serde(default)]
+    pub max_occupations: Option<u32>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -220,6 +238,7 @@ pub struct Asset {
     pub requires: Vec<String>,
     pub requires_any: Vec<String>,
     pub provides: Vec<String>,
+    pub degraded: Option<DegradedPolicy>,
 }
 
 #[derive(Clone, Debug)]
@@ -363,6 +382,7 @@ impl Model {
                 requires: a.requires.clone(),
                 requires_any: a.requires_any.clone(),
                 provides: a.provides.clone(),
+                degraded: a.degraded.clone(),
             };
             if assets.insert(a.id.clone(), asset).is_some() {
                 bail!("duplicate asset id {:?}", a.id);
@@ -526,6 +546,28 @@ impl Model {
             mass_balance.insert(p.id.clone(), mb);
         }
 
+        // Degraded-use policies refer to processes, so they are checked after
+        // the process list is built (§3.1, §6.3 rule 11).
+        for asset in assets.values() {
+            let Some(policy) = &asset.degraded else { continue };
+            for process_id in &policy.allowed_processes {
+                if !process_ids.contains(process_id) {
+                    bail!("asset {}: degraded policy references unknown process {process_id:?}", asset.id);
+                }
+            }
+            if let Some(max) = policy.max_occupations {
+                if max == 0 {
+                    bail!("asset {}: degraded max_occupations must be at least 1", asset.id);
+                }
+            }
+            if !policy.occupiable && (!policy.allowed_processes.is_empty() || policy.max_occupations.is_some()) {
+                bail!(
+                    "asset {}: degraded policy restrictions require occupiable = true (or omit the policy)",
+                    asset.id
+                );
+            }
+        }
+
         Ok(Model {
             name: doc.name.clone(),
             doc,
@@ -589,6 +631,12 @@ impl Model {
             };
             a.requires_any = requires_any.clone();
         }
+        for (id, policy) in &patch.asset_degraded {
+            let Some(a) = doc.assets.iter_mut().find(|a| &a.id == id) else {
+                bail!("patch: unknown asset {id:?}");
+            };
+            a.degraded = Some(policy.clone());
+        }
         for (id, status) in &patch.asset_status {
             let Some(a) = doc.assets.iter_mut().find(|a| &a.id == id) else {
                 bail!("patch: unknown asset {id:?}");
@@ -638,6 +686,9 @@ pub struct Patch {
     /// Add assets that exist only in this case (e.g. a standby feed).
     #[serde(default)]
     pub add_asset: Vec<AssetDoc>,
+    /// Replace an asset's degraded-use policy.
+    #[serde(default)]
+    pub asset_degraded: BTreeMap<String, DegradedPolicy>,
     /// Add resources, lots and processes that exist only in this case.
     #[serde(default)]
     pub add_resource: Vec<ResourceDoc>,
@@ -912,6 +963,55 @@ add_asset = [{ id = "standby", kind = "power-bus", status = "available" }]
         let m = m.patched(&patch).unwrap();
         assert_eq!(m.assets["lathe"].requires_any, vec!["standby".to_string()]);
         assert_eq!(m.assets["standby"].kind, "power-bus");
+    }
+
+    #[test]
+    fn degraded_policy_is_validated() {
+        let err = Model::from_doc(doc(r#"
+[[asset]]
+id = "a"
+kind = "x"
+status = "degraded"
+degraded = { occupiable = true, allowed_processes = ["nope"] }
+"#))
+        .unwrap_err();
+        assert!(err.0.contains("unknown process"), "{err}");
+
+        let err = Model::from_doc(doc(r#"
+[[asset]]
+id = "a"
+kind = "x"
+status = "degraded"
+degraded = { occupiable = true, max_occupations = 0 }
+"#))
+        .unwrap_err();
+        assert!(err.0.contains("at least 1"), "{err}");
+
+        let err = Model::from_doc(doc(r#"
+[[asset]]
+id = "a"
+kind = "x"
+status = "degraded"
+degraded = { max_occupations = 2 }
+"#))
+        .unwrap_err();
+        assert!(err.0.contains("occupiable = true"), "{err}");
+    }
+
+    #[test]
+    fn patch_can_set_a_degraded_policy() {
+        let m = Model::from_doc(doc("")).unwrap();
+        let patch: Patch = toml::from_str(
+            r#"
+asset_status = { "lathe" = "degraded" }
+asset_degraded = { "lathe" = { occupiable = true, max_occupations = 2 } }
+"#,
+        )
+        .unwrap();
+        let m = m.patched(&patch).unwrap();
+        let policy = m.assets["lathe"].degraded.as_ref().expect("policy");
+        assert!(policy.occupiable);
+        assert_eq!(policy.max_occupations, Some(2));
     }
 
     #[test]
