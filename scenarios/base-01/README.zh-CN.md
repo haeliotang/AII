@@ -16,7 +16,7 @@ Base-01 是 Poieweave 的第一个研究环境。它用最少的实体，覆盖"
 | 文件 | 内容 |
 | --- | --- |
 | [`model.toml`](model.toml) | 基础模型：资源、资产、库存、工艺、服务 |
-| [`cases.toml`](cases.toml) | 25 个用例：对基础模型的补丁、查询目标、**运行前登记的**预期结论与根因。S0–S10 为基础模型用例；S11–S12 为 M2.1 的替代支撑（OR）用例；S13–S14 为 M2.2 的多来源补足用例；S15–S16 为 M2.3 的降级使用策略用例；S17–S18 为 M2.4 的保守合格率与返工用例；S19–S20 为 M2.5 的能力验证等级用例；S21–S22 为 M2.6 的多候选路线枚举用例；S23–S24 为 M2.7 的外部依赖上溯用例 |
+| [`cases.toml`](cases.toml) | 40 个用例：对基础模型的补丁、查询目标、**运行前登记的**预期结论与根因，以及用于 M3 分层的 `tags`。S0–S10 为基础模型用例；S11–S12 为 M2.1 的替代支撑（OR）用例；S13–S14 为 M2.2 的多来源补足用例；S15–S16 为 M2.3 的降级使用策略用例；S17–S18 为 M2.4 的保守合格率与返工用例；S19–S20 为 M2.5 的能力验证等级用例；S21–S22 为 M2.6 的多候选路线枚举用例；S23–S24 为 M2.7 的外部依赖上溯用例；S25–S39 为 M3.3 的分层扩充用例 |
 
 运行：
 
@@ -111,6 +111,21 @@ robot-m1 是唯一的维修机器人。这是有意的设计：Base-01 要暴露
 | S22 | 基础模型，备件更换 | 供水 | candidate（仅 1 条路线） | 只有一条结构路线，枚举不得虚构 |
 | S23 | 同 S21 的双来源，查询供水服务 | 供水 | candidate | 外部依赖取两条路线的并集：bronze-bar、cutting-insert、sleeve-blank、grease、electric-energy |
 | S24 | 无库存轴套、无刀片 | 供水 | blocked | 无候选路线时回退到阻断根因，仍报告 `cutting-insert` 为外部依赖 |
+| S25 | 库存 1 个轴套 + 青铜 1.2 kg | 获得 2 个轴套 | candidate | 库存 1 + 加工 1 |
+| S26 | 青铜仅 1.1 kg | 获得 2 个轴套 | blocked | `missing_resource` bronze-bar |
+| S27 | 唯一备件批次被隔离 | 供水 | candidate | 只能加工 + 检验 |
+| S28 | 备件报废且无刀片 | 供水 | blocked | `missing_resource` cutting-insert |
+| S29 | 车削仅 declared，门槛 verified | 供水 | blocked | `below_verification` turn-sleeve-p1 |
+| S30 | 车削 verified，机器人 machine-tending 仅 demonstrated | 供水 | blocked | `capability_below_verification` machine-tending |
+| S31 | 车床故障且无螺母 | 恢复车床 | blocked | `cycle` lathe-1 |
+| S32 | 母线故障且无断路器备件 | 供水 | blocked | `cycle` bus-1；`missing_resource` breaker-b1 |
+| S33 | 过滤单元状态未知 | 恢复过滤单元 | unknown | `unknown_state` filter-1 |
+| S34 | 母线状态未知 | 供水 | unknown | `unknown_state` bus-1 |
+| S35 | 车床健康 | 获得 1 个车床螺母 | candidate | `turn-lathe-nut` |
+| S36 | 车床降级，策略允许 2 次占用 | 获得 2 个车床螺母 | candidate | `turn-lathe-nut`（降级占用 2 次） |
+| S37 | 直接请求 5 kg 青铜（库存 3 kg） | 获得 5 kg 青铜 | blocked | `missing_resource` bronze-bar |
+| S38 | 库存 1 + 青铜 3 kg（可加工 2 个） | 获得 3 个轴套 | candidate | 库存 1 + 加工 2 |
+| S39 | 母线故障、充电桩有应急馈线、无断路器备件 | 供水 | blocked | `missing_resource` breaker-b1 |
 
 S11/S12 是 M2.1（替代支撑 `requires_any`）的用例：基础模型保持 v0.1 不变，应急馈线 `emergency-bus` 与充电桩的支撑关系只在该用例的补丁中出现。S11 是 S3 暴露的共因循环的改进版，S12 是同一改进的反例（两个替代都不可用）。
 
@@ -133,6 +148,22 @@ S19/S20 随 M2.5 加入：把 robot-m1 的 `sleeve-replacement` 能力等级分�
 S21/S22 随 M2.6 加入：S21 给 "获得 1 个轴套" 增加第二条来源（预成型毛坯），枚举得到两条不同路线，每条都带资源消耗、外部依赖与最低验证等级；S22 说明基础供水只有一条结构路线，枚举不会凭空造出更多。两者首次运行即与预期一致。运行时可加 `--routes N` 查看枚举结果。
 
 S23/S24 随 M2.7 加入：S23 把双来源场景用于供水服务，外部依赖报告对两条路线取并集（加工路线贡献 bronze-bar、cutting-insert，预成型路线贡献 sleeve-blank，两条都消耗 grease 与 electric-energy）；S24 在无候选路线时回退到阻断根因，仍报告缺失的外部刀片。两者首次运行即与预期一致。运行时可加 `--external-deps N` 查看上溯结果。
+
+S25–S39 随 M3.3 加入，用于 H1 实验的分层（`tags`）。首次运行发现并修正了 3 处**预期错误**（预期本身写错，不是模型错）：S31/S35 原用 `demonstrated` 门槛，但 `turn-lathe-nut` 的验证等级是 `modeled`，故门槛改为 `modeled`；S37 原请求 1 kg 青铜（库存 3 kg 已满足，应为 `candidate`），改为 5 kg 以暴露外部依赖。修正理由记录于此；留出集此时尚未选定，不涉及留出集。
+
+### 4.2 分层统计（M3.3）
+
+| tags | 用例数 |
+| --- | --- |
+| `stock-contention` | 14 |
+| `other` | 7 |
+| `common-cause` | 5 |
+| `verification` | 5 |
+| `quality-gate` | 4 |
+| `unknown` | 3 |
+| `cycle` | 2 |
+
+分层标签由场景加载器校验（未知标签或缺少标签会拒绝加载）。
 
 ## 5. 与研究假设 H1 的关系
 
