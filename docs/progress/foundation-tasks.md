@@ -141,3 +141,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增重规划与基线随机不变量测试（`crates/poie-plan/tests/replan_baseline_properties.rs`）：80 trials 验证 replan 的 kept/cancelled 划分、新计划不早于 now、added 口径与确定性；20 trials 验证起点重规划与初始计划一致、非法时域/早于起点被拒绝；60 trials 验证三种基线确定性、预算与顺序。
 - 2026-10-31：H1 时间版原始输出与 H2 开发集报告/原始输出纳入 CI 与 `verify-all.sh` 重放：`poie-h1-temporal` 输出与 `raw/dev-2026-11-01.txt` 逐字节一致；`poie-h2-joint-planning --dev --write` 的 `dev-report.md` 与 `raw/dev-raw.txt` 逐字节一致；留出集仍保持"首次运行记录"不重放。
 - 2026-10-31：H1 结构层全量/开发集/留出集原始输出纳入 CI 与 `verify-all.sh` 重放：`poie-h1-baseline` 的全量输出、按开发集 ID 重跑、按留出集 ID 重跑均与提交的原始文件逐字节一致。
+- 2026-10-31：H2 留出集报告/原始输出纳入 CI 与 `verify-all.sh` 重放（`--holdout --write` 逐字节一致）；明确该重放仅用于复现校验，不把留出集用于开发；至此所有已提交实验输出均有重放覆盖。
