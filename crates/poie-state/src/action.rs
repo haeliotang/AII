@@ -7,10 +7,12 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 use crate::record::Timestamp;
 
 /// Action lifecycle states (SAP §3.2).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ActionState {
     Proposed,
     Validated,
@@ -83,7 +85,7 @@ impl fmt::Display for ActionState {
 }
 
 /// Who triggers a lifecycle transition (SAP §3.3).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Trigger {
     Validator,
     Authorizer,
@@ -140,7 +142,7 @@ pub fn trigger_for(from: ActionState, to: ActionState) -> Option<Trigger> {
     TRANSITIONS.iter().find(|&&(f, t, _)| f == from && t == to).map(|&(_, _, trigger)| trigger)
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Reversibility {
     Idempotent,
     Reversible,
@@ -160,14 +162,14 @@ impl Reversibility {
 }
 
 /// One predicted resource consumption of an action (SAP §3.1, `budget`).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BudgetItem {
     pub resource: String,
     pub amount_si: f64,
 }
 
 /// What must hold on a referenced state version before dispatch (SAP §3.1).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Precondition {
     /// State version vector: per-site maximum sequence number.
     pub state_version: BTreeMap<String, u64>,
@@ -175,7 +177,7 @@ pub struct Precondition {
 }
 
 /// How the effect is confirmed (SAP §3.1, `verification_spec`).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VerificationSpec {
     pub observe: String,
     pub condition: String,
@@ -183,7 +185,7 @@ pub struct VerificationSpec {
 }
 
 /// Authorization record attached to an action after `validated -> authorized`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Authorization {
     pub by: String,
     pub basis: String,
@@ -192,7 +194,7 @@ pub struct Authorization {
 }
 
 /// An action as defined in SAP §3.1.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Action {
     pub action_id: String,
     pub idempotency_key: String,

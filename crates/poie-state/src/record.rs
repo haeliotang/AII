@@ -9,13 +9,15 @@
 use std::fmt;
 use std::str::FromStr;
 
+use serde::{Deserialize, Serialize};
+
 use crate::action::{Action, ActionState};
 
 /// Version string carried by every record envelope (SAP §2.1).
 pub const RECORD_SCHEMA_VERSION: &str = "poie.record/0.1";
 
 /// `<site>/<seq>` record identity (SAP §2.1).
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RecordId {
     pub site: String,
     pub seq: u64,
@@ -53,7 +55,7 @@ impl FromStr for RecordId {
 }
 
 /// Milliseconds since the Unix epoch, on the stated clock.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Timestamp(pub i64);
 
 impl Timestamp {
@@ -63,7 +65,7 @@ impl Timestamp {
 }
 
 /// Hybrid logical clock value (SAP §2.1, §6.1).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Hlc {
     pub physical_ms: i64,
     pub logical: u32,
@@ -77,7 +79,7 @@ impl Hlc {
 
 /// `live` or a simulation branch (SAP §7). Records from a simulation branch must
 /// never be projected into live state.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Namespace {
     Live,
     Simulation(String),
@@ -102,7 +104,7 @@ impl Namespace {
 }
 
 /// Where the content came from (SAP §2.1).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Source {
     Sensor(String),
     Adapter(String),
@@ -119,7 +121,7 @@ impl Source {
 }
 
 /// The nine record kinds required by SAP §2.2.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RecordKind {
     Observation,
     Estimate,
@@ -156,14 +158,14 @@ impl fmt::Display for RecordKind {
 
 /// A dimensioned value in SI coherent units, with the declared unit recorded for
 /// display (Physical Ontology §2).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Quantity {
     pub value_si: f64,
     pub unit: String,
 }
 
 /// Measurement uncertainty or a quality marker (SAP §2.2, observation).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Quality {
     pub uncertainty: Option<f64>,
     pub grade: Option<String>,
@@ -185,7 +187,7 @@ impl Quality {
 }
 
 /// What an observation reports: a measured quantity or a discrete status.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ObservationValue {
     Quantity(Quantity),
     Status(String),
@@ -193,7 +195,7 @@ pub enum ObservationValue {
 
 /// Kind-specific payload. `Record::new` checks that the payload matches the
 /// envelope's `kind`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Payload {
     Observation { value: ObservationValue, quality: Quality },
     Estimate { value: Quantity, uncertainty: f64, model_version: String, inputs: Vec<RecordId> },
@@ -207,7 +209,7 @@ pub enum Payload {
 }
 
 /// Whether verification confirmed the intended effect (SAP §2.2, §3.3).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VerificationOutcome {
     Verified,
     Contradicted,
@@ -230,7 +232,7 @@ impl Payload {
 }
 
 /// The common envelope every record must carry (SAP §2.1).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Envelope {
     pub record_id: RecordId,
     pub kind: RecordKind,
@@ -280,7 +282,7 @@ impl Envelope {
 }
 
 /// A payload attached to its envelope; construction validates the pairing.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Record {
     pub envelope: Envelope,
     pub payload: Payload,
