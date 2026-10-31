@@ -1,0 +1,19 @@
+case	truth	poieweave	baseline	class	tags	expected_roots	baseline_roots	poie_roots	baseline_root_match	poie_root_match
+S0	candidate	candidate	candidate	agree	other				0/0	0/0
+S2	blocked	blocked	blocked	agree	cycle	lathe-1	sleeve-p1	lathe-1	0/1	1/1
+S3	blocked	blocked	candidate	missed_blocking	common-cause	bus-1		bus-1	0/1	1/1
+S4	unknown	unknown	unknown	agree	unknown	pump-p1	pump-p1	pump-p1	1/1	1/1
+S10	blocked	blocked	blocked	agree	stock-contention	electric-energy	sleeve-p1	electric-energy	0/1	1/1
+S20	candidate	candidate	candidate	agree	verification				0/0	0/0
+S23	candidate	candidate	blocked	false_block	stock-contention		sleeve-p1		0/0	0/0
+S24	blocked	blocked	blocked	agree	stock-contention	cutting-insert	sleeve-p1	cutting-insert	0/1	1/1
+S32	blocked	blocked	candidate	missed_blocking	common-cause	bus-1,breaker-b1		breaker-b1,bus-1	0/2	2/2
+S33	unknown	unknown	unknown	agree	unknown	filter-1	filter-1	filter-1	1/1	1/1
+
+overall                n=10  agree=7   missed=2  /7   (0.286) false=1  /3   (0.333) roots base=2/8 poie=8/8
+common-cause           n=2   agree=0   missed=2  /2   (1.000) false=0  /0   (0.000) roots base=0/3 poie=3/3
+cycle                  n=1   agree=1   missed=0  /1   (0.000) false=0  /0   (0.000) roots base=0/1 poie=1/1
+other                  n=1   agree=1   missed=0  /0   (0.000) false=0  /1   (0.000) roots base=- poie=-
+stock-contention       n=3   agree=2   missed=0  /2   (0.000) false=1  /1   (1.000) roots base=0/2 poie=2/2
+unknown                n=2   agree=2   missed=0  /2   (0.000) false=0  /0   (0.000) roots base=2/2 poie=2/2
+verification           n=1   agree=1   missed=0  /0   (0.000) false=0  /1   (0.000) roots base=- poie=-
