@@ -502,3 +502,65 @@ min_verification = "demonstrated"
 verdict = "candidate"
 route_includes = ["replace-sleeve-p1"]
 max_routes = 1
+
+# --- M2.7 external-dependency trace (added 2026-10-31; expectations written before the first run) ---
+
+[[case]]
+id = "S23"
+title = "External dependencies are unioned over all candidate routes"
+description = """
+Two candidate routes reach the water service: the machining route (needs bronze \
+bar and cutting inserts) and the pre-formed blank route (needs sleeve blanks). \
+Neither route alone exposes the other's dependency; the report must union them, \
+including indirect consumables such as cutting inserts and grease. Expected: \
+candidate with external dependencies from both routes."""
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item" }
+
+[[case.patch.add_resource]]
+id = "sleeve-blank"
+unit = "item"
+mass_per_unit = "0.8 kg"
+
+[[case.patch.add_lot]]
+id = "lot-blank"
+resource = "sleeve-blank"
+quantity = "1 item"
+quality = "accepted"
+
+[[case.patch.add_process]]
+id = "inspect-blank"
+description = "Case-only second source: accept a pre-formed blank. Not part of the v0.1 base model."
+inputs = [
+  { resource = "sleeve-blank", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "0.1 kWh" },
+]
+outputs = [{ resource = "sleeve-p1", quantity = "1 item" }]
+occupies = ["gauge-1"]
+requires_capabilities = ["material-handling"]
+verification = "demonstrated"
+
+[case.expect]
+verdict = "candidate"
+min_routes = 2
+external_dependencies = ["bronze-bar", "cutting-insert", "sleeve-blank", "grease", "electric-energy"]
+
+[[case]]
+id = "S24"
+title = "A blocked service still reports the external input it is missing"
+description = """
+No sleeve in stock and no cutting inserts: the only route to a sleeve needs \
+inserts, and inserts are external (no local production). There is no candidate \
+route, so the trace must fall back to the blocked root causes and report the \
+external cutting-insert dependency, not stay silent. Expected: blocked with \
+external_dependencies = [cutting-insert]."""
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-sleeve-01" = "0 item", "lot-insert" = "0 item" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "cutting-insert" }]
+external_dependencies = ["cutting-insert"]

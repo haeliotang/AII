@@ -1,6 +1,6 @@
 //! Runs the cases of a scenario and reports each capability-graph result.
 //!
-//! Usage: poie-graph <cases.toml> [--routes N] [CASE_ID ...]
+//! Usage: poie-graph <cases.toml> [--routes N] [--external-deps N] [CASE_ID ...]
 //! Exits with status 1 if any selected case does not match its expectation.
 
 use std::path::PathBuf;
@@ -18,12 +18,14 @@ fn main() -> ExitCode {
     };
     let mut selected: Vec<String> = Vec::new();
     let mut routes_limit: Option<usize> = None;
+    let mut external_limit: Option<usize> = None;
     while let Some(arg) = args.next() {
-        if arg == "--routes" {
+        if arg == "--routes" || arg == "--external-deps" {
             match args.next().and_then(|value| value.parse().ok()) {
-                Some(n) => routes_limit = Some(n),
+                Some(n) if arg == "--routes" => routes_limit = Some(n),
+                Some(n) => external_limit = Some(n),
                 None => {
-                    eprintln!("--routes needs a number");
+                    eprintln!("{arg} needs a number");
                     return ExitCode::from(2);
                 }
             }
@@ -88,6 +90,15 @@ fn main() -> ExitCode {
                         eprintln!("error: {e}");
                         return ExitCode::from(2);
                     }
+                }
+            }
+        }
+        if let Some(limit) = external_limit {
+            match scenario.external_dependency_report(case, limit) {
+                Ok(report) => print!("{}", graph::render_external_dependencies(&run.model, &report)),
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    return ExitCode::from(2);
                 }
             }
         }

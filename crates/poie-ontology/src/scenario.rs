@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use crate::graph::{self, BlockerKind, CandidateRoute, Goal, Query, QueryResult, Verdict, DEFAULT_MAX_DEPTH};
+use crate::graph::{
+    self, BlockerKind, CandidateRoute, ExternalDependencyReport, Goal, Query, QueryResult, Verdict, DEFAULT_MAX_DEPTH,
+};
 use crate::model::{Model, ModelError, Patch, Verification};
 
 pub const CASES_SCHEMA: &str = "poie.scenario-cases/0.1";
@@ -53,6 +55,9 @@ pub struct Expectation {
     /// Maximum number of distinct structural candidate routes to enumerate.
     #[serde(default)]
     pub max_routes: Option<usize>,
+    /// Each must appear in the query's external-dependency trace (PO §6.5).
+    #[serde(default)]
+    pub external_dependencies: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -82,6 +87,8 @@ pub struct CaseRun<'a> {
     pub result: QueryResult,
     /// Enumerated candidate routes, when the case asserts route counts.
     pub routes: Vec<CandidateRoute>,
+    /// External-dependency trace, when the case asserts dependencies.
+    pub external: Option<ExternalDependencyReport>,
     /// Empty when the result matches the expectation.
     pub mismatches: Vec<String>,
 }
@@ -118,14 +125,29 @@ impl Scenario {
         } else {
             Vec::new()
         };
-        let mismatches = check(&case.expect, &result, &routes);
-        Ok(CaseRun { case, model, result, routes, mismatches })
+        let external = if case.expect.external_dependencies.is_empty() {
+            None
+        } else {
+            Some(graph::external_dependency_report(&model, &query, 8))
+        };
+        let mismatches = check(&case.expect, &result, &routes, external.as_ref());
+        Ok(CaseRun { case, model, result, routes, external, mismatches })
     }
 
     /// Enumerates up to `limit` candidate routes for a case (PO §8.8).
     pub fn enumerate(&self, case: &Case, limit: usize) -> Result<Vec<CandidateRoute>, ModelError> {
         let (model, query) = self.prepare(case)?;
         Ok(graph::enumerate(&model, &query, limit))
+    }
+
+    /// Traces the external dependencies of a case (PO §6.5, VEC §4.2).
+    pub fn external_dependency_report(
+        &self,
+        case: &Case,
+        limit: usize,
+    ) -> Result<ExternalDependencyReport, ModelError> {
+        let (model, query) = self.prepare(case)?;
+        Ok(graph::external_dependency_report(&model, &query, limit))
     }
 
     fn prepare(&self, case: &Case) -> Result<(Model, Query), ModelError> {
@@ -173,8 +195,22 @@ fn resolve_goal(model: &Model, goal: &GoalDoc) -> Result<Goal, ModelError> {
     })
 }
 
-fn check(expect: &Expectation, result: &QueryResult, routes: &[CandidateRoute]) -> Vec<String> {
+fn check(
+    expect: &Expectation,
+    result: &QueryResult,
+    routes: &[CandidateRoute],
+    external: Option<&ExternalDependencyReport>,
+) -> Vec<String> {
     let mut out = Vec::new();
+    if !expect.external_dependencies.is_empty() {
+        let found: Vec<String> =
+            external.map(|report| report.resources().iter().map(|s| s.to_string()).collect()).unwrap_or_default();
+        for dependency in &expect.external_dependencies {
+            if !found.contains(dependency) {
+                out.push(format!("missing external dependency {dependency}; found {found:?}"));
+            }
+        }
+    }
     if let Some(min) = expect.min_routes {
         if routes.len() < min {
             out.push(format!("expected at least {min} candidate routes, found {}", routes.len()));

@@ -28,8 +28,8 @@ Our central question is simple:
 | [Physical Ontology](specifications/physical-ontology.zh-CN.md) | v0.1-draft. Units, entities, verification levels, capability-graph semantics, mass conservation. |
 | [State & Action Protocol](specifications/state-action-protocol.zh-CN.md) | v0.1-draft. Record types, action lifecycle, partition rules, 11 failure-injection cases. No implementation yet. |
 | [Viability & Expansion Contract](specifications/viability-expansion.zh-CN.md) | v0.1-draft. Query fields, verdict classes, four metric groups, expansion accounting. No implementation yet. |
-| [`crates/poie-ontology`](crates/poie-ontology) | Structural prototype: dimensioned quantities, model validation, mass balance, single-ledger capability-graph solver with root-cause reporting, alternative (`requires_any`) supports, multi-source top-ups, a degraded-use occupation policy, conservative yield with explicit reject/rework flows, capability-level verification on top of process-level verification, and bounded enumeration of distinct candidate routes. |
-| [Base-01 scenario](scenarios/base-01/README.zh-CN.md) | Structural v0.1 with synthetic data and 23 cases whose expectations were written before the first run. All 23 match. This does not test hypothesis H1 yet; there is no baseline. |
+| [`crates/poie-ontology`](crates/poie-ontology) | Structural prototype: dimensioned quantities, model validation, mass balance, single-ledger capability-graph solver with root-cause reporting, alternative (`requires_any`) supports, multi-source top-ups, a degraded-use occupation policy, conservative yield with explicit reject/rework flows, capability-level verification on top of process-level verification, bounded enumeration of distinct candidate routes, and external-dependency tracing across all candidate routes. |
+| [Base-01 scenario](scenarios/base-01/README.zh-CN.md) | Structural v0.1 with synthetic data and 25 cases whose expectations were written before the first run. All 25 match. This does not test hypothesis H1 yet; there is no baseline. |
 
 A `candidate` route from the prototype is structural only: it does not check time, capacity, concurrency, or physical execution.
 
@@ -37,6 +37,7 @@ A `candidate` route from the prototype is structural only: it does not check tim
 cargo test
 cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml
 cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml --routes 3
+cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml --external-deps 3
 ```
 
 ## The ambition
