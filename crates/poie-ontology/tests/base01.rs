@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use poie_ontology::graph::{self, Source, Verdict};
+use poie_ontology::graph::{self, BlockerKind, Source, Verdict};
 use poie_ontology::model::MassBalance;
 use poie_ontology::scenario::{CaseRun, Scenario};
 
@@ -95,4 +95,26 @@ fn depth_limit_is_search_limit_not_infeasible() {
     case.max_depth = Some(3);
     let r = s.run(&case).unwrap();
     assert_eq!(r.result.verdict, Verdict::SearchLimit);
+}
+
+#[test]
+fn or_support_breaks_the_common_cause_cycle() {
+    let s = scenario();
+    let r = run(&s, "S11");
+    assert_eq!(r.result.verdict, Verdict::Candidate);
+    let route: Vec<&str> = r.result.steps.iter().map(|s| s.process.as_str()).collect();
+    assert!(route.contains(&"replace-bus-breaker"), "{route:?}");
+    assert!(route.contains(&"replace-sleeve-p1"), "{route:?}");
+}
+
+#[test]
+fn unusable_alternatives_are_not_treated_as_support() {
+    let s = scenario();
+    let r = run(&s, "S12");
+    assert_eq!(r.result.verdict, Verdict::Blocked);
+    assert!(
+        r.result.root_causes().any(|b| b.kind == BlockerKind::AssetUnavailable && b.subject == "emergency-bus"),
+        "{:?}",
+        r.result.root_causes().collect::<Vec<_>>()
+    );
 }

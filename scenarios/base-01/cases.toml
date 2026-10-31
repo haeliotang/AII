@@ -134,3 +134,60 @@ lot_quantity = { "lot-sleeve-01" = "0 item", "lot-energy" = "2 kWh" }
 [case.expect]
 verdict = "blocked"
 root_causes = [{ kind = "missing_resource", subject = "electric-energy" }]
+
+# --- M2.1 OR support (added 2026-10-31; expectations written before the first run) ---
+
+[[case]]
+id = "S11"
+title = "S3 with an emergency feed: OR support breaks the common-cause cycle"
+description = """
+The improvement direction recorded in v0.1 §6: charger-1 accepts either the \
+main bus or a standby feed. With bus-1 failed but the standby feed available, \
+the robot can still replace the bus breaker, after which the pump can be \
+repaired. Expected: candidate via replace-bus-breaker, then replace-sleeve-p1. \
+Base-01 v0.1 model is unchanged; the standby feed exists only in this case."""
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+asset_status = { "bus-1" = "failed" }
+asset_requires = { "charger-1" = [] }
+asset_requires_any = { "charger-1" = ["bus-1", "emergency-bus"] }
+
+[[case.patch.add_asset]]
+id = "emergency-bus"
+kind = "power-bus"
+status = "available"
+description = "Standby feed for charger-1, case-only. Not part of the v0.1 base model."
+
+[case.expect]
+verdict = "candidate"
+route_includes = ["replace-bus-breaker", "replace-sleeve-p1"]
+
+[[case]]
+id = "S12"
+title = "Same OR support, but both alternatives are unusable"
+description = """
+Negative control for S11: bus-1 is failed and the standby feed is failed too. \
+The alternative list must be reported as unusable rather than silently \
+succeeding; the root causes are the cycle on bus-1 (the first alternative) and \
+the unavailable standby feed. The charger cannot be made usable, so the bus \
+breaker cannot be replaced and the pump cannot be restored."""
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+[case.patch]
+asset_status = { "bus-1" = "failed", "emergency-bus" = "failed" }
+asset_requires = { "charger-1" = [] }
+asset_requires_any = { "charger-1" = ["bus-1", "emergency-bus"] }
+
+[[case.patch.add_asset]]
+id = "emergency-bus"
+kind = "power-bus"
+status = "available"
+description = "Standby feed for charger-1, case-only; patched to failed."
+
+[case.expect]
+verdict = "blocked"
+root_causes = [
+  { kind = "cycle", subject = "bus-1" },
+  { kind = "asset_unavailable", subject = "emergency-bus" },
+]
