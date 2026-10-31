@@ -99,6 +99,17 @@ jobs:
           diff /tmp/h4/REPORT.md experiments/h4-expansion/REPORT.md
           diff /tmp/h4/raw/h4.txt experiments/h4-expansion/raw/h4.txt
 
+      - name: H1 structural replay
+        run: |
+          cargo run --locked -q -p poie-h1-baseline -- scenarios/base-01/cases.toml > /tmp/h1-all.txt
+          diff /tmp/h1-all.txt experiments/h1-structural/raw/final-all-2026-10-31.txt
+          dev=$(awk -F'\t' 'NR>1 && $1 ~ /^S[0-9]+$/ {print $1}' experiments/h1-structural/raw/dev-2026-10-31.txt | tr '\n' ' ')
+          cargo run --locked -q -p poie-h1-baseline -- scenarios/base-01/cases.toml $dev > /tmp/h1-dev.txt
+          diff /tmp/h1-dev.txt experiments/h1-structural/raw/dev-2026-10-31.txt
+          holdout=$(awk -F'\t' 'NR>1 && $1 ~ /^S[0-9]+$/ {print $1}' experiments/h1-structural/raw/final-holdout-2026-10-31.txt | tr '\n' ' ')
+          cargo run --locked -q -p poie-h1-baseline -- scenarios/base-01/cases.toml $holdout > /tmp/h1-holdout.txt
+          diff /tmp/h1-holdout.txt experiments/h1-structural/raw/final-holdout-2026-10-31.txt
+
       - name: H1 temporal replay
         run: |
           cargo run --locked -q -p poie-h1-temporal -- scenarios/base-01-timed/cases.toml > /tmp/h1-temporal.txt
