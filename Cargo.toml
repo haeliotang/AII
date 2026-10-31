@@ -7,6 +7,7 @@ members = [
     "crates/poie-viability",
     "experiments/h1-structural/baseline",
     "experiments/h1-temporal/runner",
+    "experiments/vec-base01/runner",
 ]
 
 [workspace.package]

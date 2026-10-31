@@ -26,7 +26,7 @@ M4 状态与事件内核：**已完成**（M4.1–M4.9）。SAP 升为 **v0.2-dr
 
 M5 时间维度与 Base-01 v0.2：**已完成**（M5.1–M5.7）。PO 升为 **v0.3-draft**（schema `poie.physical-ontology/0.3`、`poie.scenario-cases/0.3`），§8 只保留未解决项；时间版 Base-01（20 例）与摘要逐位校验、离散事件仿真（守恒/扰动/电池）、调度与时间线均完成；M5.7 时间版 H1 复测以弱形式支持 H1（时间盲基线漏判 3/7、联合依赖漏判 2/5，时间版自身错误 0/20，内部证据）。阶段门槛仍受 M1.8/M1.9/M1.10 与 M3.3 外部事项阻塞。
 
-M6 可行性评估 v1：**进行中（M6.1–M6.6 完成，退出复核待做）**——查询/六类结论/表述约束、抽样/枚举与种子、四组指标（截尾/防作弊）、机读/人读报告、恢复路径桥接均已完成（`crates/poie-viability` 31 个单元测试）；M6.6 评估结论见 [ADR-0004](../adr/0004-set-based-viability-scope.zh-CN.md)（M6 不实现集合/证书方法）。剩余：Base-01 v0.2 报告实跑、VEC 升 v0.2-draft 与退出复核。
+M6 可行性评估 v1：**已完成**（VEC 升为 v0.2-draft）——查询/六类结论/表述约束、抽样/枚举与种子、四组指标（截尾/防作弊）、机读/人读报告、恢复路径桥接均已完成（`crates/poie-viability` 32 个单元测试）；Base-01 v0.2 的 20 个时间版场景已生成符合 VEC §7 的报告（[report.toml](../experiments/vec-base01/report.toml) / [report.md](../experiments/vec-base01/report.md)，74 条指标，CI 校验可重放）；集合/证书方法经评估不实现（[ADR-0004](../adr/0004-set-based-viability-scope.zh-CN.md)）。
 
 ## 初期工作清单（2026-10-31 完成）
 
@@ -85,3 +85,4 @@ M6 可行性评估 v1：**进行中（M6.1–M6.6 完成，退出复核待做）
 - 2026-10-31：M6.1/M6.2 完成：新增 `crates/poie-viability`——VEC §2.2 查询字段校验（必填项、时限、服务最低水平、扰动定义、策略类、模型、预算、抽样种子交叉校验），六类结论与必需附件，表述守卫（`held_on_tested` 不得渲染为安全/鲁棒/可生存；未覆盖全部扰动时不得声称覆盖；`timeout`/`numerical_failure` 不得渲染为不可行，且守卫识别否定语境以放行规范表述）；`sampled`（SplitMix64 确定性、种子重复/超预算拒绝、场景 digest）与 `enumerated`（baseline/单事件/全事件）方法计划。工作区新增 14 个测试。
 - 2026-10-31：M6.3/M6.4 完成：`poie-viability::metrics` 实现四组指标——生存时长与截尾（截尾时不报均值）、外部输入/关键依赖/本地替代覆盖、服务损失积分/恢复时间/传播范围、净消耗/回收损失/健康变化/产出，`SustainabilityClaim` 强制与产出和服务指标同时报告；`::report` 实现 VEC §7 机读清单（输入哈希、开发/留出划分、全部运行、种子/求解器/预算、指标版本、置信区间）与人读摘要（复用表述守卫、显式标注截尾与"有限样本不是鲁棒保证"），TOML 往返与防作弊校验。新增 14 个测试（viability 14→28）。
 - 2026-10-31：M6.5/M6.6 完成：`poie-viability::bridge` 在轨迹出现服务违反时自动调用能力图恢复查询（候选步骤/路线验证等级或阻断根因写入轨迹），3 个测试；M6.6 评估写入 [ADR-0004](../adr/0004-set-based-viability-scope.zh-CN.md)：区间界对单调资源可行，但服务可用性非单调、恢复动作使不动点复杂、时域不可行缺少可检查证书，故 M6 不实现 set_based/certificate，保留 sampled/enumerated 表述，并固定最小原型触发条件与验收要求。viability 测试 28→31。
+- 2026-10-31：M6 完成：新增 `experiments/vec-base01` 报告运行器，对 20 个时间版场景生成 VEC §7 机读/人读报告（8 held_on_tested、7 counterexample、4 infeasible_in_model、1 unknown_input；74 条指标：生存/韧性/独立性），报告通过校验并在 CI 中 `--check` 重放；`poie-sim::timed` 暴露结构化违反信息（时刻/约束/详情）供报告映射；VEC 升为 v0.2-draft（§7 报告清单与表述守卫测试满足退出条件），M6 退出复核通过。

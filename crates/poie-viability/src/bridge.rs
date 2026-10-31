@@ -14,7 +14,23 @@ use crate::metrics::{viability, RecoveryPath, RunTrace};
 
 /// Runs the capability-graph recovery query for one service at a violation state.
 pub fn recovery_path(model: &Model, service: &str, min_verification: Verification) -> RecoveryPath {
-    let query = Query { goal: Goal::Service(service.to_string()), min_verification, max_depth: DEFAULT_MAX_DEPTH };
+    recovery_path_for_goal(model, &Goal::Service(service.to_string()), min_verification)
+}
+
+/// A stable label for a goal, used as the metric/trace service key.
+pub fn goal_label(goal: &Goal) -> String {
+    match goal {
+        Goal::Service(service) => service.clone(),
+        Goal::Restore(asset) => format!("restore:{asset}"),
+        Goal::Obtain { resource, .. } => format!("obtain:{resource}"),
+    }
+}
+
+/// Runs the capability-graph recovery query for an arbitrary goal at a
+/// violation state. Recovery/preparation goals use the same structural semantics
+/// as services; their labels keep the report traceable.
+pub fn recovery_path_for_goal(model: &Model, goal: &Goal, min_verification: Verification) -> RecoveryPath {
+    let query = Query { goal: goal.clone(), min_verification, max_depth: DEFAULT_MAX_DEPTH };
     let result = graph::solve(model, &query);
     let causes: Vec<String> =
         result.root_causes().map(|blocker| format!("{} {}", blocker.kind.as_str(), blocker.subject)).collect();
@@ -34,7 +50,7 @@ pub fn recovery_path(model: &Model, service: &str, min_verification: Verificatio
         graph::Verdict::Unknown => format!("unknown: root causes [{}]", causes.join(", ")),
         graph::Verdict::SearchLimit => "search_limit: budget exhausted".to_string(),
     };
-    RecoveryPath { target: service.to_string(), structural }
+    RecoveryPath { target: goal_label(goal), structural }
 }
 
 /// Attaches recovery paths for every service whose first violation appears in
@@ -141,5 +157,24 @@ mod tests {
         let attached = attach_recovery_paths(&mut trace, &model, Verification::Demonstrated);
         assert_eq!(attached, 0);
         assert!(trace.recovery_paths.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod goal_tests {
+    use super::*;
+
+    #[test]
+    fn goal_labels_are_stable_and_distinct() {
+        let model = {
+            let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../scenarios/base-01/model.toml");
+            Model::load(&path).unwrap()
+        };
+        let service = Goal::Service("potable-water".into());
+        assert_eq!(goal_label(&service), "potable-water");
+        assert_eq!(goal_label(&Goal::Restore("pump-p1".into())), "restore:pump-p1");
+        let path = recovery_path_for_goal(&model, &service, Verification::Demonstrated);
+        assert_eq!(path.target, "potable-water");
+        assert!(path.structural.starts_with("candidate:"));
     }
 }

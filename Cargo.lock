@@ -81,6 +81,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-vec-base01"
+version = "0.1.0"
+dependencies = [
+ "poie-ontology",
+ "poie-sim",
+ "poie-viability",
+]
+
+[[package]]
 name = "poie-viability"
 version = "0.1.0"
 dependencies = [
