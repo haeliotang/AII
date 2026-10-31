@@ -167,6 +167,18 @@ pub struct FlowDoc {
     pub quantity: String,
 }
 
+/// Conservative yield split for one process output (§3.4, §6.3 rule 12).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct YieldSpec {
+    /// Output resource whose good fraction is modelled.
+    pub output: String,
+    /// Planned good fraction, in (0, 1]. `1.0` means no planned rejects.
+    pub fraction: f64,
+    /// Resource that receives the non-good fraction (a reworkable reject).
+    pub reject: String,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProcessDoc {
@@ -187,6 +199,8 @@ pub struct ProcessDoc {
     pub verification: Verification,
     pub asset_mass_change: Option<String>,
     pub mass_tolerance: Option<f64>,
+    #[serde(default, rename = "yield")]
+    pub process_yield: Option<YieldSpec>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -267,6 +281,18 @@ pub struct Process {
     pub verification: Verification,
     pub asset_mass_change_kg: f64,
     pub mass_tolerance: f64,
+    pub process_yield: Option<YieldSpec>,
+}
+
+impl Process {
+    /// Planned good fraction for `resource` (1.0 when the process has no
+    /// yield spec for it).
+    pub fn yield_fraction_for(&self, resource: &str) -> f64 {
+        match &self.process_yield {
+            Some(spec) if spec.output == resource => spec.fraction,
+            _ => 1.0,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -464,6 +490,38 @@ impl Model {
             if outputs.is_empty() && p.restores.is_empty() {
                 bail!("process {} has neither outputs nor restores", p.id);
             }
+            if let Some(spec) = &p.process_yield {
+                if !(0.0..=1.0).contains(&spec.fraction) || spec.fraction == 0.0 {
+                    bail!("process {}: yield fraction must be in (0, 1], got {}", p.id, spec.fraction);
+                }
+                if spec.reject == spec.output {
+                    bail!("process {}: yield reject resource must differ from the output", p.id);
+                }
+                let Some(out_flow) = outputs.iter().find(|f| f.resource == spec.output) else {
+                    bail!("process {}: yield output {:?} is not one of its outputs", p.id, spec.output);
+                };
+                if outputs.iter().any(|f| f.resource == spec.reject) {
+                    bail!(
+                        "process {}: yield reject resource {:?} must not also be a declared output",
+                        p.id,
+                        spec.reject
+                    );
+                }
+                let Some(reject_res) = resources.get(&spec.reject) else {
+                    bail!("process {}: yield reject resource {:?} is unknown", p.id, spec.reject);
+                };
+                let out_res = &resources[&out_flow.resource];
+                if reject_res.unit.symbol != out_res.unit.symbol
+                    || reject_res.mass_per_unit_kg != out_res.mass_per_unit_kg
+                {
+                    bail!(
+                        "process {}: yield reject {:?} must share the unit and mass_per_unit of {:?}",
+                        p.id,
+                        spec.reject,
+                        spec.output
+                    );
+                }
+            }
             let duration_s = p
                 .duration
                 .as_deref()
@@ -490,6 +548,7 @@ impl Model {
                 verification: p.verification,
                 asset_mass_change_kg,
                 mass_tolerance,
+                process_yield: p.process_yield.clone(),
             });
         }
 
@@ -1012,6 +1071,47 @@ asset_degraded = { "lathe" = { occupiable = true, max_occupations = 2 } }
         let policy = m.assets["lathe"].degraded.as_ref().expect("policy");
         assert!(policy.occupiable);
         assert_eq!(policy.max_occupations, Some(2));
+    }
+
+    #[test]
+    fn yield_spec_is_validated() {
+        let base = r#"
+[[resource]]
+id = "part-reject"
+unit = "item"
+mass_per_unit = "0.8 kg"
+
+[[process]]
+id = "turn"
+inputs = [{ resource = "bar", quantity = "0.8 kg" }]
+outputs = [{ resource = "part", quantity = "1 item" }]
+verification = "declared"
+"#;
+
+        let err = Model::from_doc(doc(&format!(
+            "{base}yield = {{ output = \"part\", fraction = 0.0, reject = \"part-reject\" }}\n"
+        )))
+        .unwrap_err();
+        assert!(err.0.contains("yield fraction"), "{err}");
+
+        let err = Model::from_doc(doc(&format!(
+            "{base}yield = {{ output = \"part\", fraction = 0.5, reject = \"chips\" }}\n"
+        )))
+        .unwrap_err();
+        assert!(err.0.contains("share the unit"), "{err}");
+
+        let err = Model::from_doc(doc(&format!(
+            "{base}yield = {{ output = \"chips\", fraction = 0.5, reject = \"part-reject\" }}\n"
+        )))
+        .unwrap_err();
+        assert!(err.0.contains("not one of its outputs"), "{err}");
+
+        let ok = Model::from_doc(doc(&format!(
+            "{base}yield = {{ output = \"part\", fraction = 0.5, reject = \"part-reject\" }}\n"
+        )))
+        .unwrap();
+        assert_eq!(ok.process("turn").unwrap().yield_fraction_for("part"), 0.5);
+        assert_eq!(ok.process("turn").unwrap().yield_fraction_for("bar"), 1.0);
     }
 
     #[test]
