@@ -11,7 +11,7 @@ use crate::graph::{
 };
 use crate::model::{Model, ModelError, Patch, Verification};
 
-pub const CASES_SCHEMA: &str = "poie.scenario-cases/0.1";
+pub const CASES_SCHEMA: &str = "poie.scenario-cases/0.2";
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]

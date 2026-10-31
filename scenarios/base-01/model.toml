@@ -1,8 +1,8 @@
-# Autonomous Base-01 — structural model, v0.1
+# Autonomous Base-01 — structural model, v0.2-draft
 # Specification: scenarios/base-01/README.zh-CN.md
 # All quantities are SYNTHETIC assumptions, not calibrated data.
 
-schema = "poie.physical-ontology/0.1"
+schema = "poie.physical-ontology/0.2"
 name = "Autonomous Base-01"
 description = "Minimal virtual industrial loop: power, water treatment, workshop, inspection, maintenance robot, spare-parts store."
 

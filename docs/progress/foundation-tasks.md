@@ -9,8 +9,8 @@ M1 工作包 10 个，已完成 7 个（M1.1–M1.7），剩余 3 个（M1.8–M
 
 | 工作包 | 状态 | 证据 / 备注 |
 | --- | --- | --- |
-| M1.1–M1.3 三份契约 v0.1-draft | 完成 | `specifications/` |
-| M1.4 能力图原型 | 完成 | `crates/poie-ontology`，42 个单元测试 |
+| M1.1–M1.3 三份契约 v0.1-draft | 完成 | `specifications/`；PO 已在 M2 升为 v0.2-draft |
+| M1.4 能力图原型 | 完成 | `crates/poie-ontology`，43 个单元测试 |
 | M1.5 Base-01 结构场景 | 完成 | 25 个预登记用例全部一致；16 个集成测试 |
 | M1.6 持续集成 | 完成 | PR #2；`main` CI [run #2](https://github.com/haeliotang/poieweave/actions/runs/41222603966) 为绿 |
 | M1.7 贡献指南 | 完成 | `CONTRIBUTING.md`（DCO、测试门、契约变更流程）、`DCO`、`SECURITY.md`、三类 issue 模板；GitHub 私有漏洞报告已启用 |
@@ -18,7 +18,7 @@ M1 工作包 10 个，已完成 7 个（M1.1–M1.7），剩余 3 个（M1.8–M
 | M1.9 开源边界 | 部分 | 配套文件已齐（`NOTICE`、`DCO`、`SECURITY.md`、`cargo-deny`）；ADR-0001 仍为"提议"，待发起方确认 |
 | M1.10 名称落地 | 部分 | 改名已完成；初步商标检索已记入 [ADR-0002 §7](../adr/0002-rename-to-poieweave.zh-CN.md)，官方库直连与类别专项检索待人工复核 |
 
-M2 本体 v0.2：**M2.1–M2.7 完成**（OR 支撑、多来源补足、降级使用策略、保守合格率与返工、能力验证等级、多候选路线枚举、外部依赖上溯）——契约 §3.1 / §3.4 / §3.6 / §6.3 规则 9–15 / §6.4 / §6.5 / VEC §4.2；实现、29 个新增单元测试、S11–S24 预登记用例；仅剩 M2.8 用例补齐与 M2 退出复核。
+M2 本体 v0.2：**已完成**（M2.1–M2.8）。PO 升为 v0.2-draft（schema `poie.physical-ontology/0.2`，场景用例 schema 升为 0.2）：OR 支撑、多来源补足、降级占用、保守合格率与返工、能力验证等级、路线枚举、外部依赖上溯全部并入正文；S11–S24 共 14 个预登记用例逐条覆盖 M2.1–M2.7；S0–S10 的预期与首跑结果未改；运行时间基线见 [m2-baseline.md](m2-baseline.md)。
 
 ## 初期工作清单（2026-10-31 完成）
 
@@ -56,3 +56,4 @@ M2 本体 v0.2：**M2.1–M2.7 完成**（OR 支撑、多来源补足、降级�
 - 2026-10-31：M2.5（能力验证等级）完成：PO §3.6 定义能力自身等级、§6.3 规则 13、§6.4 新增 `capability_below_verification`；资产可声明 `capability_verification`（未声明按 `declared`），求解器按查询门槛过滤提供者，并把能力等级计入路线最低验证等级；基础模型为 robot-m1 的 5 项能力声明等级（现有 S0–S18 结论不变）；补丁新增 `asset_capability_verification`；单元测试 34→38、集成测试 13→14；Base-01 新增 S19（能力仅 declared，blocked）与 S20（能力 modeled、门槛 modeled，candidate），预登记后首次运行即一致。
 - 2026-10-31：M2.6（多候选路线）完成：PO §6.3 规则 14（有界、去重、逐条汇总、不声称穷尽）；求解器支持按备选顺序轮换的枚举（64 次上限），每条路线给出消耗、外部依赖与最低验证等级；CLI 新增 `--routes N`；用例新增 `min_routes` / `max_routes` 预登记断言；单元测试 38→40、集成测试 14→15；Base-01 新增 S21（两条不同路线，min_routes=2）与 S22（基础场景仅一条路线，max_routes=1），预登记后首次运行即一致。
 - 2026-10-31：M2.7（外部依赖上溯）完成：PO §6.3 规则 15、§6.5 与 VEC §4.2 明确"全部候选路线取并集、无路线时回退阻断根因"；实现 `external_dependency_report`（每条依赖标注出现的路线与单条路线最大消耗量）与 CLI `--external-deps N`；用例新增 `external_dependencies` 预登记断言；单元测试 40→42、集成测试 15→16；Base-01 新增 S23（双来源供水，并集 5 项外部依赖）与 S24（blocked 时回退根因报告 cutting-insert），预登记后首次运行即一致。
+- 2026-10-31：M2.8 完成、M2 退出复核通过：PO 版本升为 0.2-draft（§8 只保留未解决条目；schema 字符串升至 `poie.physical-ontology/0.2`，用例 schema 升至 `poie.scenario-cases/0.2`）；S11–S24 覆盖 M2.1–M2.7 各至少 2 例（S11 为 S3 的应急供电改进版）；用脚本比对 `7b163ad` 与当前 `cases.toml`，确认 S0–S10 的预登记预期与首跑结果未改；`--timings` 记录 25 个用例的 release 运行时间（合计 8.437 ms，中位数 0.095 ms，见 docs/progress/m2-baseline.md）。M2 退出条件逐项满足。

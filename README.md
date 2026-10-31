@@ -25,7 +25,7 @@ Our central question is simple:
 
 | Artifact | State |
 | --- | --- |
-| [Physical Ontology](specifications/physical-ontology.zh-CN.md) | v0.1-draft. Units, entities, verification levels, capability-graph semantics, mass conservation. |
+| [Physical Ontology](specifications/physical-ontology.zh-CN.md) | v0.2-draft. Units, entities, process and capability verification levels, capability-graph semantics (alternative supports, multi-source top-ups, degraded occupation, conservative yield/rework, bounded route enumeration, external-dependency tracing), mass conservation. |
 | [State & Action Protocol](specifications/state-action-protocol.zh-CN.md) | v0.1-draft. Record types, action lifecycle, partition rules, 11 failure-injection cases. No implementation yet. |
 | [Viability & Expansion Contract](specifications/viability-expansion.zh-CN.md) | v0.1-draft. Query fields, verdict classes, four metric groups, expansion accounting. No implementation yet. |
 | [`crates/poie-ontology`](crates/poie-ontology) | Structural prototype: dimensioned quantities, model validation, mass balance, single-ledger capability-graph solver with root-cause reporting, alternative (`requires_any`) supports, multi-source top-ups, a degraded-use occupation policy, conservative yield with explicit reject/rework flows, capability-level verification on top of process-level verification, bounded enumeration of distinct candidate routes, and external-dependency tracing across all candidate routes. |
