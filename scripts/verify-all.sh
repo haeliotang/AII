@@ -56,6 +56,13 @@ echo "== shadow run demo (M9.4) =="
 cargo run --locked -q -p poie-shadow-run -- --write "$tmp/shadow"
 diff "$tmp/shadow/REPORT.md" experiments/shadow-run/REPORT.md
 diff "$tmp/shadow/raw/trace.txt" experiments/shadow-run/raw/trace.txt
+echo "== H1 temporal replay =="
+cargo run --locked -q -p poie-h1-temporal -- scenarios/base-01-timed/cases.toml > "$tmp/h1-temporal.txt"
+diff "$tmp/h1-temporal.txt" experiments/h1-temporal/raw/dev-2026-11-01.txt
+echo "== H2 development replay =="
+cargo run --locked -q -p poie-h2-joint-planning -- --dev --write "$tmp/h2-dev"
+diff "$tmp/h2-dev/dev-report.md" experiments/h2-joint-planning/dev-report.md
+diff "$tmp/h2-dev/raw/dev-raw.txt" experiments/h2-joint-planning/raw/dev-raw.txt
 echo "== dependency policy =="
 cargo deny check licenses bans sources
 echo "ALL GATES PASSED"

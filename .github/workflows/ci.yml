@@ -99,6 +99,17 @@ jobs:
           diff /tmp/h4/REPORT.md experiments/h4-expansion/REPORT.md
           diff /tmp/h4/raw/h4.txt experiments/h4-expansion/raw/h4.txt
 
+      - name: H1 temporal replay
+        run: |
+          cargo run --locked -q -p poie-h1-temporal -- scenarios/base-01-timed/cases.toml > /tmp/h1-temporal.txt
+          diff /tmp/h1-temporal.txt experiments/h1-temporal/raw/dev-2026-11-01.txt
+
+      - name: H2 development replay
+        run: |
+          cargo run --locked -q -p poie-h2-joint-planning -- --dev --write /tmp/h2-dev
+          diff /tmp/h2-dev/dev-report.md experiments/h2-joint-planning/dev-report.md
+          diff /tmp/h2-dev/raw/dev-raw.txt experiments/h2-joint-planning/raw/dev-raw.txt
+
   deny:
     name: cargo-deny (${{ matrix.checks }})
     runs-on: ubuntu-latest

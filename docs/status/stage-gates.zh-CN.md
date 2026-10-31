@@ -20,7 +20,7 @@ CI 固定使用 Rust 1.94.0（与参考开发环境一致，避免 clippy 版本
 | 本体可执行 + 预登记用例 | Base-01 40/40（`scenarios/base-01/cases.toml`）；Base-02 8/8（**M12.5 新增**）；ontology 57 单元 + 16 集成 + 调度随机不变量（120 trials：前置满足、容量冲突完整性）+ 图求解随机不变量（120 trials：判定/阻断分类、候选步骤、验证等级与深度单调性） |
 | 状态协议参考实现与故障注入 | `crates/poie-state`：53 单元 + 13 SAP 验收（T1–T11）；10⁵ 序列属性测试；逐写入点崩溃注入；120 次随机投影不变量测试（对照独立契约 oracle）；120 次记录验证/九类负载往返随机测试 |
 | 时间维度与可重放 | `poie-sim` 13 测试 + 仿真随机不变量（80 trials：digest 确定、守恒分类、外部流/库存核算、SoC 边界）；Base-01 时间版 20/20，`digests.toml` CI 逐位校验 |
-| H1 实验 | [H1 REPORT](../../experiments/h1-structural/REPORT.md)（弱支持、内部证据）；[H1 temporal REPORT](../../experiments/h1-temporal/REPORT.md) |
+| H1 实验 | [H1 REPORT](../../experiments/h1-structural/REPORT.md)（弱支持、内部证据）；[H1 temporal REPORT](../../experiments/h1-temporal/REPORT.md)，原始输出 CI 重放 |
 | M1.6–M1.7 | CI 全绿；DCO/CONTRIBUTING/SECURITY/issue 模板已合并 |
 | M1.8/M1.9/M1.10 | **未完成**：外部评审、ADR-0001 由 Inceptless 确认、正式商标检索 |
 | M3.3 | **未满足**：外部贡献用例配额（≥1/4） |
@@ -36,7 +36,7 @@ CI 固定使用 Rust 1.94.0（与参考开发环境一致，避免 clippy 版本
 | VEC 参考实现 | [viability-expansion v0.2](../../specifications/viability-expansion.zh-CN.md)：查询/六类结论/抽样枚举/四组指标/报告；`poie-viability` 33 测试 + 随机不变量（60 条轨迹指标、汇总截尾、抽样/枚举方法可复现） |
 | Base-01 v0.2 报告 | [VEC report](../../experiments/vec-base01/report.md)（20 runs / 78 metrics，CI 重放）；报告校验随机防作弊（合法 TOML 往返 + 16 类单字段变异全部拒绝） |
 | 规划与 H2 | `poie-plan` 18 测试；[H2 REPORT](../../experiments/h2-joint-planning/REPORT.md)：**H2 不被支持（负结果）**，留出集 5/8 持平 |
-| 联合规划经 SAP 校验 | 每个动作走 proposed→validated→authorized + 六项检查，不派发、不绕过授权；80 次随机化不变量测试（有序/不重叠/唯一 id/确定性/预算/所有计划可经 SAP 校验）；重规划/基线随机不变量（保留/取消划分、不早于 now、added 口径、确定性） |
+| 联合规划经 SAP 校验 | 每个动作走 proposed→validated→authorized + 六项检查，不派发、不绕过授权；80 次随机化不变量测试（有序/不重叠/唯一 id/确定性/预算/所有计划可经 SAP 校验）；重规划/基线随机不变量（保留/取消划分、不早于 now、added 口径、确定性）；H2 开发集报告/原始输出 CI 重放 |
 | 过程桥（M7） | 合成水模型 + JSON-line 桥 + Rust 客户端；Python 9 项测试 + Rust 客户端 40 次随机故障/超时测试纳入 CI；明确 `synthetic`，无标定 | 真实过程模型/标定（IDAES 候选） |
 
 ## 3. Embodiment（M9–M12）
