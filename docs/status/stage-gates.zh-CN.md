@@ -47,7 +47,7 @@ scripts/verify-all.sh
 | M9 适配器与影子运行 | `poie-runtime` 12 测试（只读契约、离线运行时、影子规划、预测核对） | M9.0 合规复核、M9.2 真实适配器、M9.6 物理试验台 |
 | M10 有界执行 | `poie-exec` 12 测试；[H3 模拟报告](../h3-bounded-execution/REPORT.sim.md) 14/14 | 物理试验台、真实故障、安全演练、执行端幂等验证 |
 | M11 扩张核算 | `poie-expansion` 7 测试；[H4 报告](../h4-expansion/REPORT.md) 判定不确定 | M11.6 物理实施（`demonstrated_gain`） |
-| M12 多站点联邦 | `poie-federation` 7 测试；[M12.6 模拟报告](../federation-partition/REPORT.sim.md) 6/6；Base-02 8/8；[本机 TCP 双进程交换](../federation-tcp/REPORT.md)（真实 socket，仍非真实多站点） | M12.6 真实多节点网络与长时间分区 |
+| M12 多站点联邦 | `poie-federation` 7 测试 + 120 次随机分区性质测试；[M12.6 模拟报告](../federation-partition/REPORT.sim.md) 6/6；Base-02 8/8；[本机 TCP 双进程交换](../federation-tcp/REPORT.md)（真实 socket，仍非真实多站点） | M12.6 真实多节点网络与长时间分区 |
 | 端到端管线 | [e2e REPORT](../e2e-pipeline/REPORT.md)：适配器→投影→规划→SAP 校验→执行门→独立验证→预测核对，9/9 断言通过，CI 重放 | 真实适配器与物理执行（M9.2/M10） |
 
 **结论**：不依赖物理/外部条件的实现与实验已完成并纳入 CI；上述四行阻塞项需要设备、场地、安全评审或真实网络环境。
