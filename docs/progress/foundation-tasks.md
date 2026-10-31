@@ -127,3 +127,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增 VEC 随机不变量测试（`crates/poie-viability/tests/viability_properties.rs`，60 条随机轨迹）：可行时间/截尾、韧性损失积分与恢复时间/未恢复集合、可持续性净消耗/回收损失、汇总的截尾规则与分位数次序；并验证抽样与枚举方法的确定性/可复现性与场景集合。
 - 2026-10-31：新增扩张核算随机不变量测试（`crates/poie-expansion/tests/expansion_properties.rs`）：40 次随机目标子集下验证结构增益/损失/不变类别是对所查询目标的完整划分，且与独立求解的 before/after 判定一致、`expand` 与 `to_patch` 结果一致；40 次随机轨迹下验证时序增益的 min-maintained 差值定义与施工窗口内的最低水平违规。
 - 2026-10-31：Python 桥接测试纳入 CI：`python/poie_models/test_bridge.py`（stdlib unittest，9 测试）覆盖水模型有效性/质量守恒/合成标记、桥协议 schema/单位/多请求、模型版本不匹配、非法 JSON 后继续、`non_convergence`/`numerical_failure`/单位与守恒破坏注入、崩溃退出；CI 与 `verify-all.sh` 加入 `python3 -m unittest discover`。
+- 2026-10-31：新增 VEC 报告随机防作弊校验测试（`crates/poie-viability/tests/report_properties.rs`）：合法报告 TOML 往返一致且可生成人类摘要；对 schema/空字段/horizon/seeds/成本/空 runs/分区和/场景 id/预算/过度声称/置信区间/指标值/单位/可持续性缺产出/来源/附件共 16 类单字段变异逐一断言被拒绝，并抽查拒绝原因命中对应规则。
