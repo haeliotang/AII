@@ -1,0 +1,49 @@
+# Periodic drift detection: dependencies, advisories and the pinned toolchain.
+# The per-merge CI already runs the same checks; this weekly run catches a newly
+# published advisory or a change in a dependency source without blocking merges.
+name: Scheduled verification
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: verify-all (dependency policy runs separately)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@1.94.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Full verification suite
+        env:
+          SKIP_DENY: "1"
+        run: scripts/verify-all.sh
+
+  deny:
+    name: cargo-deny (${{ matrix.checks }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        checks:
+          - licenses bans sources
+          - advisories
+    # A new advisory is reported but does not by itself turn the weekly run red;
+    # license/source policy violations do fail.
+    continue-on-error: ${{ matrix.checks == 'advisories' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check ${{ matrix.checks }}

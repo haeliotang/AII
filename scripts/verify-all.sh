@@ -79,5 +79,9 @@ cargo run --locked -q -p poie-h2-joint-planning -- --holdout --write "$tmp/h2-ho
 diff "$tmp/h2-holdout/holdout-report.md" experiments/h2-joint-planning/holdout-report.md
 diff "$tmp/h2-holdout/raw/holdout-raw.txt" experiments/h2-joint-planning/raw/holdout-raw.txt
 echo "== dependency policy =="
-cargo deny check licenses bans sources
+if [ "${SKIP_DENY:-0}" = "1" ]; then
+  echo "skipped: SKIP_DENY=1 (the scheduled workflow runs cargo-deny in a separate job)"
+else
+  cargo deny check licenses bans sources
+fi
 echo "ALL GATES PASSED"
