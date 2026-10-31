@@ -18,7 +18,7 @@ scripts/verify-all.sh
 | --- | --- |
 | 三份契约草案存在且可反驳 | [PO v0.3-draft](../../specifications/physical-ontology.zh-CN.md)、[SAP v0.2-draft](../../specifications/state-action-protocol.zh-CN.md)、[VEC v0.2-draft](../../specifications/viability-expansion.zh-CN.md) |
 | 本体可执行 + 预登记用例 | Base-01 40/40（`scenarios/base-01/cases.toml`）；Base-02 8/8（**M12.5 新增**）；ontology 57 单元 + 16 集成 |
-| 状态协议参考实现与故障注入 | `crates/poie-state`：53 单元 + 13 SAP 验收（T1–T11）；10⁵ 序列属性测试；逐写入点崩溃注入 |
+| 状态协议参考实现与故障注入 | `crates/poie-state`：53 单元 + 13 SAP 验收（T1–T11）；10⁵ 序列属性测试；逐写入点崩溃注入；120 次随机投影不变量测试（对照独立契约 oracle） |
 | 时间维度与可重放 | `poie-sim` 13 测试；Base-01 时间版 20/20，`digests.toml` CI 逐位校验 |
 | H1 实验 | [H1 REPORT](../h1-structural/REPORT.md)（弱支持、内部证据）；[H1 temporal REPORT](../h1-temporal/REPORT.md) |
 | M1.6–M1.7 | CI 全绿；DCO/CONTRIBUTING/SECURITY/issue 模板已合并 |

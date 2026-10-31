@@ -12,6 +12,12 @@ Chinese and English are both welcome. Choose one language per contribution; do n
 4. **Safety and authority semantics stay open.** Anything that decides whether an action may be validated, authorized, dispatched, or verified must live in the open core ([ADR-0001](docs/adr/0001-open-source-boundary.zh-CN.md), I1–I6). Do not propose a private shortcut around them.
 5. **License and sign-off.** Everything is contributed under Apache-2.0, with a Developer Certificate of Origin sign-off (below). No CLA is required.
 
+## Toolchain and MSRV
+
+CI uses the current stable Rust (`dtolnay/rust-toolchain@stable`); the reference development environment used `rustc 1.94.0`.
+
+The MSRV is **not pinned yet**. The code uses APIs such as `Option::is_none_or` (stabilized in 1.82) and `BTreeSet::pop_first` (1.66), so toolchains older than 1.82 will not compile; no older toolchain is verified in CI. If you need a specific MSRV, open an issue — pinning it requires a dedicated CI job on that toolchain before it can be claimed.
+
 ## What to contribute
 
 | Kind | Start here | Good first examples |
