@@ -318,6 +318,38 @@ impl ActionLedger {
         self.dispatched_keys.get(idempotency_key).map(String::as_str)
     }
 
+    /// Rebuilds a ledger after a restart from replayed action states (SAP §5).
+    ///
+    /// The idempotency keys of actions that may already have been dispatched are
+    /// restored, so a second action cannot dispatch the same key after recovery.
+    /// `Failed` is treated conservatively: a failure can follow an ACK, so its
+    /// key stays blocked.
+    pub fn restore(actions: &[Action], states: &BTreeMap<String, ActionState>) -> Result<ActionLedger, LedgerError> {
+        let mut ledger = ActionLedger::new();
+        for action in actions {
+            ledger.add(action)?;
+        }
+        for (action_id, state) in states {
+            if !ledger.states.contains_key(action_id) {
+                return Err(LedgerError::UnknownAction(action_id.clone()));
+            }
+            ledger.states.insert(action_id.clone(), *state);
+            if matches!(
+                state,
+                ActionState::Dispatched
+                    | ActionState::Acknowledged
+                    | ActionState::Verified
+                    | ActionState::OutcomeUnknown
+                    | ActionState::Failed
+            ) {
+                if let Some(key) = ledger.keys.get(action_id) {
+                    ledger.dispatched_keys.insert(key.clone(), action_id.clone());
+                }
+            }
+        }
+        Ok(ledger)
+    }
+
     pub fn len(&self) -> usize {
         self.states.len()
     }
@@ -514,6 +546,25 @@ mod tests {
     }
 
     use std::collections::BTreeSet;
+
+    #[test]
+    fn restore_rebuilds_states_and_blocks_a_second_dispatch_of_the_same_key() {
+        let first = action("a1", "shared");
+        let second = action("a2", "shared");
+        let states = BTreeMap::from([("a1".to_string(), ActionState::Dispatched)]);
+        let mut ledger = ActionLedger::restore(&[first, second], &states).unwrap();
+        assert_eq!(ledger.state("a1"), Some(ActionState::Dispatched));
+        assert_eq!(ledger.dispatched_by("shared"), Some("a1"));
+
+        for state in [ActionState::Validated, ActionState::Authorized] {
+            ledger.apply("a2", state).unwrap();
+        }
+        assert!(matches!(ledger.apply("a2", ActionState::Dispatched), Err(LedgerError::DuplicateDispatch { .. })));
+        assert!(matches!(
+            ActionLedger::restore(&[], &BTreeMap::from([("missing".to_string(), ActionState::Dispatched)])),
+            Err(LedgerError::UnknownAction(_))
+        ));
+    }
 
     #[test]
     fn redispatch_policy_matches_sap() {
