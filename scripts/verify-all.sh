@@ -56,6 +56,15 @@ echo "== shadow run demo (M9.4) =="
 cargo run --locked -q -p poie-shadow-run -- --write "$tmp/shadow"
 diff "$tmp/shadow/REPORT.md" experiments/shadow-run/REPORT.md
 diff "$tmp/shadow/raw/trace.txt" experiments/shadow-run/raw/trace.txt
+echo "== H1 structural replay =="
+cargo run --locked -q -p poie-h1-baseline -- scenarios/base-01/cases.toml > "$tmp/h1-all.txt"
+diff "$tmp/h1-all.txt" experiments/h1-structural/raw/final-all-2026-10-31.txt
+dev=$(awk -F'\t' 'NR>1 && $1 ~ /^S[0-9]+$/ {print $1}' experiments/h1-structural/raw/dev-2026-10-31.txt | tr '\n' ' ')
+cargo run --locked -q -p poie-h1-baseline -- scenarios/base-01/cases.toml $dev > "$tmp/h1-dev.txt"
+diff "$tmp/h1-dev.txt" experiments/h1-structural/raw/dev-2026-10-31.txt
+holdout=$(awk -F'\t' 'NR>1 && $1 ~ /^S[0-9]+$/ {print $1}' experiments/h1-structural/raw/final-holdout-2026-10-31.txt | tr '\n' ' ')
+cargo run --locked -q -p poie-h1-baseline -- scenarios/base-01/cases.toml $holdout > "$tmp/h1-holdout.txt"
+diff "$tmp/h1-holdout.txt" experiments/h1-structural/raw/final-holdout-2026-10-31.txt
 echo "== H1 temporal replay =="
 cargo run --locked -q -p poie-h1-temporal -- scenarios/base-01-timed/cases.toml > "$tmp/h1-temporal.txt"
 diff "$tmp/h1-temporal.txt" experiments/h1-temporal/raw/dev-2026-11-01.txt
