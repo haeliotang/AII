@@ -14,13 +14,20 @@
 //!   (SAP §4).
 //! - [`log`]: the append-only local log with per-site sequence numbers and
 //!   crash-tail recovery (SAP §1, §5; ADR-0003).
+//! - [`executor`]: a deterministic simulated executor with dedup, expiry and
+//!   receipt-loss/NACK/restart fault injection (SAP §4, §9).
+//! - [`recovery`]: restart replay of transition records and SAP §5 decisions
+//!   (dispatched -> outcome_unknown, authorized -> re-review, ...).
 //!
-//! Not implemented yet: simulated executor, full crash-point coverage, command
-//! ownership leases and fault injection (SAP §5–§9). Facts and intentions
-//! remain separate records; nothing here sends a command.
+//! Not implemented yet: full per-write-point crash injection, command ownership
+//! leases, partitions and site-to-site reconciliation (SAP §5–§6), and the
+//! ontology bridge (§8). Facts and intentions remain separate records; nothing
+//! here sends a command to real equipment.
 
 pub mod action;
+pub mod executor;
 pub mod log;
 pub mod projection;
 pub mod record;
+pub mod recovery;
 pub mod review;

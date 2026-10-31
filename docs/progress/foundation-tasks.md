@@ -22,7 +22,7 @@ M2 本体 v0.2：**已完成**（M2.1–M2.8）。PO 升为 v0.2-draft（schema 
 
 M3 H1 结构层实验：**基本完成**——实验已登记（[PREREG.md](../../experiments/h1-structural/PREREG.md)）、基线已实现、40 例分层用例、留出集已选定（[HOLDOUT.md](../../experiments/h1-structural/HOLDOUT.md)）、[报告已发布](../../experiments/h1-structural/REPORT.md)。留出集上基线漏判 2/7、误判 1/3；Poieweave 漏判 0/7。按预登记规则 H1 以弱形式被支持，但**外部用例配额（≥1/4）未满足**，结论仅为内部证据。
 
-M4 状态与事件内核：**进行中**——M4.1 记录/信封、M4.2 只追加日志（[ADR-0003](../adr/0003-append-only-local-log.zh-CN.md)）、M4.3 投影/状态版本、M4.4 动作状态机、M4.5 派发前复核已完成（`crates/poie-state`，33 个单元测试：九类记录与信封校验、18 条转移穷尽、10⁵ 序列属性测试、投影确定性/更正/证据过期/仿真隔离、六项复核与可追溯拒绝、日志持久化与尾部残行恢复）；M4.6–M4.9 与 SAP-T1–T11 未开始。
+M4 状态与事件内核：**进行中**——M4.1–M4.6 完成（记录/信封、只追加日志 [ADR-0003](../adr/0003-append-only-local-log.zh-CN.md)、投影/状态版本、动作状态机、派发前复核、模拟执行端），M4.7 进行中（重启重放与决策已实现，逐写入点崩溃注入待补）；`crates/poie-state` 42 个单元测试 + 6 个 SAP 验收测试（T1–T4、T9、T10 自动化）；M4.8/M4.9、SAP-T5–T8/T11 与 SAP v0.2 升级未开始。
 
 ## 初期工作清单（2026-10-31 完成）
 
@@ -68,3 +68,4 @@ M4 状态与事件内核：**进行中**——M4.1 记录/信封、M4.2 只追�
 - 2026-10-31：开始 M4：新增 `crates/poie-state`。M4.1 实现九类记录、公共信封（含 event/recorded time、HLC、causes、namespace、schema_version）与配对校验；M4.4 精确实现 SAP §3.3 的 18 条动作转移，终态不可再转移，账本拒绝表外转移与同一幂等键的重复派发；属性测试用确定性 PRNG 跑 10⁵ 条事件序列，断言无表外转移、无重复派发，并覆盖非法转移与重复键的拒绝。SAP 契约状态行同步注明"C 参考实现（记录+状态机）"；持久化、投影、派发复核、崩溃恢复尚未实现。
 - 2026-10-31：M4.3 与 M4.5 完成：`projection` 实现版本化投影（`poie.projection/0.1`）、每场址状态版本向量、证据过期降为 unknown、更正记录生效、仿真命名空间隔离与确定性；`review` 实现 SAP §4 六项派发前复核（时效、当前状态版本与谓词、命令所有权、预留、幂等键、授权），一次返回全部拒绝项并带稳定 reason code 与 detail。poie-state 依赖 poie-ontology 以复用 `AssetStatus`；测试 13→27。
 - 2026-10-31：ADR-0003 与 M4.2 完成：经 ADR 选择"单文件 JSON Lines + fsync"作为本地只追加日志（SQLite/嵌入式 KV 推迟，记录推翻条件），新增 serde/serde_json 运行依赖（许可符合 ADR-0001 §5，cargo-deny 通过）。`log` 模块实现逐条写入后 `sync_data`、场址序号严格递增、按场址读取、启动时只截断尾部不完整行（中间损坏报错），并提供崩溃残行、乱序、重开不重写、JSON 往返等 6 个测试；poie-state 测试 27→33。SAP §5 的只追加持久化与尾部恢复已实现，重启语义与逐写入点崩溃注入留待 M4.7。
+- 2026-10-31：M4.6 与 M4.7（部分）完成：`executor` 模拟执行端支持去重窗口、过期拒绝、ACK 丢失、NACK、重启丢失去重表（延迟由调用时刻表示）；`recovery` 实现转移日志重放与 SAP §5 重启决策；`action` 补齐重派策略（irreversible 未检查结果不得重派），`record` 增加"自报验证不算独立验证"的判定。新增 `tests/sap_acceptance.rs`：SAP-T1（派发后崩溃→outcome_unknown 不重发）、T2（ACK 丢失不重复执行，验证收尾）、T3（重复送达只执行一次）、T4（前置变化→stale_precondition 拒绝）、T9（丢失去重表为已知风险 + irreversible 不重派）、T10（self_reported 不算独立验证）。state 测试 33→42，另加 6 个验收测试；T5–T8、T11 与逐写入点崩溃注入仍待做。
