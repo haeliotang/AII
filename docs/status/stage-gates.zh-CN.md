@@ -36,7 +36,7 @@ scripts/verify-all.sh
 | VEC 参考实现 | [viability-expansion v0.2](../../specifications/viability-expansion.zh-CN.md)：查询/六类结论/抽样枚举/四组指标/报告；`poie-viability` 33 测试 |
 | Base-01 v0.2 报告 | [VEC report](../vec-base01/report.md)（20 runs / 78 metrics，CI 重放） |
 | 规划与 H2 | `poie-plan` 18 测试；[H2 REPORT](../h2-joint-planning/REPORT.md)：**H2 不被支持（负结果）**，留出集 5/8 持平 |
-| 联合规划经 SAP 校验 | 每个动作走 proposed→validated→authorized + 六项检查，不派发、不绕过授权 |
+| 联合规划经 SAP 校验 | 每个动作走 proposed→validated→authorized + 六项检查，不派发、不绕过授权；80 次随机化不变量测试（有序/不重叠/唯一 id/确定性/预算/所有计划可经 SAP 校验） |
 
 ## 3. Embodiment（M9–M12）
 
