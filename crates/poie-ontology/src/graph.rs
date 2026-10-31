@@ -18,6 +18,8 @@ use crate::units::{self, Quantity};
 pub const DEFAULT_MAX_DEPTH: usize = 48;
 /// Upper bound on repeated runs of one process for a single shortfall.
 const MAX_RUNS: f64 = 10_000.0;
+/// Upper bound on single-run topping-up steps when several processes share one shortfall.
+const MAX_TOPPING_STEPS: usize = 10_000;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Goal {
@@ -440,6 +442,37 @@ impl<'m> Solver<'m> {
                 Err(e) => alt_errs.extend(e),
             }
         }
+
+        // Multi-source top-up (§6.3 rule 10): when no single process covers the
+        // whole shortfall, several alternative processes may each contribute a
+        // part of it. Greedy, deterministic and bounded; failed attempts never
+        // mutate the ledger.
+        let mut trial = ledger.clone();
+        let mut progressed = true;
+        let mut attempts = 0usize;
+        while progressed && !units::approx_le(amount, trial.available(resource)) && attempts < MAX_TOPPING_STEPS {
+            progressed = false;
+            attempts += 1;
+            for &pi in producers {
+                let mut candidate = trial.clone();
+                if self.run_process(pi, 1, &mut candidate).is_err() {
+                    continue;
+                }
+                let produced = candidate.available(resource) - trial.available(resource);
+                if produced > units::rounding_tolerance(amount) {
+                    trial = candidate;
+                    progressed = true;
+                    break;
+                }
+            }
+        }
+        if units::approx_le(amount, trial.available(resource)) {
+            let alloc = trial.allocate(resource, amount);
+            *ledger = trial;
+            self.leave();
+            return Ok(alloc);
+        }
+
         let mut errs = vec![self.blocker(
             BlockerKind::MissingResource,
             resource,
@@ -769,6 +802,105 @@ status = "available"
         assert!(r.root_causes().any(|b| b.kind == BlockerKind::AssetUnavailable && b.subject == "and-support"));
         // The OR list is not probed once the AND support has failed.
         assert!(!r.blockers.iter().any(|b| b.kind == BlockerKind::NoAlternativeSupport));
+    }
+
+    fn model_from_toml(body: &str) -> Model {
+        let text = format!(
+            r#"
+schema = "poie.physical-ontology/0.1"
+name = "test"
+{body}
+"#
+        );
+        Model::from_doc(toml::from_str(&text).unwrap()).unwrap()
+    }
+
+    fn obtain_query(resource: &str, quantity: &str) -> Query {
+        Query {
+            goal: Goal::Obtain { resource: resource.to_string(), quantity: quantity.parse().unwrap() },
+            min_verification: Verification::Declared,
+            max_depth: DEFAULT_MAX_DEPTH,
+        }
+    }
+
+    const TWO_PRODUCERS: &str = r#"
+[[resource]]
+id = "a"
+unit = "kg"
+
+[[resource]]
+id = "b"
+unit = "kg"
+
+[[resource]]
+id = "r"
+unit = "item"
+mass_per_unit = "1 kg"
+
+[[lot]]
+id = "lot-a"
+resource = "a"
+quantity = "1 kg"
+quality = "accepted"
+
+[[lot]]
+id = "lot-b"
+resource = "b"
+quantity = "1 kg"
+quality = "accepted"
+
+[[process]]
+id = "make-r-from-a"
+inputs = [{ resource = "a", quantity = "1 kg" }]
+outputs = [{ resource = "r", quantity = "1 item" }]
+verification = "demonstrated"
+
+[[process]]
+id = "make-r-from-b"
+inputs = [{ resource = "b", quantity = "1 kg" }]
+outputs = [{ resource = "r", quantity = "1 item" }]
+verification = "demonstrated"
+"#;
+
+    #[test]
+    fn a_shortfall_can_be_covered_by_two_processes() {
+        let m = model_from_toml(TWO_PRODUCERS);
+        let r = solve(&m, &obtain_query("r", "2 item"));
+        assert_eq!(r.verdict, Verdict::Candidate, "{}", render(&m, &r));
+        let processes: Vec<&str> = r.steps.iter().map(|s| s.process.as_str()).collect();
+        assert_eq!(processes, ["make-r-from-a", "make-r-from-b"]);
+    }
+
+    #[test]
+    fn one_process_is_preferred_when_it_can_cover_the_whole_shortfall() {
+        let body = TWO_PRODUCERS.replace(
+            r#"quantity = "1 kg"
+quality = "accepted"
+
+[[lot]]
+id = "lot-b""#,
+            r#"quantity = "3 kg"
+quality = "accepted"
+
+[[lot]]
+id = "lot-b""#,
+        );
+        let m = model_from_toml(&body);
+        let r = solve(&m, &obtain_query("r", "2 item"));
+        assert_eq!(r.verdict, Verdict::Candidate, "{}", render(&m, &r));
+        assert_eq!(r.steps.len(), 1, "single producer should cover the shortfall: {}", render(&m, &r));
+        assert_eq!(r.steps[0].process, "make-r-from-a");
+        assert_eq!(r.steps[0].runs, 2);
+    }
+
+    #[test]
+    fn multi_source_still_fails_when_total_capacity_is_short() {
+        let m = model_from_toml(TWO_PRODUCERS);
+        let r = solve(&m, &obtain_query("r", "3 item"));
+        assert_eq!(r.verdict, Verdict::Blocked, "{}", render(&m, &r));
+        let roots: Vec<(&BlockerKind, &str)> = r.root_causes().map(|b| (&b.kind, b.subject.as_str())).collect();
+        assert!(roots.contains(&(&BlockerKind::MissingResource, "a")), "{roots:?}");
+        assert!(roots.contains(&(&BlockerKind::MissingResource, "b")), "{roots:?}");
     }
 
     #[test]

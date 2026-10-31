@@ -553,6 +553,24 @@ impl Model {
     /// Returns a copy of this model with `patch` applied and re-validated.
     pub fn patched(&self, patch: &Patch) -> Result<Model, ModelError> {
         let mut doc = self.doc.clone();
+        for resource in &patch.add_resource {
+            if doc.resources.iter().any(|r| r.id == resource.id) {
+                bail!("patch: resource {:?} already exists in the base model", resource.id);
+            }
+            doc.resources.push(resource.clone());
+        }
+        for lot in &patch.add_lot {
+            if doc.lots.iter().any(|l| l.id == lot.id) {
+                bail!("patch: lot {:?} already exists in the base model", lot.id);
+            }
+            doc.lots.push(lot.clone());
+        }
+        for process in &patch.add_process {
+            if doc.processes.iter().any(|p| p.id == process.id) {
+                bail!("patch: process {:?} already exists in the base model", process.id);
+            }
+            doc.processes.push(process.clone());
+        }
         for asset in &patch.add_asset {
             if doc.assets.iter().any(|a| a.id == asset.id) {
                 bail!("patch: asset {:?} already exists in the base model", asset.id);
@@ -620,6 +638,13 @@ pub struct Patch {
     /// Add assets that exist only in this case (e.g. a standby feed).
     #[serde(default)]
     pub add_asset: Vec<AssetDoc>,
+    /// Add resources, lots and processes that exist only in this case.
+    #[serde(default)]
+    pub add_resource: Vec<ResourceDoc>,
+    #[serde(default)]
+    pub add_lot: Vec<LotDoc>,
+    #[serde(default)]
+    pub add_process: Vec<ProcessDoc>,
 }
 
 fn check_requires_acyclic(assets: &BTreeMap<String, Asset>) -> Result<(), ModelError> {

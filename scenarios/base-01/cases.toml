@@ -191,3 +191,90 @@ root_causes = [
   { kind = "cycle", subject = "bus-1" },
   { kind = "asset_unavailable", subject = "emergency-bus" },
 ]
+
+# --- M2.2 multi-source top-up (added 2026-10-31; expectations written before the first run) ---
+
+[[case]]
+id = "S13"
+title = "Two partial sources together cover the sleeve shortfall"
+description = """
+Obtain 3 sleeves: 1 accepted in stock, so 2 must be produced. Bronze is cut to \
+2 kg, enough for only one machined raw sleeve (1.2 kg per run); a case-only \
+inspection station can accept one pre-formed blank from its own 1-item lot. \
+Neither process can cover both missing sleeves alone, so the solver must top up \
+from both. Expected: candidate via turn-sleeve-p1 + inspect-sleeve-p1 and \
+inspect-blank."""
+goal = { obtain = { resource = "sleeve-p1", quantity = "3 item" } }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-bronze" = "2 kg" }
+
+[[case.patch.add_resource]]
+id = "sleeve-blank"
+unit = "item"
+mass_per_unit = "0.8 kg"
+
+[[case.patch.add_lot]]
+id = "lot-blank"
+resource = "sleeve-blank"
+quantity = "1 item"
+quality = "accepted"
+
+[[case.patch.add_process]]
+id = "inspect-blank"
+description = "Case-only second source: accept a pre-formed blank. Not part of the v0.1 base model."
+inputs = [
+  { resource = "sleeve-blank", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "0.1 kWh" },
+]
+outputs = [{ resource = "sleeve-p1", quantity = "1 item" }]
+occupies = ["gauge-1"]
+requires_capabilities = ["material-handling"]
+verification = "demonstrated"
+
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-sleeve-p1", "inspect-sleeve-p1", "inspect-blank"]
+
+[[case]]
+id = "S14"
+title = "Multi-source top-up is reported as blocked when the total capacity is short"
+description = """
+Same two partial sources as S13, but 4 sleeves are requested: 1 in stock plus at \
+most 1 machined and 1 from the blank lot = 3. Topping up must stop and report the \
+two source-level root causes, not a false candidate. Expected: blocked with \
+missing_resource bronze-bar and missing_resource sleeve-blank."""
+goal = { obtain = { resource = "sleeve-p1", quantity = "4 item" } }
+min_verification = "demonstrated"
+[case.patch]
+lot_quantity = { "lot-bronze" = "2 kg" }
+
+[[case.patch.add_resource]]
+id = "sleeve-blank"
+unit = "item"
+mass_per_unit = "0.8 kg"
+
+[[case.patch.add_lot]]
+id = "lot-blank"
+resource = "sleeve-blank"
+quantity = "1 item"
+quality = "accepted"
+
+[[case.patch.add_process]]
+id = "inspect-blank"
+description = "Case-only second source: accept a pre-formed blank. Not part of the v0.1 base model."
+inputs = [
+  { resource = "sleeve-blank", quantity = "1 item" },
+  { resource = "electric-energy", quantity = "0.1 kWh" },
+]
+outputs = [{ resource = "sleeve-p1", quantity = "1 item" }]
+occupies = ["gauge-1"]
+requires_capabilities = ["material-handling"]
+verification = "demonstrated"
+
+[case.expect]
+verdict = "blocked"
+root_causes = [
+  { kind = "missing_resource", subject = "bronze-bar" },
+  { kind = "missing_resource", subject = "sleeve-blank" },
+]

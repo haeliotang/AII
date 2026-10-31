@@ -118,3 +118,21 @@ fn unusable_alternatives_are_not_treated_as_support() {
         r.result.root_causes().collect::<Vec<_>>()
     );
 }
+
+#[test]
+fn multi_source_route_stays_within_each_source_stock() {
+    let s = scenario();
+    let r = run(&s, "S13");
+    assert_eq!(r.result.verdict, Verdict::Candidate);
+    // Exactly one machined raw sleeve (1.2 kg bronze) and one blank are consumed.
+    assert!((consumed(&r, "bronze-bar") - 1.2).abs() < 1e-9);
+    assert!((consumed(&r, "sleeve-blank") - 1.0).abs() < 1e-9);
+    let sleeve_steps: Vec<&str> = r
+        .result
+        .steps
+        .iter()
+        .filter(|s| s.outputs.iter().any(|(r, _)| r == "sleeve-p1"))
+        .map(|s| s.process.as_str())
+        .collect();
+    assert_eq!(sleeve_steps, ["inspect-sleeve-p1", "inspect-blank"]);
+}
