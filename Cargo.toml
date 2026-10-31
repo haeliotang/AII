@@ -5,6 +5,7 @@ members = [
     "crates/poie-plan",
     "crates/poie-runtime",
     "crates/poie-expansion",
+    "crates/poie-federation",
     "crates/poie-exec",
     "crates/poie-process",
     "crates/poie-sim",
