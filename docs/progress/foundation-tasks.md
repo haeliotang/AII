@@ -124,3 +124,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：CI 工具链固定为 Rust 1.94.0（与参考开发环境一致），避免 clippy 版本漂移再次导致本地通过、CI 失败；同时修复 projection 性质测试在新版 clippy 下的 `collapsible_match` 告警（改为 match guard）。已发生的两次漂移（#38/#39、#57/#58）均记录在 PR 中。
 - 2026-10-31：新增调度与仿真随机不变量测试：调度（`crates/poie-ontology/tests/schedule_properties.rs`，120 trials）验证前置满足、动作时长保持、容量冲突的可靠性与完整性、确定性；仿真（`crates/poie-sim/tests/simulation_properties.rs`，80 trials）验证 digest 确定（含任意时间点分块运行）、守恒违规分类、外部流计数、库存核算与电池 SoC 边界。
 - 2026-10-31：新增执行门与运行时随机安全不变量测试：执行门（`crates/poie-exec/tests/gate_properties.rs`，120 trials）验证接管/降级/无幂等/窗口外从不派发、幂等键最多一次物理执行、崩溃/ACK 丢失转 outcome_unknown 且不重试、状态与物理执行一致；运行时（`crates/poie-runtime/tests/runtime_properties.rs`，80 trials）验证投影/断连行为/健康/证据过期。测试发现并修复：断连时只标记"最近一次成功轮询"中的资产，未覆盖此前已知资产（改为累积该适配器曾报告的全部资产）。
+- 2026-10-31：新增 VEC 随机不变量测试（`crates/poie-viability/tests/viability_properties.rs`，60 条随机轨迹）：可行时间/截尾、韧性损失积分与恢复时间/未恢复集合、可持续性净消耗/回收损失、汇总的截尾规则与分位数次序；并验证抽样与枚举方法的确定性/可复现性与场景集合。
