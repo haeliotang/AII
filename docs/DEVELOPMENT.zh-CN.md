@@ -1,7 +1,7 @@
 # Poieweave 开发文档：里程碑与工作计划
 
 版本：0.1 / 2026-10-31
-适用范围：从 Foundation 到 Federation 的全部开发工作。阶段门槛证据与外部行动清单见 [docs/status/](status/stage-gates.zh-CN.md)；本地一键复现：`scripts/verify-all.sh`。
+适用范围：从 Foundation 到 Federation 的全部开发工作。阶段门槛证据与外部行动清单见 [docs/status/](status/stage-gates.zh-CN.md)（含[测试与证据矩阵](status/test-matrix.zh-CN.md)）；本地一键复现：`scripts/verify-all.sh`。
 依据：[研究纲领](research/FOUNDATIONS.zh-CN.md) §8–§9 · [三份契约](../specifications/) · [Base-01](../scenarios/base-01/README.zh-CN.md)
 
 本文是**能力门槛驱动**的计划，不是排期表。里程碑按依赖关系排序，不写交付日期；只有退出条件全部满足才算完成，不因时间到了就宣布进入下一阶段。
@@ -556,3 +556,4 @@ flowchart LR
 | 0.1.60 | 2026-10-31 | Python 桥接测试纳入 CI（水模型有效性/质量守恒、协议、故障注入 9 测试） |
 | 0.1.61 | 2026-10-31 | VEC 报告随机防作弊校验测试（合法报告 TOML 往返 + 16 类单字段变异全部拒绝） |
 | 0.1.62 | 2026-10-31 | 图求解器随机不变量测试（判定与阻断分类一致、候选步骤独立校验、验证等级/深度单调性） |
+| 0.1.63 | 2026-10-31 | 新增测试与证据矩阵（crate/实验 → 测试数/trials → CI 步骤 → 里程碑） |
