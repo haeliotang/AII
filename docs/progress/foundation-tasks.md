@@ -40,6 +40,8 @@ M11 扩张核算与 H4 实验：**进行中**——M11.1–M11.3 库级完成；
 
 M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 库级模拟（`crates/poie-federation`，7 个测试）；M12.5 [Base-02](../scenarios/base-02/model.toml) 共享仓库/运输场景 8/8 预登记案例通过；M12.6 模拟分区/重连 6/6 场景通过（[REPORT.sim.md](../experiments/federation-partition/REPORT.sim.md)，CI 重放）；**真实多节点复测仍待外部网络环境，M12 不标记完成**。
 
+阶段门槛证据与外部行动（2026-10-31）：新增 [证据包](../status/stage-gates.zh-CN.md)（Foundation/Autonomy/Embodiment 的逐条证据、复现命令、阻塞项）、[外部行动清单](../status/external-actions.zh-CN.md)（M1.8/M1.9/M1.10/M3.3/M9.0/M9.2/M9.6/M10/M11.6/M12.6 的所需材料与验收）、[外部用例模板](../status/case-contribution-template.zh-CN.md) 与 `scripts/verify-all.sh`；本地脚本已运行通过。
+
 ## 初期工作清单（2026-10-31 完成）
 
 | # | 任务 | 产物 | 状态 |
@@ -111,3 +113,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：H4 模拟运行：`experiments/h4-expansion/runner` 在 H2 开发集 16 场景上比较扩张/不扩张；结构增益为 `obtain:sleeve-p1`（blocked→candidate）、失去空；时域服务指标持平（扩张收益在准备目标）；建造期检查通过；按预登记判定 **不确定**（建造消耗未在库存扣除 + 外部依赖未闭合），声明等级最多 modeled_gain。报告/原始输出提交并加入 CI 重放。
 - 2026-10-31：M12 库级模拟完成：新增 `crates/poie-federation`——场址日志与 HLC（tick/observe）、双向日志交换（按 RecordId 去重、按 (site,seq) 合并）、因果排序（HLC→site→seq），重连对账报告重复幂等键/双派发/超额预留/双重所有权，预留与租约不因冲突丢弃；ADR-0008 记录生产传输验收要求（认证/加密/至少一次+幂等合并/时钟偏差/真实多节点测试）。7 个测试。
 - 2026-10-31：M12.5/M12.6 模拟完成：新增 Base-02 共享仓库/热处理好场景（8 个预登记结构用例；开发中修正卡车 transport 能力等级声明 declared→modeled，记录原因，预期未改）；新增 `experiments/federation-partition` 模拟分区/重连实验（6 场景：不相干工作、超额预留、重叠租约、重复幂等键、双派发、反复分区），全部符合预期——冲突全部报告、预留/租约不丢弃、交换幂等；报告/原始输出提交并加入 CI 重放。真实多节点仍待外部。
+- 2026-10-31：新增阶段门槛证据包与外部行动清单（`docs/status/`）及外部用例模板；`scripts/verify-all.sh` 汇总复现全部已声明门槛（格式/clippy/测试/Base-01/Base-02/时间版重放/VEC/H3/H4/联邦分区/依赖策略），本地运行通过。
