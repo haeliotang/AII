@@ -30,6 +30,18 @@ jobs:
           SKIP_DENY: "1"
         run: scripts/verify-all.sh
 
+  release-tests:
+    name: release-mode test suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@1.94.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo test --release
+        run: cargo test --release --locked
+
   fresh-clone:
     name: fresh-clone reproduction (manual dispatch only)
     if: github.event_name == 'workflow_dispatch'
