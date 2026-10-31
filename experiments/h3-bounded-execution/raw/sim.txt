@@ -1,0 +1,14 @@
+h3-0-None	replace-sleeve-p1	none	dispatched	1	0	0	acknowledged	pump-status-sensor	true
+h3-1-None	turn-sleeve-p1	none	dispatched	1	0	0	acknowledged	pump-status-sensor	true
+h3-2-DropAck	replace-sleeve-p1	ack_lost	dispatched	1	0	0	outcome_unknown	-	true
+h3-3-DropAck	turn-sleeve-p1	ack_lost	dispatched	1	0	0	outcome_unknown	-	true
+h3-4-Crash	replace-sleeve-p1	crash_after_execute	rejected	1	0	0	outcome_unknown	-	true
+h3-5-Crash	turn-sleeve-p1	crash_after_execute	rejected	1	0	0	outcome_unknown	-	true
+h3-6-Duplicate	replace-sleeve-p1	duplicate_delivery	dispatched	2	1	0	acknowledged	pump-status-sensor	true
+h3-7-Duplicate	turn-sleeve-p1	duplicate_delivery	dispatched	2	1	0	acknowledged	pump-status-sensor	true
+h3-8-Network	replace-sleeve-p1	network_loss	fallback	0	0	0	authorized	-	true
+h3-9-Network	turn-sleeve-p1	network_loss	fallback	0	0	0	authorized	-	true
+h3-10-Takeover	replace-sleeve-p1	human_takeover	recorded_only	0	0	0	authorized	-	true
+h3-11-Takeover	turn-sleeve-p1	human_takeover	recorded_only	0	0	0	authorized	-	true
+h3-12-Degrade	replace-sleeve-p1	runtime_degraded	fallback	0	0	0	authorized	-	true
+h3-13-Degrade	turn-sleeve-p1	runtime_degraded	fallback	0	0	0	authorized	-	true

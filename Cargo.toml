@@ -12,6 +12,7 @@ members = [
     "experiments/h1-structural/baseline",
     "experiments/h1-temporal/runner",
     "experiments/h2-joint-planning/runner",
+    "experiments/h3-bounded-execution/runner",
     "experiments/vec-base01/runner",
 ]
 

@@ -1,0 +1,12 @@
+[package]
+name = "poie-h3-bounded-execution"
+version = "0.1.0"
+description = "Simulated H3 bounded-execution run: fault injection, duplicate-physical-action accounting and reconciliation."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+poie-exec = { path = "../../../crates/poie-exec", version = "0.1.0" }
+poie-state = { path = "../../../crates/poie-state", version = "0.1.0" }

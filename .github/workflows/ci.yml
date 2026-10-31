@@ -46,6 +46,12 @@ jobs:
       - name: Base-01 v0.2 VEC report (M6)
         run: cargo run --locked -q -p poie-vec-base01 -- scenarios/base-01-timed/cases.toml --check experiments/vec-base01/report.toml
 
+      - name: H3 simulated bounded execution (M10)
+        run: |
+          cargo run --locked -q -p poie-h3-bounded-execution -- --write /tmp/h3-sim
+          diff /tmp/h3-sim/REPORT.sim.md experiments/h3-bounded-execution/REPORT.sim.md
+          diff /tmp/h3-sim/raw/sim.txt experiments/h3-bounded-execution/raw/sim.txt
+
   deny:
     name: cargo-deny (${{ matrix.checks }})
     runs-on: ubuntu-latest

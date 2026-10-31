@@ -71,6 +71,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-h3-bounded-execution"
+version = "0.1.0"
+dependencies = [
+ "poie-exec",
+ "poie-state",
+]
+
+[[package]]
 name = "poie-ontology"
 version = "0.1.0"
 dependencies = [

@@ -168,12 +168,20 @@ impl ExecutionGate {
                 }
                 Ok(DispatchOutcome::Dispatched { receipt })
             }
-            Err(ExecError::Crashed(_)) | Err(ExecError::Disconnected(_)) => {
+            Err(ExecError::Disconnected(detail)) => Ok(DispatchOutcome::Fallback {
+                reason: format!("executor unreachable ({detail}); site controls take over"),
+            }),
+            Err(ExecError::Crashed(_)) => {
                 self.dispatched_keys.insert(action.idempotency_key.clone());
+                self.ledger
+                    .apply(&action.action_id, ActionState::Dispatched)
+                    .map_err(|error| GateError::NotAuthorized(error.to_string()))?;
                 self.ledger
                     .apply(&action.action_id, ActionState::OutcomeUnknown)
                     .map_err(|error| GateError::NotAuthorized(error.to_string()))?;
-                Ok(DispatchOutcome::Rejected { reason: "executor failed; outcome unknown, no retry".into() })
+                Ok(DispatchOutcome::Rejected {
+                    reason: "executor crashed after actuation; outcome unknown, no retry".into(),
+                })
             }
             Err(ExecError::Rejected(detail)) => {
                 self.ledger
