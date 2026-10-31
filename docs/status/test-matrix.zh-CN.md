@@ -10,14 +10,14 @@
 | `poie-state` | 70 | 状态机 10⁵ 序列（单元内）；投影 120 trials；记录验证/往返 120 trials | M4、M5、M12 |
 | `poie-sim` | 14 | 仿真 80 trials | M4、M6 |
 | `poie-viability` | 38 | 指标 60 轨迹；报告 20 份 × 16 类变异 | M6 |
-| `poie-plan` | 19 | 规划器 80 trials | M8 |
+| `poie-plan` | 22 | 规划器 80 trials；重规划/基线 80+20+60 trials | M8 |
 | `poie-process` | 7 | Rust 客户端 40 trials（故障/超时分类）；Python 侧 9 个 unittest | M7 |
 | `poie-runtime` | 13 | 运行时/断连 80 trials | M9 |
 | `poie-exec` | 13 | 执行门 120 trials | M10 |
 | `poie-expansion` | 9 | 结构 40/时序 40 trials | M11 |
 | `poie-federation` | 10 | HLC 80 trials；分区/重连 120 trials | M12 |
 
-**库 crate 测试合计：270 个已列出的测试**；另有实验 runner 6 个（`poie-h1-baseline` 5、`poie-vec-base01` 1），总计 276。
+**库 crate 测试合计：273 个已列出的测试**；另有实验 runner 6 个（`poie-h1-baseline` 5、`poie-vec-base01` 1），总计 279。
 
 ## 2. 场景与实验重放
 
