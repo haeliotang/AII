@@ -18,14 +18,16 @@
 //!   receipt-loss/NACK/restart fault injection (SAP §4, §9).
 //! - [`recovery`]: restart replay of transition records and SAP §5 decisions
 //!   (dispatched -> outcome_unknown, authorized -> re-review, ...).
+//! - [`isolation`]: simulation branches can never dispatch a field action
+//!   (SAP §7).
 //!
-//! Not implemented yet: full per-write-point crash injection, command ownership
-//! leases, partitions and site-to-site reconciliation (SAP §5–§6), and the
-//! ontology bridge (§8). Facts and intentions remain separate records; nothing
-//! here sends a command to real equipment.
+//! Not implemented yet: command ownership leases, partitions and site-to-site
+//! reconciliation (SAP §6), and the ontology bridge (§8). Facts and intentions
+//! remain separate records; nothing here sends a command to real equipment.
 
 pub mod action;
 pub mod executor;
+pub mod isolation;
 pub mod log;
 pub mod projection;
 pub mod record;

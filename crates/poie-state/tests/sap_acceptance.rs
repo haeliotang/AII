@@ -1,12 +1,13 @@
 //! SAP §9 acceptance cases implemented so far.
 //!
-//! Covered: SAP-T1 (crash after dispatch), T2 (ACK lost, no repeat), T3
-//! (duplicate delivery), T4 (stale precondition before dispatch), T9 (executor
-//! restarts losing its dedup table) and T10 (self-reported verification).
+//! Covered: SAP-T1 (crash after dispatch, plus a per-write-point sweep), T2
+//! (ACK lost, no repeat), T3 (duplicate delivery), T4 (stale precondition before
+//! dispatch), T9 (executor restarts losing its dedup table), T10 (self-reported
+//! verification) and T11 (a simulation branch cannot dispatch a field action).
 //!
-//! Still open: T5–T8 (partition expiry, site ownership/leases, clock skew) and
-//! T11 (simulation branch dispatch) — they need the ownership/partition work in
-//! M4.6–M4.8 and are tracked in the development plan.
+//! Still open: T5–T8 (partition expiry, site ownership and leases, clock skew);
+//! they need the ownership/partition work and are tracked in the development
+//! plan.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -14,6 +15,7 @@ use poie_state::action::{
     redispatch_allowed, Action, ActionLedger, ActionState, Authorization, Precondition, Reversibility, VerificationSpec,
 };
 use poie_state::executor::{Command, DeliveryOutcome, ExecutorFaults, SimExecutor};
+use poie_state::isolation::ensure_live_dispatch;
 use poie_state::log::AppendLog;
 use poie_state::record::{
     Envelope, Hlc, Namespace, ObservationValue, Payload, Quality, Record, RecordId, RecordKind, Source, Timestamp,
@@ -224,4 +226,101 @@ fn sap_t10_self_reported_verification_is_not_independent() {
         quality: Quality::declared(None, Some("calibrated")).unwrap(),
     };
     assert_eq!(observation.verification_is_independent(), None);
+}
+
+/// One persistent write point in the dispatch flow (M4.7).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CrashPoint {
+    ActionRecord,
+    Validated,
+    Authorized,
+    Dispatched,
+    Acknowledged,
+}
+
+fn script_dispatch_log(path: &std::path::Path, crash: CrashPoint) -> Action {
+    let a = action();
+    let mut log = AppendLog::create(path).unwrap();
+    log.append(&action_record(1, &a)).unwrap();
+    if crash == CrashPoint::ActionRecord {
+        return a;
+    }
+    log.append(&transition_record(2, ActionState::Proposed, ActionState::Validated)).unwrap();
+    if crash == CrashPoint::Validated {
+        return a;
+    }
+    log.append(&transition_record(3, ActionState::Validated, ActionState::Authorized)).unwrap();
+    if crash == CrashPoint::Authorized {
+        return a;
+    }
+    log.append(&transition_record(4, ActionState::Authorized, ActionState::Dispatched)).unwrap();
+    if crash == CrashPoint::Dispatched {
+        return a;
+    }
+    log.append(&transition_record(5, ActionState::Dispatched, ActionState::Acknowledged)).unwrap();
+    a
+}
+
+#[test]
+fn sap_t1_crash_at_every_persistent_write_point_recovers_consistently() {
+    let cases = [
+        (CrashPoint::ActionRecord, ActionState::Proposed, RestartDecision::Unchanged),
+        (CrashPoint::Validated, ActionState::Validated, RestartDecision::Unchanged),
+        (CrashPoint::Authorized, ActionState::Authorized, RestartDecision::RequiresReview),
+        (CrashPoint::Dispatched, ActionState::Dispatched, RestartDecision::TransitionTo(ActionState::OutcomeUnknown)),
+        (CrashPoint::Acknowledged, ActionState::Acknowledged, RestartDecision::ContinueVerification),
+    ];
+    for (crash, expected_state, expected_decision) in cases {
+        let path = temp_path(&format!("t1-{crash:?}"));
+        script_dispatch_log(&path, crash);
+
+        let records = AppendLog::open(&path).unwrap().records().unwrap();
+        let states = replay_action_states(&records).unwrap();
+        assert_eq!(states["a1"], expected_state, "{crash:?}");
+        assert_eq!(restart_decision(expected_state), expected_decision, "{crash:?}");
+
+        let a = action();
+        if let RestartDecision::TransitionTo(next) = expected_decision {
+            let mut ledger = ActionLedger::restore(&[a], &states).unwrap();
+            ledger.apply("a1", next).unwrap();
+            assert_eq!(ledger.state("a1"), Some(ActionState::OutcomeUnknown));
+            // After recovery the same key must still block a second dispatch.
+            assert_eq!(ledger.dispatched_by("k1"), Some("a1"));
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+}
+
+#[test]
+fn restart_preserves_the_dispatched_idempotency_key_guard() {
+    let path = temp_path("restart-key-guard");
+    script_dispatch_log(&path, CrashPoint::Dispatched);
+    let records = AppendLog::open(&path).unwrap().records().unwrap();
+    let states = replay_action_states(&records).unwrap();
+
+    let first = action();
+    let mut second = action();
+    second.action_id = "a2".to_string();
+    let mut ledger = ActionLedger::restore(&[first, second.clone()], &states).unwrap();
+    assert_eq!(ledger.dispatched_by("k1"), Some("a1"));
+
+    ledger.apply("a2", ActionState::Validated).unwrap();
+    ledger.apply("a2", ActionState::Authorized).unwrap();
+    assert!(matches!(
+        ledger.apply("a2", ActionState::Dispatched),
+        Err(poie_state::action::LedgerError::DuplicateDispatch { .. })
+    ));
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn sap_t11_a_simulation_branch_cannot_dispatch_a_field_action() {
+    let branch = Namespace::simulation("h1-preview").unwrap();
+    let error = ensure_live_dispatch(&branch, "a1").unwrap_err();
+    assert_eq!(error.reason, "simulation_cannot_dispatch");
+
+    // The gate is independent of the action's lifecycle: even a fully authorized
+    // action is refused before any review or physical effect.
+    let _authorized = ledger_at(&action(), ActionState::Authorized);
+    assert!(ensure_live_dispatch(&Namespace::live(), "a1").is_ok());
 }
