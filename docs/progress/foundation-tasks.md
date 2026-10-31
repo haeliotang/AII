@@ -138,3 +138,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：新增测试矩阵自动校验 `scripts/check-test-matrix.py` 并纳入 CI/`verify-all.sh`：解析 `docs/status/test-matrix.zh-CN.md` 的 crate 计数与合计，运行 `cargo test --list` 实际计数比对；同时把矩阵总计拆分为"库 crate 270 + 实验 runner 6 = 总计 276"，避免口径混淆。
 - 2026-10-31：新增[外部邀约模板](../status/outreach-templates.zh-CN.md)：为 M1.8/M1.9/M1.10/M3.3/M9.0/M9.2/M9.6/M10/M11.6/M12.6 各提供可直接复制的中文正文（M1.8 另附英文短版），含材料链接、时间与验收标准；从 external-actions 链接。
 - 2026-10-31：新增 M9.4 影子运行端到端演示（`experiments/shadow-run`）：模拟现场观测→投影（泵退化、车床故障）→影子规划→`dispatched=false`→与模拟操作者日志对比，覆盖 `would_do_not_observed` 与 `observed_not_planned` 两类分歧；显式 guard 拒绝影子模式派发；7/7 断言，报告/轨迹加入 CI 与 `verify-all.sh` 重放。
+- 2026-10-31：新增重规划与基线随机不变量测试（`crates/poie-plan/tests/replan_baseline_properties.rs`）：80 trials 验证 replan 的 kept/cancelled 划分、新计划不早于 now、added 口径与确定性；20 trials 验证起点重规划与初始计划一致、非法时域/早于起点被拒绝；60 trials 验证三种基线确定性、预算与顺序。
