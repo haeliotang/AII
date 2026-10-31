@@ -17,7 +17,7 @@
 | `poie-expansion` | 9 | 结构 40/时序 40 trials | M11 |
 | `poie-federation` | 10 | HLC 80 trials；分区/重连 120 trials | M12 |
 
-**Rust 测试合计：276 个已列出的测试**（不含实验 runner 的断言脚本）。
+**库 crate 测试合计：270 个已列出的测试**；另有实验 runner 6 个（`poie-h1-baseline` 5、`poie-vec-base01` 1），总计 276。
 
 ## 2. 场景与实验重放
 
@@ -44,7 +44,8 @@
 3. `cargo test --locked`
 4. `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`
 5. Markdown 相对链接检查：`python3 scripts/check-docs.py`
-6. Python：`python3 -m unittest discover -s python/poie_models`
+6. 测试矩阵计数校验：`python3 scripts/check-test-matrix.py`
+7. Python：`python3 -m unittest discover -s python/poie_models`
 6. Base-01 40 例、Base-02 8 例
 7. M12 分区模拟重放、e2e 重放、TCP 重放、两站点重放
 8. Base-01 时间版用例与摘要校验
