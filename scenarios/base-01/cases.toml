@@ -278,3 +278,40 @@ root_causes = [
   { kind = "missing_resource", subject = "bronze-bar" },
   { kind = "missing_resource", subject = "sleeve-blank" },
 ]
+
+# --- M2.3 degraded-use policy (added 2026-10-31; expectations written before the first run) ---
+
+[[case]]
+id = "S15"
+title = "A degraded lathe may still turn one nut under policy"
+description = """
+lathe-1 is degraded but the policy allows turn-lathe-nut to occupy it, capped at \
+one occupation per route. One nut is requested, so the degraded asset can be used \
+without repairing it first. Expected: candidate via turn-lathe-nut, with the step \
+marked as using a degraded asset."""
+goal = { obtain = { resource = "lathe-nut", quantity = "1 item" } }
+min_verification = "modeled"
+[case.patch]
+asset_status = { "lathe-1" = "degraded" }
+asset_degraded = { "lathe-1" = { occupiable = true, allowed_processes = ["turn-lathe-nut"], max_occupations = 1 } }
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-lathe-nut"]
+
+[[case]]
+id = "S16"
+title = "The degraded-occupation cap cannot be exceeded on one route"
+description = """
+Same policy as S15, but two nuts are requested. Each nut needs one occupation of \
+the degraded lathe, and the policy allows only one per route, so the second run \
+must be refused rather than silently over-using the degraded asset. Expected: \
+blocked with a degraded_restriction root cause on lathe-1 (no other process makes \
+lathe-nut)."""
+goal = { obtain = { resource = "lathe-nut", quantity = "2 item" } }
+min_verification = "modeled"
+[case.patch]
+asset_status = { "lathe-1" = "degraded" }
+asset_degraded = { "lathe-1" = { occupiable = true, allowed_processes = ["turn-lathe-nut"], max_occupations = 1 } }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "degraded_restriction", subject = "lathe-1" }]

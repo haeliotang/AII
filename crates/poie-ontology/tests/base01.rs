@@ -136,3 +136,18 @@ fn multi_source_route_stays_within_each_source_stock() {
         .collect();
     assert_eq!(sleeve_steps, ["inspect-sleeve-p1", "inspect-blank"]);
 }
+
+#[test]
+fn degraded_policy_marks_the_step_and_caps_occupations() {
+    let s = scenario();
+    let r = run(&s, "S15");
+    assert_eq!(r.result.verdict, Verdict::Candidate);
+    assert_eq!(r.result.steps[0].degraded, vec!["lathe-1".to_string()]);
+    let r = run(&s, "S16");
+    assert_eq!(r.result.verdict, Verdict::Blocked);
+    assert!(
+        r.result.root_causes().any(|b| b.kind == BlockerKind::DegradedRestriction && b.subject == "lathe-1"),
+        "{:?}",
+        r.result.root_causes().collect::<Vec<_>>()
+    );
+}
