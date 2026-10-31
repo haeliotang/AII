@@ -17,7 +17,7 @@ CI 固定使用 Rust 1.94.0（与参考开发环境一致，避免 clippy 版本
 | 条件 | 证据 |
 | --- | --- |
 | 三份契约草案存在且可反驳 | [PO v0.3-draft](../../specifications/physical-ontology.zh-CN.md)、[SAP v0.2-draft](../../specifications/state-action-protocol.zh-CN.md)、[VEC v0.2-draft](../../specifications/viability-expansion.zh-CN.md) |
-| 本体可执行 + 预登记用例 | Base-01 40/40（`scenarios/base-01/cases.toml`）；Base-02 8/8（**M12.5 新增**）；ontology 57 单元 + 16 集成 + 调度随机不变量（120 trials：前置满足、容量冲突完整性）+ 图求解随机不变量（120 trials：判定/阻断分类、候选步骤、验证等级与深度单调性） |
+| 本体可执行 + 预登记用例 | Base-01 40/40（`scenarios/base-01/cases.toml`）；Base-02 8/8（**M12.5 新增**）；ontology 57 单元 + 16 集成 + 调度随机不变量（120 trials：前置满足、容量冲突完整性）+ 图求解随机不变量（120 trials：判定/阻断分类、候选步骤、验证等级与深度单调性）+ 模型/用例 TOML 随机变异不 panic |
 | 状态协议参考实现与故障注入 | `crates/poie-state`：53 单元 + 13 SAP 验收（T1–T11）；10⁵ 序列属性测试；逐写入点崩溃注入；120 次随机投影不变量测试（对照独立契约 oracle）；120 次记录验证/九类负载往返随机测试；追加日志随机不变量（重开保序/序号规则/崩溃尾部/中段损坏） |
 | 时间维度与可重放 | `poie-sim` 13 测试 + 仿真随机不变量（80 trials：digest 确定、守恒分类、外部流/库存核算、SoC 边界）；Base-01 时间版 20/20，`digests.toml` CI 逐位校验 |
 | H1 实验 | [H1 REPORT](../../experiments/h1-structural/REPORT.md)（弱支持、内部证据）与 [H1 temporal REPORT](../../experiments/h1-temporal/REPORT.md)，全量/开发集/留出集/时间版原始输出均 CI 重放 |
