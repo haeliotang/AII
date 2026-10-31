@@ -1,7 +1,7 @@
 # Poieweave 开发文档：里程碑与工作计划
 
 版本：0.1 / 2026-10-31
-适用范围：从 Foundation 到 Federation 的全部开发工作。
+适用范围：从 Foundation 到 Federation 的全部开发工作。阶段门槛证据与外部行动清单见 [docs/status/](status/stage-gates.zh-CN.md)；本地一键复现：`scripts/verify-all.sh`。
 依据：[研究纲领](research/FOUNDATIONS.zh-CN.md) §8–§9 · [三份契约](../specifications/) · [Base-01](../scenarios/base-01/README.zh-CN.md)
 
 本文是**能力门槛驱动**的计划，不是排期表。里程碑按依赖关系排序，不写交付日期；只有退出条件全部满足才算完成，不因时间到了就宣布进入下一阶段。
