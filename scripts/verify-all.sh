@@ -72,6 +72,10 @@ echo "== H2 development replay =="
 cargo run --locked -q -p poie-h2-joint-planning -- --dev --write "$tmp/h2-dev"
 diff "$tmp/h2-dev/dev-report.md" experiments/h2-joint-planning/dev-report.md
 diff "$tmp/h2-dev/raw/dev-raw.txt" experiments/h2-joint-planning/raw/dev-raw.txt
+echo "== H2 holdout replay (reproducibility only) =="
+cargo run --locked -q -p poie-h2-joint-planning -- --holdout --write "$tmp/h2-holdout"
+diff "$tmp/h2-holdout/holdout-report.md" experiments/h2-joint-planning/holdout-report.md
+diff "$tmp/h2-holdout/raw/holdout-raw.txt" experiments/h2-joint-planning/raw/holdout-raw.txt
 echo "== dependency policy =="
 cargo deny check licenses bans sources
 echo "ALL GATES PASSED"
