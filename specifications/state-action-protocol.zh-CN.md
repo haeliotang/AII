@@ -1,7 +1,7 @@
 # Poieweave 契约二：State & Action Protocol（状态与行动协议）
 
 版本：0.1-draft / 2026-10-31
-状态：可反驳草案。参考实现见 `crates/poie-state`：§2.1–2.2 的记录信封与九类记录、§3 的动作状态机（含属性测试）已实现；持久化、投影、派发前复核、崩溃恢复与故障注入（§4–§9）尚未实现，§9 的验收用例作为后续实现依据。
+状态：可反驳草案。参考实现见 `crates/poie-state`：§2.1–2.2 的记录信封与九类记录、§2.3 的版本化投影与状态版本、§3 的动作状态机（含 10⁵ 序列属性测试）、§4 的六项派发前复核（含可追溯拒绝原因）已实现；只追加持久化、崩溃恢复、执行端与故障注入（§5–§9）尚未实现，§9 的验收用例作为后续实现依据。
 
 相关契约：[Physical Ontology](physical-ontology.zh-CN.md) · [Viability & Expansion](viability-expansion.zh-CN.md)
 

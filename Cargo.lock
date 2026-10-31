@@ -49,6 +49,9 @@ dependencies = [
 [[package]]
 name = "poie-state"
 version = "0.1.0"
+dependencies = [
+ "poie-ontology",
+]
 
 [[package]]
 name = "proc-macro2"
