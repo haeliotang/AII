@@ -71,6 +71,7 @@ name = "poie-federation"
 version = "0.1.0"
 dependencies = [
  "poie-state",
+ "serde",
 ]
 
 [[package]]
@@ -79,6 +80,16 @@ version = "0.1.0"
 dependencies = [
  "poie-federation",
  "poie-state",
+]
+
+[[package]]
+name = "poie-federation-tcp"
+version = "0.1.0"
+dependencies = [
+ "poie-federation",
+ "poie-state",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

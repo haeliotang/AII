@@ -1,0 +1,2 @@
+site-a	2	double_ownership,duplicate_idempotency_key,over_reservation
+site-b	2	double_ownership,duplicate_idempotency_key,over_reservation

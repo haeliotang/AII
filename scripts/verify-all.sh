@@ -36,6 +36,10 @@ echo "== end-to-end pipeline demo =="
 cargo run --locked -q -p poie-e2e -- --write "$tmp/e2e"
 diff "$tmp/e2e/REPORT.md" experiments/e2e-pipeline/REPORT.md
 diff "$tmp/e2e/raw/trace.txt" experiments/e2e-pipeline/raw/trace.txt
+echo "== localhost TCP federation demo =="
+cargo run --locked -q -p poie-federation-tcp -- --write "$tmp/fed-tcp"
+diff "$tmp/fed-tcp/REPORT.md" experiments/federation-tcp/REPORT.md
+diff "$tmp/fed-tcp/raw/exchange.txt" experiments/federation-tcp/raw/exchange.txt
 echo "== dependency policy =="
 cargo deny check licenses bans sources
 echo "ALL GATES PASSED"

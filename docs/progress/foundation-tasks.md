@@ -115,3 +115,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：M12.5/M12.6 模拟完成：新增 Base-02 共享仓库/热处理好场景（8 个预登记结构用例；开发中修正卡车 transport 能力等级声明 declared→modeled，记录原因，预期未改）；新增 `experiments/federation-partition` 模拟分区/重连实验（6 场景：不相干工作、超额预留、重叠租约、重复幂等键、双派发、反复分区），全部符合预期——冲突全部报告、预留/租约不丢弃、交换幂等；报告/原始输出提交并加入 CI 重放。真实多节点仍待外部。
 - 2026-10-31：新增阶段门槛证据包与外部行动清单（`docs/status/`）及外部用例模板；`scripts/verify-all.sh` 汇总复现全部已声明门槛（格式/clippy/测试/Base-01/Base-02/时间版重放/VEC/H3/H4/联邦分区/依赖策略），本地运行通过。
 - 2026-10-31：端到端管线演示完成：`experiments/e2e-pipeline` 串联只读适配器→投影/证据过期→联合规划→SAP 校验→执行门（接管 RecordedOnly、降级 Fallback）→模拟执行→独立验证→预测核对；9/9 断言通过，报告/轨迹提交并加入 CI 与 `verify-all.sh` 重放。
+- 2026-10-31：本机 TCP 双进程联邦演示：`experiments/federation-tcp` 由父进程分配两个回环端口并并发启动两个子进程，双方通过真实 TCP socket 交换记录/预留/租约并对账；两个站点均报告 `over_reservation`、`double_ownership`、`duplicate_idempotency_key` 三类冲突，报告/原始输出提交并加入 CI 与 `verify-all.sh` 重放。明确标注 localhost/two-process，非真实多站点。
