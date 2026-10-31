@@ -156,6 +156,7 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：状态快照与干净克隆记录刷新至 `50b1e32`（Rust 列表测试 286 = 库 280 + runner 6）；干净克隆在该提交上通过。
 - 2026-10-31：`scripts/check-test-matrix.py` 扩展为同时校验 `docs/status/status-snapshot.zh-CN.md` 的测试计数（总/库/runner 三处对照实际 `cargo test --list`），防止快照计数漂移；维护手册同步说明。
 - 2026-10-31：新增候选路线枚举随机不变量测试（`crates/poie-ontology/tests/route_properties.rs`，120+80 trials）：枚举受 limit 约束、按签名去重、更大 limit 是更小枚举的前缀、非 candidate 无路线；每条路线消耗为正、外部依赖属于消耗集合、路线验证等级不低于查询下限；`external_dependency_report` 的依赖集合等于所有候选路线依赖的并集且无重复。
+- 2026-10-31：干净克隆复现记录刷新至 `8d6e8f5`（通过）；状态快照 §3 同步。
 - 2026-10-31：状态快照与干净克隆记录刷新至 `f17bf9f`（Rust 列表测试 284 = 库 278 + runner 6）；干净克隆在该提交上通过。
 - 2026-10-31：状态快照与干净克隆记录刷新至 `e8f72aa`：Rust 列表测试更新为 282（库 276 + runner 6），干净克隆在该提交上通过。
 - 2026-10-31：手动 dispatch scheduled workflow（[run 41246880552](https://github.com/haeliotang/poieweave/actions/runs/41246880552)）五个 job 全部成功：verify-all、release-mode test suite、fresh-clone（runner 上干净克隆复现）、advisories、licenses/bans/sources。
