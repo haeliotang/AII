@@ -129,3 +129,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：Python 桥接测试纳入 CI：`python/poie_models/test_bridge.py`（stdlib unittest，9 测试）覆盖水模型有效性/质量守恒/合成标记、桥协议 schema/单位/多请求、模型版本不匹配、非法 JSON 后继续、`non_convergence`/`numerical_failure`/单位与守恒破坏注入、崩溃退出；CI 与 `verify-all.sh` 加入 `python3 -m unittest discover`。
 - 2026-10-31：新增 VEC 报告随机防作弊校验测试（`crates/poie-viability/tests/report_properties.rs`）：合法报告 TOML 往返一致且可生成人类摘要；对 schema/空字段/horizon/seeds/成本/空 runs/分区和/场景 id/预算/过度声称/置信区间/指标值/单位/可持续性缺产出/来源/附件共 16 类单字段变异逐一断言被拒绝，并抽查拒绝原因命中对应规则。
 - 2026-10-31：新增图求解器随机不变量测试（`crates/poie-ontology/tests/graph_properties.rs`，120 trials + 默认深度全目标检查）：验证判定与阻断分类一致（Candidate 无阻断、Blocked 有根因、SearchLimit 必有深度阻断、Unknown 必有未知状态阻断）、候选步骤内部一致（步骤引用只向后、提供者/路线验证等级不低于查询下限）、弱化验证等级不会丢失候选、加强验证等级不会产生候选、更大深度不会丢失候选。
+- 2026-10-31：新增[测试与证据矩阵](../status/test-matrix.zh-CN.md)：按 crate 列出 269 个已列出的 Rust 测试与随机性质 trials、场景/实验重放、CI 步骤及里程碑对应关系，并从 stage-gates/README/开发文档链接。
