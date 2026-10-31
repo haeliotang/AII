@@ -1,0 +1,10 @@
+[package]
+name = "poie-viability"
+version = "0.1.0"
+description = "Viability & Expansion Contract reference implementation: query validation, verdict classes, reporting guards and reproducible sampling/enumeration methods."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+poie-ontology = { path = "../poie-ontology", version = "0.1.0" }
