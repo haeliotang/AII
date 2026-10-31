@@ -22,7 +22,7 @@ M2 本体 v0.2：**已完成**（M2.1–M2.8）。PO 升为 v0.2-draft（schema 
 
 M3 H1 结构层实验：**基本完成**——实验已登记（[PREREG.md](../../experiments/h1-structural/PREREG.md)）、基线已实现、40 例分层用例、留出集已选定（[HOLDOUT.md](../../experiments/h1-structural/HOLDOUT.md)）、[报告已发布](../../experiments/h1-structural/REPORT.md)。留出集上基线漏判 2/7、误判 1/3；Poieweave 漏判 0/7。按预登记规则 H1 以弱形式被支持，但**外部用例配额（≥1/4）未满足**，结论仅为内部证据。
 
-M4 状态与事件内核：**进行中**——M4.1–M4.9 全部实现（记录/信封、只追加日志 [ADR-0003](../adr/0003-append-only-local-log.zh-CN.md)、投影/状态版本、动作状态机、派发前复核、模拟执行端、逐写入点崩溃恢复、仿真隔离、本体桥接，以及 §6.1 所有权/租约与 §6.2 库存预留）；`crates/poie-state` 53 个单元测试 + 13 个 SAP 验收测试，**SAP-T1–T11 全部自动化**；剩余：SAP 升 v0.2-draft 并完成 M4 退出复核。
+M4 状态与事件内核：**已完成**（M4.1–M4.9）。SAP 升为 **v0.2-draft**（记录模式 `poie.record/0.2`，实现决策见 SAP §11）；`crates/poie-state` 53 个单元测试 + 13 个 SAP 验收测试，T1–T11 全绿；退出条件逐项满足（属性测试 10⁵ 序列、逐写入点崩溃注入、契约升级）。跨场址交换与对账按计划留到 M12。
 
 ## 初期工作清单（2026-10-31 完成）
 
@@ -71,3 +71,4 @@ M4 状态与事件内核：**进行中**——M4.1–M4.9 全部实现（记录/
 - 2026-10-31：M4.6 与 M4.7（部分）完成：`executor` 模拟执行端支持去重窗口、过期拒绝、ACK 丢失、NACK、重启丢失去重表（延迟由调用时刻表示）；`recovery` 实现转移日志重放与 SAP §5 重启决策；`action` 补齐重派策略（irreversible 未检查结果不得重派），`record` 增加"自报验证不算独立验证"的判定。新增 `tests/sap_acceptance.rs`：SAP-T1（派发后崩溃→outcome_unknown 不重发）、T2（ACK 丢失不重复执行，验证收尾）、T3（重复送达只执行一次）、T4（前置变化→stale_precondition 拒绝）、T9（丢失去重表为已知风险 + irreversible 不重派）、T10（self_reported 不算独立验证）。state 测试 33→42，另加 6 个验收测试；T5–T8、T11 与逐写入点崩溃注入仍待做。
 - 2026-10-31：M4.7 补全与 M4.8 完成：崩溃注入覆盖派发流的全部持久写入点（action 记录、validated、authorized、dispatched、acknowledged）并断言重启后状态/决策一致；`ActionLedger::restore` 从重放状态重建账本并重新登记已派发幂等键，重启后同键派发仍被拒绝；`isolation::ensure_live_dispatch` 拒绝仿真分支派发现场动作（SAP-T11）。SAP 验收测试 6→9，state 单元测试 42→45。
 - 2026-10-31：M4.9 与 §6 完成：`bridge` 把投影状态转成资产状态补丁（无证据→unknown），用 Base-01 验证投影→能力图链路（bus-1 投影故障→blocked；泵无证据→unknown）。`ownership` 实现命令所有权/租约与时钟偏差检测（偏差超界即报错、不计租约有效）；`reservations` 实现实物所在地的库存预留、远程请求在重连后才生效、预留不超额。SAP-T5–T8 验收测试补齐；SAP 验收测试 9→13、state 单元测试 45→53，SAP-T1–T11 全部自动化。
+- 2026-10-31：M4 完成：SAP 升为 v0.2-draft（记录模式 `poie.record/0.2`；新增 §11 记录 8 条实现决策：failed 的幂等键保守占用、重启语义、租约时钟保守性、预留场址性、日志格式、T9 已知风险、未实现范围）；M4 退出条件逐项核对通过（SAP-T1–T11 全绿、10⁵ 序列属性测试、逐写入点崩溃注入、契约升级）。Foundation 阶段剩余 M5（时间维度与 Base-01 v0.2）。
