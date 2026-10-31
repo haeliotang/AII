@@ -1,0 +1,77 @@
+# Autonomous Base-01 — timed scenario, v0.1 (M5.6)
+# Layers time onto the structural model in ../base-01/model.toml.
+# Specification: Physical Ontology §3.8–3.10; development plan M5.
+# All numbers are SYNTHETIC assumptions, not calibrated data.
+
+schema = "poie.timed-scenario/0.1"
+model = "../base-01/model.toml"
+description = "Timed Base-01: pump wear-out, predicted bus failure, day/night energy, supply interruption."
+
+# The pump is degraded from the start; it wears out at 6 h. Its failure is
+# predicted in the window 4-8 h, so repairs should aim to finish by 4 h.
+[[asset_timeline]]
+asset = "pump-p1"
+initial = "degraded"
+
+[[asset_timeline.change]]
+at = "6 h"
+status = "failed"
+
+[asset_timeline.prediction]
+from = "4 h"
+to = "8 h"
+
+# The bus is predicted to fail; it actually fails at 16 h.
+[[asset_timeline]]
+asset = "bus-1"
+initial = "available"
+
+[[asset_timeline.change]]
+at = "16 h"
+status = "failed"
+
+[asset_timeline.prediction]
+from = "5 h"
+to = "9 h"
+
+# The lathe fails at 12 h (12 h of wear).
+[[asset_timeline]]
+asset = "lathe-1"
+initial = "available"
+
+[[asset_timeline.change]]
+at = "12 h"
+status = "failed"
+
+# The PV array has no status evidence.
+[[asset_timeline]]
+asset = "pv-1"
+initial = "unknown"
+
+# Energy: one kWh in the battery at the start; 40 kWh arrive from the day PV
+# curve at 8 h.
+[[stock_timeline]]
+resource = "electric-energy"
+initial = "1 kWh"
+
+[[stock_timeline.change]]
+at = "8 h"
+delta = "40 kWh"
+
+# Supply interruption: the remaining bronze bar leaves the site at 10 h.
+[[stock_timeline]]
+resource = "bronze-bar"
+initial = "3 kg"
+
+[[stock_timeline.change]]
+at = "10 h"
+delta = "-3 kg"
+
+# Consumables leave at 10 h too.
+[[stock_timeline]]
+resource = "cutting-insert"
+initial = "4 item"
+
+[[stock_timeline.change]]
+at = "10 h"
+delta = "-4 item"

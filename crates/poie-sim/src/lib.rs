@@ -9,7 +9,9 @@
 pub mod battery;
 pub mod event;
 pub mod simulation;
+pub mod timed;
 
 pub use battery::{Battery, EnergyLimit, EnergyOutcome};
 pub use event::{Event, EventKind, Flow, SimError};
+pub use poie_ontology::schedule::schedule_route;
 pub use simulation::{ConservationViolation, ExternalFlow, LogEntry, RuleCondition, RuleEffect, Simulation, StateRule};

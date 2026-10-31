@@ -8,6 +8,8 @@ repository.workspace = true
 
 [dependencies]
 poie-ontology = { path = "../poie-ontology", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
 
 [dev-dependencies]
 toml = "0.8"

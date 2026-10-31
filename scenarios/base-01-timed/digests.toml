@@ -1,0 +1,81 @@
+schema = "poie.timed-digests/0.1"
+
+[[digest]]
+id = "T0"
+digest = "feasible|candidate|10800.000|"
+
+[[digest]]
+id = "T1"
+digest = "too_late|candidate|21600.000|completion 21600s after deadline 14400s"
+
+[[digest]]
+id = "T2"
+digest = "insufficient_resource|candidate|16200.000|electric-energy needs 2 kWh, only 1 kWh available at 0s"
+
+[[digest]]
+id = "T3"
+digest = "feasible|candidate|45000.000|"
+
+[[digest]]
+id = "T4"
+digest = "too_late|candidate|45000.000|completion 45000s after deadline 43200s"
+
+[[digest]]
+id = "T5"
+digest = "feasible|candidate|39600.000|"
+
+[[digest]]
+id = "T6"
+digest = "blocked|blocked|-1.000|below_verification turn-lathe-nut"
+
+[[digest]]
+id = "T7"
+digest = "unknown|unknown|-1.000|unknown_state pv-1"
+
+[[digest]]
+id = "T8"
+digest = "feasible|candidate|21600.000|"
+
+[[digest]]
+id = "T9"
+digest = "too_late|candidate|21600.000|completion 21600s after deadline 18000s"
+
+[[digest]]
+id = "T10"
+digest = "insufficient_resource|candidate|30600.000|electric-energy needs 2 kWh, only 1 kWh available at 14400s"
+
+[[digest]]
+id = "T11"
+digest = "blocked|blocked|-1.000|cycle bus-1"
+
+[[digest]]
+id = "T12"
+digest = "feasible|candidate|10800.000|"
+
+[[digest]]
+id = "T13"
+digest = "blocked|blocked|-1.000|missing_resource bronze-bar"
+
+[[digest]]
+id = "T14"
+digest = "feasible|candidate|46800.000|"
+
+[[digest]]
+id = "T15"
+digest = "insufficient_resource|candidate|55800.000|bronze-bar needs 1.2 kg, only 0 kg available at 39600s"
+
+[[digest]]
+id = "T16"
+digest = "too_late|candidate|46800.000|completion 46800s after deadline 43200s"
+
+[[digest]]
+id = "T17"
+digest = "feasible|candidate|45000.000|"
+
+[[digest]]
+id = "T18"
+digest = "blocked|blocked|-1.000|cycle bus-1"
+
+[[digest]]
+id = "T19"
+digest = "feasible|candidate|10800.000|"
