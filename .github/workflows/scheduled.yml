@@ -41,6 +41,8 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - name: Clone and run the full suite in the clone
+        env:
+          SKIP_DENY: "1" # deny runs in its own job (the runner has no cargo-deny binary)
         run: scripts/check-fresh-clone.sh
 
   deny:
