@@ -1,0 +1,16 @@
+[package]
+name = "poie-two-site-shadow"
+version = "0.1.0"
+description = "Two-site shadow integration: field projection, planning, federated reservations/leases, conflict gating and SAP-validated dispatch."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+poie-exec = { path = "../../../crates/poie-exec", version = "0.1.0" }
+poie-federation = { path = "../../../crates/poie-federation", version = "0.1.0" }
+poie-ontology = { path = "../../../crates/poie-ontology", version = "0.1.0" }
+poie-plan = { path = "../../../crates/poie-plan", version = "0.1.0" }
+poie-runtime = { path = "../../../crates/poie-runtime", version = "0.1.0" }
+poie-state = { path = "../../../crates/poie-state", version = "0.1.0" }

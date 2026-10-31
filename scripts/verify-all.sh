@@ -40,6 +40,10 @@ echo "== localhost TCP federation demo =="
 cargo run --locked -q -p poie-federation-tcp -- --write "$tmp/fed-tcp"
 diff "$tmp/fed-tcp/REPORT.md" experiments/federation-tcp/REPORT.md
 diff "$tmp/fed-tcp/raw/exchange.txt" experiments/federation-tcp/raw/exchange.txt
+echo "== two-site shadow integration =="
+cargo run --locked -q -p poie-two-site-shadow -- --write "$tmp/two-site"
+diff "$tmp/two-site/REPORT.md" experiments/two-site-shadow/REPORT.md
+diff "$tmp/two-site/raw/trace.txt" experiments/two-site-shadow/raw/trace.txt
 echo "== dependency policy =="
 cargo deny check licenses bans sources
 echo "ALL GATES PASSED"

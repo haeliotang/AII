@@ -189,6 +189,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-two-site-shadow"
+version = "0.1.0"
+dependencies = [
+ "poie-exec",
+ "poie-federation",
+ "poie-ontology",
+ "poie-plan",
+ "poie-runtime",
+ "poie-state",
+]
+
+[[package]]
 name = "poie-vec-base01"
 version = "0.1.0"
 dependencies = [
