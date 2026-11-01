@@ -37,13 +37,13 @@
 | M9.2 适配器 | BaSyx AAS 本机容器只读适配器 9/9（单容器、回环、无认证；影子计划动作数为 0） | [basyx-shadow](../../experiments/basyx-shadow/REPORT.md) |
 | M12.6 多节点 | 两个 Docker 容器 + 网络层分区，D0–D4 共 14/14（共享内核与时钟，非真实多节点） | [federation-docker](../../experiments/federation-docker/REPORT.md) |
 
-> **待裁定**：13 项高严重度评审问题尚未处置。其中 P4（质量守恒可被绕开）与 P5（仿真不查负库存）已由主线程核对代码确认成立；是否触发研究纲领 §11 的"守恒暂停"由维护者决定。AI 预演不替代 M1.8 的真人评审。
+> **已裁定（2026-11-01）**：去重后 25 项中 **22 项接受、3 项推迟、0 拒绝**；按修复单元登记为 #105–#112。其中 #105（守恒，P4/P5）优先修复，合并后已**解除**研究纲领 §11 的守恒暂停；#106–#111 已合并（`blocked` 语义、SAP 执行安全、VEC 核算与统计、状态时间线），#112 的三项推迟。AI 预演不替代 M1.8 的真人评审。
 
 ## 3. 复现与验证运行
 
 - 每次合并：CI（fmt/clippy/test/rustdoc/Python/链接/矩阵/重放覆盖/全部场景与实验/`cargo-deny`）全绿后合并，并确认 `main` CI run 成功。
 - 本地一键：`scripts/verify-all.sh`。
-- 干净克隆：`scripts/check-fresh-clone.sh` —— 最近在 `9a31a15` 上通过（约 1 分钟）。
+- 干净克隆：`scripts/check-fresh-clone.sh` —— 最近在 `d0d449c` 上通过（约 1 分钟）。
 - GitHub runner：手动 dispatch scheduled workflow 的 [run 41246880552](https://github.com/haeliotang/poieweave/actions/runs/41246880552) 五个 job 全绿（verify-all、release tests、fresh-clone、advisories、licenses/bans/sources）。
 - 定期：每周一 04:17 UTC scheduled workflow（`verify-all` + `cargo test --release` + `cargo-deny`；手动触发时额外 fresh-clone）。
 
@@ -61,7 +61,7 @@
 
 ## 5. 建议的下一步（按解锁价值）
 
-0. **先裁定 AI 预演发现的 13 项高严重度问题**（P4/P5 已确认），决定是否触发守恒暂停；再邀请真人评审；
+0. AI 预演问题**已裁定并修复**（22 接受 / 3 推迟；#105–#111 已合并，守恒暂停已解除）；下一步是邀请真人评审验证修复、判断 AI 误报与遗漏；
 1. 指定 M1.8 评审者（2–3 位）并发起审读；同日请发起方确认 ADR-0001（M1.9）；
 2. 邀请独立贡献者提交 ≥10 个预登记用例（M3.3）；
 3. 并行推进商标检索（M1.10）；

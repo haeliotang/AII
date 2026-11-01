@@ -14,7 +14,7 @@ scripts/check-fresh-clone.sh
 
 | 项 | 值 |
 | --- | --- |
-| 验证提交 | `aa62a83`（`main`；`a6413e8`、`a627cf5`、`c8fc518`、`e8f72aa`、`f17bf9f`、`50b1e32`、`8d6e8f5` 亦通过） |
+| 验证提交 | `d0d449c`（`main`；`a6413e8`、`a627cf5`、`c8fc518`、`e8f72aa`、`f17bf9f`、`50b1e32`、`8d6e8f5`、`aa62a83`、`9a31a15` 亦通过） |
 | 工具链 | `rustc 1.94.0`，CI 同样固定 1.94.0 |
 | 环境 | Apple M1 Pro / macOS；使用本机 cargo registry 缓存（`--offline`），不依赖网络 |
 | 运行时长 | 约 62 秒（含全新 `target/` 构建与全部重放） |
