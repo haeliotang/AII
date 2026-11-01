@@ -5,7 +5,11 @@
 //! dispatch), T5 (expiry survives a partition), T6 (remote reservation has no
 //! effect until applied), T7 (lease expiry stops the holder), T8 (clock skew is
 //! detected), T9 (executor restarts losing its dedup table), T10 (self-reported
-//! verification) and T11 (a simulation branch cannot dispatch a field action).
+//! verification), T11 (a simulation branch cannot dispatch a field action),
+//! and the issue #107 / #108 cases: T12 (expiry takeover with unresolved
+//! predecessor actions), T13 (a superseded lease epoch is fenced), T14 (dedup
+//! window shorter than the validity) and T15 (re-dispatch with the original key,
+//! DUPLICATE receipt).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -154,7 +158,7 @@ fn sap_t2_lost_ack_does_not_repeat_the_physical_action_and_verification_finishes
     // The dispatcher cannot know the outcome; the executor's dedup table still
     // prevents a second physical action when the same command is re-delivered.
     let retry = executor.deliver(&command, 1_600);
-    assert_eq!(retry.outcome, DeliveryOutcome::DuplicateRejected);
+    assert_eq!(retry.outcome, DeliveryOutcome::Duplicate);
     assert_eq!(executor.execution_count("k1"), 1);
 
     // Runtime times out -> outcome_unknown; independent evidence then verifies it.
@@ -170,7 +174,7 @@ fn sap_t3_duplicate_delivery_executes_once() {
     let mut executor = SimExecutor::new(60_000);
     let command = Command::from_action(&a);
     assert_eq!(executor.deliver(&command, 1_500).outcome, DeliveryOutcome::Executed);
-    assert_eq!(executor.deliver(&command, 1_500).outcome, DeliveryOutcome::DuplicateRejected);
+    assert_eq!(executor.deliver(&command, 1_500).outcome, DeliveryOutcome::Duplicate);
     assert_eq!(executor.physical_actions().len(), 1);
     assert_eq!(executor.execution_count("k1"), 1);
 }
@@ -205,9 +209,14 @@ fn sap_t9_losing_the_dedup_table_is_a_recorded_risk_and_blocks_irreversible_redi
     assert_eq!(executor.deliver(&command, 1_600).outcome, DeliveryOutcome::Executed);
     assert_eq!(executor.execution_count("k1"), 2, "known risk: the lost dedup table re-executes");
 
+    // Issue #107: an irreversible action is never re-dispatched while the
+    // original is `outcome_unknown` (whatever the policy); only after the check
+    // moved it on (here: `failed`). An idempotent one needs the site policy.
     assert!(!redispatch_allowed(Reversibility::Irreversible, ActionState::OutcomeUnknown, false));
-    assert!(redispatch_allowed(Reversibility::Irreversible, ActionState::OutcomeUnknown, true));
-    assert!(redispatch_allowed(Reversibility::Idempotent, ActionState::OutcomeUnknown, false));
+    assert!(!redispatch_allowed(Reversibility::Irreversible, ActionState::OutcomeUnknown, true));
+    assert!(redispatch_allowed(Reversibility::Irreversible, ActionState::Failed, false));
+    assert!(redispatch_allowed(Reversibility::Idempotent, ActionState::OutcomeUnknown, true));
+    assert!(!redispatch_allowed(Reversibility::Idempotent, ActionState::OutcomeUnknown, false));
 }
 
 #[test]
@@ -415,8 +424,16 @@ fn sap_t7_the_lease_holder_stops_at_expiry_and_the_next_holder_takes_over() {
     registry.grant("robot-m1", "site-a", 10_000, 1_000).unwrap();
     assert_eq!(registry.may_dispatch("robot-m1", "site-a", 5_000, 0), Ok(()));
     assert!(matches!(registry.may_dispatch("robot-m1", "site-a", 9_500, 0), Err(OwnershipError::LeaseExpired { .. })));
-    registry.grant("robot-m1", "site-b", 30_000, 11_000).unwrap();
-    assert!(matches!(registry.may_dispatch("robot-m1", "site-a", 11_000, 0), Err(OwnershipError::NotHeld { .. })));
+    // Issue #108: the next holder waits until `until + skew_bound` (here
+    // 12_000) and takes over through the expiry path, not a plain grant.
+    assert!(matches!(
+        registry.take_over_expired("robot-m1", "site-b", 30_000, 11_000, Handover::Unreconciled),
+        Err(OwnershipError::TakeoverTooEarly { .. })
+    ));
+    registry
+        .take_over_expired("robot-m1", "site-b", 30_000, 12_001, Handover::Reconciled { unresolved: Vec::new() })
+        .unwrap();
+    assert!(matches!(registry.may_dispatch("robot-m1", "site-a", 12_001, 0), Err(OwnershipError::NotHeld { .. })));
     assert_eq!(registry.may_dispatch("robot-m1", "site-b", 20_000, 0), Ok(()));
 }
 

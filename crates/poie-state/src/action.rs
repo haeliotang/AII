@@ -1,10 +1,11 @@
 //! Actions and their lifecycle (SAP §3).
 //!
 //! The transition table is the normative one from SAP §3.3. Transitions that are
-//! not in the table are rejected; terminal states never change; and one
-//! idempotency key may be dispatched by at most one action on a site.
+//! not in the table are rejected; terminal states never change; and an
+//! idempotency key, once dispatched, is reused only by a re-dispatch that
+//! references its holder under SAP §3.2 supplementary rule 2.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -142,22 +143,26 @@ pub fn trigger_for(from: ActionState, to: ActionState) -> Option<Trigger> {
     TRANSITIONS.iter().find(|&&(f, t, _)| f == from && t == to).map(|&(_, _, trigger)| trigger)
 }
 
-/// What an executor's receipt says about a command (SAP §2.2, §3.3).
+/// What an executor's receipt says about a command (SAP §2.2, §3.3, §4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReceiptKind {
     /// The executor accepted the command.
     Ack,
     /// The executor declares it did not execute the command.
     Nack,
-    /// The executor had already accepted this idempotency key earlier.
+    /// The executor had already accepted this idempotency key earlier (for
+    /// the named original action); nothing new was executed. Not a NACK.
     Duplicate,
 }
 
 /// The lifecycle state a `dispatched` action moves to on a receipt (SAP §3.3).
 pub fn receipt_transition(kind: ReceiptKind) -> ActionState {
     match kind {
-        ReceiptKind::Ack => ActionState::Acknowledged,
-        ReceiptKind::Nack | ReceiptKind::Duplicate => ActionState::Failed,
+        // DUPLICATE: the executor holds this key from an earlier delivery of
+        // the same intent; the command is accepted, not refused. The effect
+        // still needs verification, like after an ACK.
+        ReceiptKind::Ack | ReceiptKind::Duplicate => ActionState::Acknowledged,
+        ReceiptKind::Nack => ActionState::Failed,
     }
 }
 
@@ -307,15 +312,41 @@ impl std::error::Error for ActionError {}
 
 /// A site-local set of actions and their states.
 ///
-/// This is the M4.4 state-machine core: it enforces the transition table and
-/// the idempotency-key dispatch invariant. It does not persist, dispatch or
-/// review yet.
+/// The ledger enforces the transition table and the single idempotency-key
+/// rule of SAP §3.2 supplementary rule 2 / §4 item 5:
+///
+/// - once an action is dispatched, its key stays *occupied* in every later
+///   state (`dispatched`, `acknowledged`, `outcome_unknown`, `verified`,
+///   `failed`), also across a restart;
+/// - another action may dispatch an occupied key only as a *re-dispatch* of
+///   the key's current holder (`redispatch_of` names it), and only when the
+///   holder is `failed` (the outcome is known: not achieved), or
+///   `outcome_unknown` with both actions `idempotent` and the site policy
+///   allowing an unchecked re-dispatch;
+/// - an irreversible (or reversible / compensable) intent therefore waits for
+///   the outcome check — the holder leaving `outcome_unknown` — and then
+///   reuses the original key.
 #[derive(Debug, Default)]
 pub struct ActionLedger {
     states: BTreeMap<String, ActionState>,
     keys: BTreeMap<String, String>,
-    dispatched_keys: BTreeMap<String, String>,
+    reversibility: BTreeMap<String, Reversibility>,
+    redispatch_of: BTreeMap<String, String>,
+    /// Per key: every action that dispatched it (occupying states).
+    occupiers: BTreeMap<String, BTreeSet<String>>,
     allow_unchecked_idempotent_redispatch: bool,
+}
+
+/// States in which an action occupies its idempotency key (SAP §4 item 5).
+pub fn occupies_key(state: ActionState) -> bool {
+    matches!(
+        state,
+        ActionState::Dispatched
+            | ActionState::Acknowledged
+            | ActionState::OutcomeUnknown
+            | ActionState::Verified
+            | ActionState::Failed
+    )
 }
 
 impl ActionLedger {
@@ -337,6 +368,10 @@ impl ActionLedger {
             return Err(LedgerError::DuplicateAction(action.action_id.clone()));
         }
         self.keys.insert(action.action_id.clone(), action.idempotency_key.clone());
+        self.reversibility.insert(action.action_id.clone(), action.reversibility);
+        if let Some(of) = &action.redispatch_of {
+            self.redispatch_of.insert(action.action_id.clone(), of.clone());
+        }
         self.states.insert(action.action_id.clone(), ActionState::Proposed);
         Ok(())
     }
@@ -345,17 +380,70 @@ impl ActionLedger {
         self.states.get(action_id).copied()
     }
 
-    /// The action that dispatched `idempotency_key`, if any.
+    /// The current holder of `idempotency_key`: the latest action in the
+    /// re-dispatch chain that dispatched it, if any.
     pub fn dispatched_by(&self, idempotency_key: &str) -> Option<&str> {
-        self.dispatched_keys.get(idempotency_key).map(String::as_str)
+        self.holders(idempotency_key, None).into_iter().next()
+    }
+
+    /// Occupiers of `key` (other than `except`) that no other occupier
+    /// re-dispatched: normally exactly one, the chain's tip.
+    fn holders(&self, key: &str, except: Option<&str>) -> Vec<&str> {
+        let Some(occupiers) = self.occupiers.get(key) else {
+            return Vec::new();
+        };
+        let others: Vec<&str> = occupiers.iter().map(String::as_str).filter(|id| Some(*id) != except).collect();
+        others
+            .iter()
+            .copied()
+            .filter(|candidate| {
+                !others.iter().any(|other| self.redispatch_of.get(*other).map(String::as_str) == Some(*candidate))
+            })
+            .collect()
+    }
+
+    /// SAP §4 item 5: may `action` dispatch its idempotency key now?
+    pub fn check_idempotency_key(&self, action: &Action) -> Result<(), LedgerError> {
+        self.key_rule(&action.action_id, &action.idempotency_key, action.reversibility, action.redispatch_of.as_deref())
+    }
+
+    fn key_rule(
+        &self,
+        action_id: &str,
+        key: &str,
+        reversibility: Reversibility,
+        redispatch_of: Option<&str>,
+    ) -> Result<(), LedgerError> {
+        let holders = self.holders(key, Some(action_id));
+        if holders.is_empty() {
+            return Ok(());
+        }
+        let duplicate = || LedgerError::DuplicateDispatch {
+            idempotency_key: key.to_string(),
+            existing: holders.join(","),
+            action_id: action_id.to_string(),
+        };
+        let Some(of) = redispatch_of else {
+            return Err(duplicate());
+        };
+        if holders != [of] {
+            return Err(duplicate());
+        }
+        let previous = self.state(of).ok_or_else(|| LedgerError::UnknownAction(of.to_string()))?;
+        let previous_reversibility = self.reversibility.get(of).copied().unwrap_or(Reversibility::Irreversible);
+        let unchecked_ok = self.allow_unchecked_idempotent_redispatch && previous_reversibility == reversibility;
+        if redispatch_allowed(reversibility, previous, unchecked_ok) {
+            Ok(())
+        } else {
+            Err(LedgerError::RedispatchNotAllowed { action_id: action_id.to_string(), of: of.to_string(), previous })
+        }
     }
 
     /// Rebuilds a ledger after a restart from replayed action states (SAP §5).
     ///
-    /// The idempotency keys of actions that may already have been dispatched are
-    /// restored, so a second action cannot dispatch the same key after recovery.
-    /// `Failed` is treated conservatively: a failure can follow an ACK, so its
-    /// key stays blocked.
+    /// Every action that ever dispatched its key keeps occupying it (including
+    /// `failed`), so after recovery the key can only be reused by a
+    /// re-dispatch that references the current holder (SAP §3.2 rule 2).
     pub fn restore(actions: &[Action], states: &BTreeMap<String, ActionState>) -> Result<ActionLedger, LedgerError> {
         let mut ledger = ActionLedger::new();
         for action in actions {
@@ -366,16 +454,9 @@ impl ActionLedger {
                 return Err(LedgerError::UnknownAction(action_id.clone()));
             }
             ledger.states.insert(action_id.clone(), *state);
-            if matches!(
-                state,
-                ActionState::Dispatched
-                    | ActionState::Acknowledged
-                    | ActionState::Verified
-                    | ActionState::OutcomeUnknown
-                    | ActionState::Failed
-            ) {
+            if occupies_key(*state) {
                 if let Some(key) = ledger.keys.get(action_id) {
-                    ledger.dispatched_keys.insert(key.clone(), action_id.clone());
+                    ledger.occupiers.entry(key.clone()).or_default().insert(action_id.clone());
                 }
             }
         }
@@ -391,8 +472,7 @@ impl ActionLedger {
     }
 
     /// Applies a lifecycle transition. Rejects unknown actions, transitions not in
-    /// the normative table, and a second action dispatching an already-dispatched
-    /// idempotency key.
+    /// the normative table, and a dispatch that breaks the idempotency-key rule.
     pub fn apply(&mut self, action_id: &str, to: ActionState) -> Result<ActionState, LedgerError> {
         let Some(from) = self.states.get(action_id).copied() else {
             return Err(LedgerError::UnknownAction(action_id.to_string()));
@@ -403,29 +483,36 @@ impl ActionLedger {
         if to == ActionState::Dispatched {
             let key =
                 self.keys.get(action_id).cloned().ok_or_else(|| LedgerError::UnknownAction(action_id.to_string()))?;
-            if let Some(existing) = self.dispatched_keys.get(&key) {
-                if existing != action_id {
-                    return Err(LedgerError::DuplicateDispatch {
-                        idempotency_key: key,
-                        existing: existing.clone(),
-                        action_id: action_id.to_string(),
-                    });
-                }
-            }
-            self.dispatched_keys.insert(key, action_id.to_string());
+            let reversibility = self.reversibility.get(action_id).copied().unwrap_or(Reversibility::Irreversible);
+            let redispatch_of = self.redispatch_of.get(action_id).cloned();
+            self.key_rule(action_id, &key, reversibility, redispatch_of.as_deref())?;
+            self.occupiers.entry(key).or_default().insert(action_id.to_string());
         }
         self.states.insert(action_id.to_string(), to);
         Ok(to)
     }
 }
 
-/// Whether a *new* action may be dispatched for the same idempotency key after
-/// the previous action reached `previous` (SAP §3.2 supplementary rule 2).
+/// Whether a *new* action may re-dispatch the same idempotency key after the
+/// key's holder reached `previous` (SAP §3.2 supplementary rule 2).
 ///
-/// Re-dispatch is only ever considered from `outcome_unknown`; irreversible
-/// actions additionally require that the outcome was checked first.
-pub fn redispatch_allowed(reversibility: Reversibility, previous: ActionState, outcome_checked: bool) -> bool {
-    previous == ActionState::OutcomeUnknown && (outcome_checked || reversibility != Reversibility::Irreversible)
+/// - `failed`: the outcome is known (not achieved); re-dispatch with the
+///   original key is allowed for every reversibility class.
+/// - `outcome_unknown`: only an `idempotent` action, and only when the site
+///   policy allows an unchecked re-dispatch. Everything else must wait for the
+///   outcome check (the holder leaving `outcome_unknown`).
+/// - `dispatched` / `acknowledged` (receipt or verification still pending) and
+///   `verified` (intent achieved): never.
+pub fn redispatch_allowed(
+    reversibility: Reversibility,
+    previous: ActionState,
+    policy_allows_unchecked_idempotent: bool,
+) -> bool {
+    match previous {
+        ActionState::Failed => true,
+        ActionState::OutcomeUnknown => policy_allows_unchecked_idempotent && reversibility == Reversibility::Idempotent,
+        _ => false,
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -433,8 +520,23 @@ pub enum LedgerError {
     InvalidAction(ActionError),
     DuplicateAction(String),
     UnknownAction(String),
-    IllegalTransition { action_id: String, from: ActionState, to: ActionState },
-    DuplicateDispatch { idempotency_key: String, existing: String, action_id: String },
+    IllegalTransition {
+        action_id: String,
+        from: ActionState,
+        to: ActionState,
+    },
+    DuplicateDispatch {
+        idempotency_key: String,
+        existing: String,
+        action_id: String,
+    },
+    /// A re-dispatch that SAP §3.2 rule 2 does not (yet) allow, given the
+    /// state of the action it re-dispatches.
+    RedispatchNotAllowed {
+        action_id: String,
+        of: String,
+        previous: ActionState,
+    },
 }
 
 impl fmt::Display for LedgerError {
@@ -449,6 +551,10 @@ impl fmt::Display for LedgerError {
             LedgerError::DuplicateDispatch { idempotency_key, existing, action_id } => write!(
                 f,
                 "idempotency key {idempotency_key:?} already dispatched by {existing:?}; {action_id:?} must not dispatch it again"
+            ),
+            LedgerError::RedispatchNotAllowed { action_id, of, previous } => write!(
+                f,
+                "{action_id:?} may not re-dispatch {of:?} while it is {previous} (SAP §3.2 rule 2)"
             ),
         }
     }
@@ -578,8 +684,6 @@ mod tests {
         assert_eq!(bad.validate(), Err(ActionError::ExpiredAuthorization));
     }
 
-    use std::collections::BTreeSet;
-
     #[test]
     fn restore_rebuilds_states_and_blocks_a_second_dispatch_of_the_same_key() {
         let first = action("a1", "shared");
@@ -601,10 +705,17 @@ mod tests {
 
     #[test]
     fn redispatch_policy_matches_sap() {
+        // Issue #107: "outcome checked" now means the holder left
+        // `outcome_unknown`; the third argument is the site policy for an
+        // unchecked idempotent re-dispatch.
         assert!(!redispatch_allowed(Reversibility::Irreversible, ActionState::OutcomeUnknown, false));
-        assert!(redispatch_allowed(Reversibility::Irreversible, ActionState::OutcomeUnknown, true));
-        assert!(redispatch_allowed(Reversibility::Idempotent, ActionState::OutcomeUnknown, false));
+        assert!(!redispatch_allowed(Reversibility::Irreversible, ActionState::OutcomeUnknown, true));
+        assert!(redispatch_allowed(Reversibility::Irreversible, ActionState::Failed, false));
+        assert!(redispatch_allowed(Reversibility::Idempotent, ActionState::OutcomeUnknown, true));
+        assert!(!redispatch_allowed(Reversibility::Idempotent, ActionState::OutcomeUnknown, false));
+        assert!(!redispatch_allowed(Reversibility::Reversible, ActionState::OutcomeUnknown, true));
         assert!(!redispatch_allowed(Reversibility::Idempotent, ActionState::Dispatched, true));
+        assert!(!redispatch_allowed(Reversibility::Idempotent, ActionState::Acknowledged, true));
         assert!(!redispatch_allowed(Reversibility::Idempotent, ActionState::Verified, true));
     }
 

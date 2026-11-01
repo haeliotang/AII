@@ -176,24 +176,29 @@ impl Federation {
             ..ReconciliationReport::default()
         };
 
-        // 1. One idempotency key must not be used by two actions.
-        let mut by_key: BTreeMap<String, Vec<(&str, RecordId)>> = BTreeMap::new();
+        // 1. One idempotency key must not be used by actions of two sites
+        //    (SAP §6.4 rule 3). Within one site, several actions may share a
+        //    key as a re-dispatch chain (SAP §3.2 rule 2); the site's own
+        //    ledger enforces that chain, so it is not a conflict here.
+        let mut by_key: BTreeMap<String, Vec<(&str, &str, RecordId)>> = BTreeMap::new();
         for record in &records {
             if let Payload::Action(action) = &record.payload {
-                by_key
-                    .entry(action.idempotency_key.clone())
-                    .or_default()
-                    .push((&action.action_id, record.envelope.record_id.clone()));
+                by_key.entry(action.idempotency_key.clone()).or_default().push((
+                    &action.action_id,
+                    &record.envelope.site,
+                    record.envelope.record_id.clone(),
+                ));
             }
         }
         for (key, actions) in &by_key {
-            let distinct_actions: BTreeSet<&str> = actions.iter().map(|(action_id, _)| *action_id).collect();
-            if distinct_actions.len() > 1 {
+            let distinct_actions: BTreeSet<&str> = actions.iter().map(|(action_id, _, _)| *action_id).collect();
+            let sites: BTreeSet<&str> = actions.iter().map(|(_, site, _)| *site).collect();
+            if sites.len() > 1 {
                 report.duplicate_actions += 1;
                 report.conflicts.push(Conflict {
                     kind: ConflictKind::DuplicateIdempotencyKey,
                     detail: format!("idempotency key {key:?} used by {} actions", distinct_actions.len()),
-                    records: actions.iter().map(|(_, record)| record.clone()).collect(),
+                    records: actions.iter().map(|(_, _, record)| record.clone()).collect(),
                 });
             }
         }

@@ -1,4 +1,4 @@
-//! Dispatch review: the six checks required before `authorized -> dispatched`
+//! Dispatch review: the seven checks required before `authorized -> dispatched`
 //! (SAP §4).
 //!
 //! Every failed check produces a `DispatchRejection` with a stable reason code
@@ -8,7 +8,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::action::{Action, ActionLedger};
+use crate::action::{Action, ActionLedger, ActionState, LedgerError};
+use crate::ownership::ASSUMED_CLOCK_SKEW_BOUND_MS;
 
 /// The fresh state the dispatcher reviews against (SAP §4).
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -35,7 +36,7 @@ pub struct DispatchContext {
     pub executor_dedup_window_ms: Option<i64>,
 }
 
-/// Which of the six checks failed.
+/// Which of the seven checks failed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReviewCheck {
     TimeWindow,
@@ -44,6 +45,7 @@ pub enum ReviewCheck {
     Reservations,
     IdempotencyKey,
     Authorization,
+    DedupWindow,
 }
 
 impl ReviewCheck {
@@ -55,6 +57,7 @@ impl ReviewCheck {
             ReviewCheck::Reservations => "reservations",
             ReviewCheck::IdempotencyKey => "idempotency_key",
             ReviewCheck::Authorization => "authorization",
+            ReviewCheck::DedupWindow => "dedup_window",
         }
     }
 }
@@ -68,7 +71,7 @@ pub struct DispatchRejection {
     pub detail: String,
 }
 
-/// Runs all six checks. Returns every failure, not just the first, so the
+/// Runs all seven checks. Returns every failure, not just the first, so the
 /// rejection record can explain all stale conditions at once.
 pub fn review_dispatch(
     action: &Action,
@@ -129,6 +132,25 @@ pub fn review_dispatch(
             detail: format!("this site does not hold command ownership for {}", action.target),
         });
     }
+    if let Some(deadline) = context.ownership_dispatch_deadline_ms {
+        if context.now_ms > deadline {
+            rejections.push(DispatchRejection {
+                check: ReviewCheck::CommandOwnership,
+                reason: "lease_dispatch_deadline_passed",
+                detail: format!("lease dispatch deadline {deadline} ms passed, current time {} ms", context.now_ms),
+            });
+        }
+        if action.valid_until.0 > deadline {
+            rejections.push(DispatchRejection {
+                check: ReviewCheck::CommandOwnership,
+                reason: "validity_exceeds_lease",
+                detail: format!(
+                    "action valid until {} ms outlives the lease dispatch deadline {deadline} ms",
+                    action.valid_until.0
+                ),
+            });
+        }
+    }
     if !context.reservations_held {
         rejections.push(DispatchRejection {
             check: ReviewCheck::Reservations,
@@ -136,12 +158,27 @@ pub fn review_dispatch(
             detail: "the action's reservations are no longer held".to_string(),
         });
     }
-    if let Some(existing) = ledger.dispatched_by(&action.idempotency_key) {
-        rejections.push(DispatchRejection {
+    match ledger.check_idempotency_key(action) {
+        Ok(()) => {}
+        Err(LedgerError::RedispatchNotAllowed { of, previous, .. }) => rejections.push(DispatchRejection {
+            check: ReviewCheck::IdempotencyKey,
+            reason: if previous == ActionState::OutcomeUnknown {
+                "redispatch_before_outcome_check"
+            } else {
+                "redispatch_not_allowed"
+            },
+            detail: format!("re-dispatch of {of:?} is not allowed while it is {previous} (SAP §3.2 rule 2)"),
+        }),
+        Err(LedgerError::DuplicateDispatch { existing, .. }) => rejections.push(DispatchRejection {
             check: ReviewCheck::IdempotencyKey,
             reason: "duplicate_idempotency_key",
-            detail: format!("idempotency key already dispatched by {existing:?}"),
-        });
+            detail: format!("idempotency key already dispatched by {existing:?} and not re-dispatched from it"),
+        }),
+        Err(other) => rejections.push(DispatchRejection {
+            check: ReviewCheck::IdempotencyKey,
+            reason: "duplicate_idempotency_key",
+            detail: other.to_string(),
+        }),
     }
     match &action.authorization {
         None => rejections.push(DispatchRejection {
@@ -167,6 +204,19 @@ pub fn review_dispatch(
                     detail: "the authorization's policy version is revoked".to_string(),
                 });
             }
+        }
+    }
+
+    if let Some(window) = context.executor_dedup_window_ms {
+        let needed = action.valid_until.0.saturating_sub(context.now_ms) + ASSUMED_CLOCK_SKEW_BOUND_MS;
+        if needed > window {
+            rejections.push(DispatchRejection {
+                check: ReviewCheck::DedupWindow,
+                reason: "validity_exceeds_dedup_window",
+                detail: format!(
+                    "remaining validity plus skew bound is {needed} ms, the executor keeps dedup records for {window} ms"
+                ),
+            });
         }
     }
 

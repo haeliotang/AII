@@ -1,6 +1,6 @@
 //! Simulated writable adapter with fault injection for the simulated H3 run.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use crate::writable::{ExecError, Receipt, WritableAdapter, WritableDeclaration};
 
@@ -20,7 +20,9 @@ pub enum AdapterFault {
 #[derive(Debug)]
 pub struct SimulatedWritableAdapter {
     declaration: WritableDeclaration,
-    executed_keys: BTreeSet<String>,
+    /// Accepted idempotency keys and the action that first delivered each.
+    executed_keys: BTreeMap<String, String>,
+    highest_epoch: Option<u64>,
     physical_executions: usize,
     duplicates: usize,
     pub fault: AdapterFault,
@@ -30,7 +32,8 @@ impl SimulatedWritableAdapter {
     pub fn new(declaration: WritableDeclaration) -> SimulatedWritableAdapter {
         SimulatedWritableAdapter {
             declaration,
-            executed_keys: BTreeSet::new(),
+            executed_keys: BTreeMap::new(),
+            highest_epoch: None,
             physical_executions: 0,
             duplicates: 0,
             fault: AdapterFault::None,
@@ -44,7 +47,8 @@ impl SimulatedWritableAdapter {
             source: "simulated-testbed".to_string(),
             supports_idempotency,
             max_command_validity_ms: 60_000,
-            dedup_window_ms: 3_600_000,
+            // The simulated executor never forgets an accepted key.
+            dedup_window_ms: u64::MAX,
             supports_lease_epoch: true,
             verification_sources: vec!["sim-sensor-pump-status".to_string(), "sim-pressure-sensor".to_string()],
             compatibility: Some("none; simulated".to_string()),
@@ -73,15 +77,24 @@ impl WritableAdapter for SimulatedWritableAdapter {
         if self.fault == AdapterFault::Unreachable {
             return Err(ExecError::Disconnected("simulated network loss".into()));
         }
-        if self.declaration.supports_idempotency && self.executed_keys.contains(&command.idempotency_key) {
-            return Ok(Receipt {
-                action_id: command.action_id.clone(),
-                accepted: true,
-                executed_at_ms: command.valid_from_ms,
-                detail: "deduplicated by idempotency key".to_string(),
-            });
+        if self.declaration.supports_lease_epoch {
+            match (command.lease_epoch, self.highest_epoch) {
+                (Some(epoch), Some(highest)) if epoch < highest => {
+                    return Err(ExecError::Rejected(format!("stale lease epoch {epoch} < {highest}")));
+                }
+                (None, Some(highest)) => {
+                    return Err(ExecError::Rejected(format!("command without lease epoch after epoch {highest}")));
+                }
+                (Some(epoch), _) => self.highest_epoch = Some(self.highest_epoch.map_or(epoch, |h| h.max(epoch))),
+                (None, None) => {}
+            }
         }
-        self.executed_keys.insert(command.idempotency_key.clone());
+        if self.declaration.supports_idempotency {
+            if let Some(original) = self.executed_keys.get(&command.idempotency_key) {
+                return Err(ExecError::Duplicate(original.clone()));
+            }
+        }
+        self.executed_keys.insert(command.idempotency_key.clone(), command.action_id.clone());
         self.physical_executions += 1;
         if self.fault == AdapterFault::DuplicateDelivery {
             self.physical_executions += 1;
@@ -128,7 +141,11 @@ mod tests {
     fn idempotent_executor_deduplicates() {
         let mut adapter = SimulatedWritableAdapter::new(SimulatedWritableAdapter::declaration(true));
         adapter.dispatch(&command()).unwrap();
-        adapter.dispatch(&command()).unwrap();
+        // Issue #107: a repeated key is a DUPLICATE receipt naming the original
+        // action, not an ACK and not a NACK.
+        let mut again = command();
+        again.action_id = "a2".into();
+        assert_eq!(adapter.dispatch(&again), Err(ExecError::Duplicate("a1".into())));
         assert_eq!(adapter.physical_executions(), 1);
         assert_eq!(adapter.duplicate_physical_actions(), 0);
     }

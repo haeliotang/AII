@@ -29,6 +29,9 @@ impl WritableDeclaration {
         if self.adapter_id.trim().is_empty() || self.version.trim().is_empty() || self.source.trim().is_empty() {
             return Err(ExecError::InvalidDeclaration("adapter id, version and source are required".into()));
         }
+        if self.dedup_window_ms == 0 {
+            return Err(ExecError::InvalidDeclaration("dedup window must be positive".into()));
+        }
         if self.max_command_validity_ms == 0 {
             return Err(ExecError::InvalidDeclaration("max command validity must be positive".into()));
         }
