@@ -300,7 +300,7 @@ flowchart LR
 - [x] VEC 升为 v0.2-draft。
 
 > **M6 退出复核（2026-10-31）**：
-> - **报告覆盖**：`experiments/vec-base01/` 对 20 个时间版场景各生成一条运行记录（8 feasible → `held_on_tested`、7 counterexample、4 `infeasible_in_model`、1 `unknown_input`），机读报告通过 VEC §7 校验（输入哈希、划分、全部运行、求解器/设置/消耗、指标版本、置信区间缺省说明），人读报告复用了表述守卫；CI 用 `--check` 校验提交的报告可重放。
+> - **报告覆盖**：`experiments/vec-base01/` 对 20 个时间版场景各生成一条运行记录（8 feasible → `held_on_tested`、7 counterexample、4 `infeasible_in_model`、1 `unknown_input`）（2026-11-01 按 issue #106/#110 修订后：11 counterexample、8 `held_on_tested`、1 `unknown_input`；原 4 个 `infeasible_in_model` 改为针对被测策略的 counterexample，见 [vec-base01 README](../experiments/vec-base01/README.zh-CN.md)），机读报告通过 VEC §7 校验（输入哈希、划分、全部运行、求解器/设置/消耗、指标版本、置信区间缺省说明），人读报告复用了表述守卫；CI 用 `--check` 校验提交的报告可重放。
 > - **表述守卫**：`check_summary` 与报告测试保证 `held_on_tested` 不得说成安全/鲁棒/可生存、`timeout`/`numerical_failure` 不得说成不可行；人读摘要对未决运行与截尾均有显式说明，且不把有限样本表述为鲁棒保证。
 > - **截尾**：指标测试证明存在截尾样本时 `mean_maintained_s = None`，报告中以 `censored` 标记并给出说明。
 > - **指标**：Base-01 报告含 74 条指标（生存/韧性/独立性；本报告不含可持续性指标，因轨迹没有产出核算，报告的防作弊规则要求可持续性必须与产出、服务同时出现）。
@@ -593,3 +593,4 @@ flowchart LR
 | 0.1.97 | 2026-11-01 | 外部依赖项 AI 预演（不计入退出条件）：契约三视角评审、独立用例 10 例、商标补充检索、BaSyx 容器适配器、双容器分区 |
 | 0.1.98 | 2026-11-01 | 对齐 AI 预演：快照/矩阵/外部行动/证据包更新；测试计数 299；13 项高严重度问题待裁定（P4/P5 已确认） |
 | 0.1.99 | 2026-11-01 | 守恒修复（#105，P4/P5）：PO §5 容差硬上限 0.05、方向性校验、`unchecked` 工艺不进候选路线（`mass_unchecked`）、零质量凭证；§3.10 负库存报告与全局质量核算；扩张提案浮渣显式建模 |
+| 0.1.100 | 2026-11-01 | 契约 issue #106–#111 修复：`blocked` 语义与 solve/enumerate 一致（#106）；SAP 幂等键统一、DUPLICATE 回执、去重窗口、租约纪元 fencing 与接管（#107、#108）；VEC 扩张三时点核算与统计报告规则，H4 结论改为净增益为负（#109、#110）；状态时间线、`as_of` 投影、序号高水位、预留生命周期（#111） |
