@@ -1618,4 +1618,78 @@ verification = "verified"
         assert_eq!(r.verdict, Verdict::Blocked, "{r:?}");
         assert!(r.root_causes().any(|b| b.kind == BlockerKind::MassUnchecked && b.subject == "conjure-bar"), "{r:?}");
     }
+
+    /// C-01 counterexample 1 (issue #106): A uses 2 kg x, B uses 1 kg x + 1 kg y,
+    /// stock x = 4 kg, y = 2 kg, goal obtain(r, 3). The declared-order greedy
+    /// top-up (A, A) exhausts x; B, B, A is a valid route.
+    const GREEDY_TRAP: &str = r#"
+[[resource]]
+id = "x"
+unit = "kg"
+
+[[resource]]
+id = "y"
+unit = "kg"
+
+[[resource]]
+id = "r"
+unit = "item"
+mass_per_unit = "2 kg"
+
+[[lot]]
+id = "lot-x"
+resource = "x"
+quantity = "4 kg"
+quality = "accepted"
+
+[[lot]]
+id = "lot-y"
+resource = "y"
+quantity = "2 kg"
+quality = "accepted"
+
+[[process]]
+id = "make-r-a"
+inputs = [{ resource = "x", quantity = "2 kg" }]
+outputs = [{ resource = "r", quantity = "1 item" }]
+verification = "demonstrated"
+
+[[process]]
+id = "make-r-b"
+inputs = [{ resource = "x", quantity = "1 kg" }, { resource = "y", quantity = "1 kg" }]
+outputs = [{ resource = "r", quantity = "1 item" }]
+verification = "demonstrated"
+"#;
+
+    #[test]
+    fn po6_3_solve_agrees_with_enumerate_on_the_greedy_multi_source_trap() {
+        let m = model_from_toml(GREEDY_TRAP);
+        let q = obtain_query("r", "3 item");
+        let routes = enumerate(&m, &q, 10);
+        assert!(!routes.is_empty(), "enumeration should find the B, B, A route");
+        let r = solve(&m, &q);
+        assert_eq!(
+            r.verdict,
+            Verdict::Candidate,
+            "solve must not report blocked when enumerate finds a candidate: {}",
+            render(&m, &r)
+        );
+    }
+
+    #[test]
+    fn po6_3_solve_blocked_implies_enumerate_finds_no_route() {
+        let m = model_from_toml(GREEDY_TRAP);
+        for quantity in ["1 item", "2 item", "3 item", "4 item"] {
+            let q = obtain_query("r", quantity);
+            let r = solve(&m, &q);
+            let routes = enumerate(&m, &q, 10);
+            assert_eq!(
+                r.verdict == Verdict::Candidate,
+                !routes.is_empty(),
+                "obtain(r, {quantity}): solve {} but enumerate found {} route(s)",
+                r.verdict.as_str(),
+                routes.len()
+            );
+        }
+    }
 }

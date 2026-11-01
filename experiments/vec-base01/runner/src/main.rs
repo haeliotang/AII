@@ -548,4 +548,42 @@ mod tests {
             assert!(matches!(process_verdict(&error(class), "water-treatment", 5_000), Verdict::UnknownInput { .. }));
         }
     }
+
+    fn case(id: &str) -> CaseDoc {
+        toml::from_str(&format!(
+            r#"
+id = "{id}"
+title = "blocked recovery"
+start = "0 s"
+min_verification = "declared"
+goal = {{ restore = "lathe-1" }}
+expect = {{ verdict = "blocked" }}
+"#
+        ))
+        .expect("case document")
+    }
+
+    #[test]
+    fn vec3_3_structural_blocked_is_not_an_infeasibility_certificate() {
+        // Issue #106: `blocked` is relative to the start snapshot and to an
+        // incomplete solver; with the enumerated method it may only be reported
+        // as a counterexample for the tested policy, never as infeasible_in_model.
+        let outcome = TimedOutcome {
+            verdict: TimedVerdict::Blocked,
+            structural: poie_ontology::graph::Verdict::Blocked,
+            completion_s: None,
+            detail: "missing_resource bronze-bar".into(),
+            violation: None,
+        };
+        let verdict = map_verdict(&case("T13"), &outcome);
+        assert!(!matches!(verdict, Verdict::InfeasibleInModel { .. }), "{verdict:?}");
+        match &verdict {
+            Verdict::Counterexample { constraint, state, .. } => {
+                assert_eq!(constraint, "structural_route");
+                assert!(state.contains("not a proof of infeasibility"), "{state}");
+                assert!(state.contains("start snapshot"), "{state}");
+            }
+            other => panic!("expected a counterexample for the tested policy, got {other:?}"),
+        }
+    }
 }

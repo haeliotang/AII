@@ -456,6 +456,40 @@ mod tests {
     }
 
     #[test]
+    fn vec3_2_infeasible_in_model_needs_the_certificate_method() {
+        // VEC §3.2/§3.3 (issue #106): sampled and enumerated methods cannot
+        // support "infeasible in the model"; a structural `blocked` is not a
+        // certificate either.
+        for method in [Method::Sampled, Method::Enumerated, Method::SetBased] {
+            let mut report = sample_report();
+            report.method = method;
+            report.runs[1].method = method;
+            report.runs[1].verdict = Verdict::InfeasibleInModel {
+                certificate: "capability-graph blocked: missing_resource bronze-bar".into(),
+                checkable: "poie-graph cases.toml".into(),
+            };
+            assert!(report.validate().is_err(), "{method} report must not carry infeasible_in_model");
+        }
+        let mut report = sample_report();
+        report.method = Method::Certificate;
+        report.seeds.clear();
+        for run in &mut report.runs {
+            run.method = Method::Certificate;
+            run.seed = None;
+        }
+        report.runs[0].verdict = Verdict::HeldOnTested {
+            tested_scenarios: 3,
+            method: Method::Certificate,
+            uncovered: "nothing outside the certified model".into(),
+        };
+        report.runs[1].verdict = Verdict::InfeasibleInModel {
+            certificate: "unsat core over the horizon-relaxed snapshot".into(),
+            checkable: "poie check cert.cert".into(),
+        };
+        assert!(report.validate().is_ok(), "{:?}", report.validate());
+    }
+
+    #[test]
     fn sampled_reports_need_seeds() {
         let mut report = sample_report();
         report.seeds.clear();
