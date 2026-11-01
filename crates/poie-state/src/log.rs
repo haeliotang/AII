@@ -292,4 +292,30 @@ mod tests {
         let decoded: Record = serde_json::from_str(&json).unwrap();
         assert_eq!(decoded, original);
     }
+
+    // Issue #111 (P16, review B-06): after a rollback the local log no longer
+    // shows sequences that peers already hold. Once the site learns that high-
+    // water mark, it must never reuse those sequence numbers (SAP §2.1, §5).
+    #[test]
+    fn sap2_1_rolled_back_log_refuses_sequences_known_to_peers() {
+        let path = temp_path("rollback");
+        let mut log = AppendLog::create(&path).unwrap();
+        log.append(&record("site-a", 1, "failed")).unwrap();
+        // Peers report that site-a already wrote up to sequence 57.
+        log.raise_high_water("site-a", 57).unwrap();
+        assert_eq!(log.high_water("site-a"), Some(57));
+        assert!(matches!(log.append(&record("site-a", 51, "degraded")), Err(LogError::SequenceOutOfOrder { .. })));
+        log.append(&record("site-a", 58, "degraded")).unwrap();
+        // The learned mark survives a restart.
+        drop(log);
+        let reopened = AppendLog::open(&path).unwrap();
+        assert_eq!(reopened.high_water("site-a"), Some(58));
+        let mut reopened = reopened;
+        reopened.raise_high_water("site-a", 70).unwrap();
+        drop(reopened);
+        let mut again = AppendLog::open(&path).unwrap();
+        assert!(matches!(again.append(&record("site-a", 60, "failed")), Err(LogError::SequenceOutOfOrder { .. })));
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(high_water_path(&path));
+    }
 }

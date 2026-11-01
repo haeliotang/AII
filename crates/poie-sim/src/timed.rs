@@ -644,6 +644,46 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 
+    // Issue #111 (P14, reviews A-09 / B-10): the timed evaluation must use the
+    // same status semantics as the timeline (PO §3.8, §4): expired evidence is
+    // `unknown`, and a predicted failure is a flagged warning.
+
+    fn case(id: &str, goal: &str, start: &str) -> CaseDoc {
+        toml::from_str(&format!(
+            r#"
+id = "{id}"
+title = "issue 111"
+goal = {goal}
+min_verification = "demonstrated"
+start = "{start}"
+[expect]
+verdict = "feasible"
+"#
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn po4_4_timed_evaluation_projects_expired_evidence_to_unknown() {
+        let (runner, _) = load();
+        // Every piece of evidence in the scenario is older than its validity at 5 d.
+        let outcome = runner.run(&case("X1", r#"{ service = "potable-water" }"#, "120 h")).unwrap();
+        assert_eq!(outcome.verdict, TimedVerdict::Unknown, "{outcome:?}");
+    }
+
+    #[test]
+    fn po3_8_predicted_failure_overlapping_a_step_is_flagged() {
+        let (runner, cases) = load();
+        // T8 repairs the pump from 3 h to 6 h; the pump's failure is predicted for 4-8 h.
+        let t8 = cases.cases.iter().find(|case| case.id == "T8").unwrap();
+        let outcome = runner.run(t8).unwrap();
+        assert_eq!(outcome.verdict, TimedVerdict::Feasible);
+        assert!(outcome.warnings.iter().any(|warning| warning.contains("pump-p1")), "{outcome:?}");
+        // T0 finishes at 3 h, before any prediction window: no warning.
+        let t0 = cases.cases.iter().find(|case| case.id == "T0").unwrap();
+        assert!(runner.run(t0).unwrap().warnings.is_empty());
+    }
+
     #[test]
     fn prediction_deadlines_come_from_the_goal_assets() {
         let (runner, cases) = load();

@@ -444,4 +444,47 @@ mod tests {
         let report = sequential.reconcile(&BTreeMap::new(), 2_000);
         assert!(report.conflicts.is_empty());
     }
+
+    // Issue #111 (P16, review B-06): site-a writes A/1 (`dose-1`), syncs it to
+    // site-b, is restored from an empty snapshot and writes a different A/1
+    // (`flush-7`). The two logs must not diverge silently.
+    #[test]
+    fn sap6_4_reused_sequence_with_different_content_is_a_collision() {
+        let mut federation = Federation::new();
+        federation.add_site("site-a", 1_000).unwrap();
+        federation.add_site("site-b", 1_000).unwrap();
+        federation.append("site-a", action_record("site-a", 1, Hlc::new(1_100, 0), "dose-1", "key-dose")).unwrap();
+        federation.exchange("site-a", "site-b").unwrap();
+        // Rollback: site-a restarts from an empty snapshot.
+        federation.add_site("site-a", 1_000).unwrap();
+        federation.append("site-a", action_record("site-a", 1, Hlc::new(1_300, 0), "flush-7", "key-flush")).unwrap();
+        federation.exchange("site-a", "site-b").unwrap();
+        let report = federation.reconcile(&BTreeMap::new(), 2_000);
+        let collision = report
+            .conflicts
+            .iter()
+            .find(|conflict| conflict.kind == ConflictKind::SequenceCollision)
+            .expect("a reused record id with different content is a sequence collision");
+        assert_eq!(collision.records, vec![RecordId::new("site-a", 1)]);
+    }
+
+    #[test]
+    fn sap6_4_a_rolled_back_site_learns_its_high_water_mark_from_peers() {
+        let mut federation = Federation::new();
+        federation.add_site("site-a", 1_000).unwrap();
+        federation.add_site("site-b", 1_000).unwrap();
+        federation.append("site-a", action_record("site-a", 1, Hlc::new(1_100, 0), "dose-1", "key-dose")).unwrap();
+        federation.exchange("site-a", "site-b").unwrap();
+        federation.add_site("site-a", 1_000).unwrap();
+        // Exchanging before writing restores the site's own history ...
+        federation.exchange("site-a", "site-b").unwrap();
+        assert_eq!(federation.site("site-a").unwrap().last_seq(), 1);
+        // ... so the old sequence number cannot be reused.
+        assert!(federation
+            .append("site-a", action_record("site-a", 1, Hlc::new(1_300, 0), "flush-7", "key-flush"))
+            .is_err());
+        federation.append("site-a", action_record("site-a", 2, Hlc::new(1_300, 0), "flush-7", "key-flush")).unwrap();
+        let report = federation.reconcile(&BTreeMap::new(), 2_000);
+        assert!(report.conflicts.iter().all(|conflict| conflict.kind != ConflictKind::SequenceCollision));
+    }
 }

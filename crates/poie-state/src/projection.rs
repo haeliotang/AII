@@ -227,4 +227,23 @@ mod tests {
         let state = project(&[record], EvidencePolicy::new(100_000), 2_000);
         assert_eq!(state.lots["lot-bronze"], Projected::Known(2.5));
     }
+
+    // Issue #111 (P15, review B-08): the same records, projection version and
+    // state version give different states at 08:30 and 09:10, so the state
+    // identity must include the evaluation time `as_of` (SAP §2.3).
+    #[test]
+    fn sap2_3_state_identity_includes_the_evaluation_time() {
+        let hour = 3_600_000;
+        let records = vec![status_record(("site-a", 120), "pump-p1", "available", 8 * hour)];
+        let policy = EvidencePolicy::new(hour as u64);
+        let at_0830 = project(&records, policy, 8 * hour + hour / 2);
+        let at_0910 = project(&records, policy, 9 * hour + hour / 6);
+        assert_eq!(at_0830.state_version, at_0910.state_version);
+        assert_ne!(at_0830.assets, at_0910.assets);
+        assert_eq!(at_0830.as_of_ms, 8 * hour + hour / 2);
+        assert_ne!(at_0830.state_id(), at_0910.state_id(), "different states need different identities");
+        // Same inputs, same identity, same state (determinism, rule 1).
+        assert_eq!(at_0830.state_id(), project(&records, policy, 8 * hour + hour / 2).state_id());
+        assert_eq!(at_0830.state_id().evidence_max_age_ms, hour as u64);
+    }
 }

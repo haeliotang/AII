@@ -239,6 +239,54 @@ mod tests {
         assert_eq!(stock.min_available(TimeWindow::new(0.0, 25.0).unwrap()).unwrap(), 1.0);
     }
 
+    // Issue #111 (P14, reviews A-09 / B-10): PO §3.8 and §4 must agree. A
+    // prediction is a warning; once its window ends the status follows the
+    // evidence-validity rule of §4, never an unconditional `unknown`.
+
+    #[test]
+    fn po3_8_valid_observation_survives_the_end_of_a_prediction_window() {
+        // A-09 counterexample 1: observed available at 0 h, valid for 24 h;
+        // predicted failure in [2 h, 4 h]; at 5 h the observation is still valid.
+        let mut timeline = AssetTimeline::new("pump-p1", AssetStatus::Available);
+        timeline.set_evidence_validity(Some(24.0 * 3600.0)).unwrap();
+        timeline.predict_failure(TimeWindow::new(2.0 * 3600.0, 4.0 * 3600.0).unwrap()).unwrap();
+        let at_5h = timeline.status_at(5.0 * 3600.0);
+        assert_eq!(at_5h.status, AssetStatus::Available);
+        assert!(!at_5h.predicted_failure);
+        // A fresh observation at 1.9 h is not downgraded after the window either.
+        timeline.schedule_change(1.9 * 3600.0, AssetStatus::Available).unwrap();
+        assert_eq!(timeline.status_at(5.0 * 3600.0).status, AssetStatus::Available);
+    }
+
+    #[test]
+    fn po3_8_inside_the_window_the_status_is_the_evidence_plus_a_warning() {
+        // A-09 counterexample 2: the warning does not replace the status.
+        let mut timeline = AssetTimeline::new("bus-1", AssetStatus::Available);
+        timeline.predict_failure(TimeWindow::new(60.0, 120.0).unwrap()).unwrap();
+        let inside = timeline.status_at(90.0);
+        assert_eq!(inside.status, AssetStatus::Available);
+        assert!(inside.predicted_failure);
+        timeline.schedule_change(100.0, AssetStatus::Failed).unwrap();
+        let after_evidence = timeline.status_at(110.0);
+        assert_eq!(after_evidence.status, AssetStatus::Failed);
+        assert!(!after_evidence.predicted_failure, "evidence inside the window supersedes the prediction");
+    }
+
+    #[test]
+    fn po4_4_timeline_evidence_older_than_its_validity_is_unknown() {
+        // B-10: available at 0, validity 24 h, no further evidence; at 5 d the
+        // state must be `unknown`, not the last value.
+        let mut timeline = AssetTimeline::new("pump-p1", AssetStatus::Available);
+        timeline.set_evidence_validity(Some(24.0 * 3600.0)).unwrap();
+        assert_eq!(timeline.status_at(24.0 * 3600.0).status, AssetStatus::Available);
+        let at_5d = timeline.status_at(5.0 * 86400.0);
+        assert_eq!(at_5d.status, AssetStatus::Unknown);
+        assert!(at_5d.expired);
+        // New evidence restarts the validity period.
+        timeline.schedule_change(4.5 * 86400.0, AssetStatus::Degraded).unwrap();
+        assert_eq!(timeline.status_at(5.0 * 86400.0).status, AssetStatus::Degraded);
+    }
+
     #[test]
     fn invalid_windows_and_non_finite_values_are_rejected() {
         assert!(matches!(TimeWindow::new(10.0, 5.0), Err(TimeError::InvalidWindow { .. })));

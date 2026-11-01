@@ -1252,4 +1252,19 @@ verification = "demonstrated"
         .unwrap();
         assert!(matches!(m.mass_balance["turn"], MassBalance::Balanced { .. }));
     }
+
+    // Issue #111 (P14, review A-06): a status declared without
+    // `status_evidence` is a synthetic observation by the model author (PO
+    // §3.1); it may be used, but it must be reported as such.
+    #[test]
+    fn po3_1_declared_status_without_evidence_is_reported_as_synthetic() {
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../scenarios/base-01/model.toml");
+        let m = Model::load(&path).unwrap();
+        let declared = m.declared_status_assets();
+        for asset in ["pv-1", "bat-1", "bus-1", "filter-1", "lathe-1", "gauge-1", "charger-1", "robot-m1"] {
+            assert!(declared.contains(&asset), "{asset} has no status evidence: {declared:?}");
+        }
+        assert!(!declared.contains(&"pump-p1"), "pump-p1 cites obs/vibration-p1-0031");
+        assert_eq!(m.assets["pump-p1"].status_evidence.as_deref(), Some("obs/vibration-p1-0031"));
+    }
 }

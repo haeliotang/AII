@@ -148,4 +148,89 @@ mod tests {
         book.release("lot-bronze", "a1");
         assert_eq!(book.remaining("lot-bronze"), 5.0);
     }
+
+    // Issue #111 (P17, review B-09): reservations follow the action lifecycle
+    // (SAP §6.2). Releasing on `outcome_unknown` would let A2 over-allocate a
+    // sleeve that A1 may already have installed; holding forever would leak.
+
+    use crate::action::ActionState;
+
+    fn settle(book: &mut ReservationBook, action: &str, from: ActionState, to: ActionState, at_ms: i64) -> Settlement {
+        book.settle(
+            "lot-sleeve",
+            &LifecycleEvent { action_id: action.into(), from, to, at_ms, command_valid_until_ms: 10_000 },
+        )
+        .unwrap()
+    }
+
+    fn sleeves() -> ReservationBook {
+        let mut book = ReservationBook::new();
+        book.add_batch("lot-sleeve", 5.0);
+        book.reserve("lot-sleeve", "a1", 1.0).unwrap();
+        book
+    }
+
+    #[test]
+    fn sap6_2_verified_consumes_the_reservation() {
+        let mut book = sleeves();
+        assert_eq!(settle(&mut book, "a1", ActionState::Dispatched, ActionState::Acknowledged, 100), Settlement::Held);
+        assert_eq!(
+            settle(&mut book, "a1", ActionState::Acknowledged, ActionState::Verified, 200),
+            Settlement::Consumed
+        );
+        assert_eq!(book.available("lot-sleeve"), Some(4.0));
+        assert_eq!(book.reserved("lot-sleeve"), 0.0);
+        assert_eq!(book.remaining("lot-sleeve"), 4.0);
+    }
+
+    #[test]
+    fn sap6_2_never_dispatched_actions_release_the_reservation() {
+        for to in [ActionState::Rejected, ActionState::Expired, ActionState::Cancelled] {
+            let mut book = sleeves();
+            assert_eq!(settle(&mut book, "a1", ActionState::Authorized, to, 100), Settlement::Released);
+            assert_eq!(book.remaining("lot-sleeve"), 5.0);
+        }
+        // A NACK (the executor declares it did not execute) also releases.
+        let mut book = sleeves();
+        assert_eq!(settle(&mut book, "a1", ActionState::Dispatched, ActionState::Failed, 100), Settlement::Released);
+        assert_eq!(book.remaining("lot-sleeve"), 5.0);
+    }
+
+    #[test]
+    fn sap6_2_outcome_unknown_keeps_the_quantity_in_doubt() {
+        let mut book = sleeves();
+        assert_eq!(
+            settle(&mut book, "a1", ActionState::Dispatched, ActionState::OutcomeUnknown, 1_000),
+            Settlement::InDoubt
+        );
+        // Still deducted from what others may reserve, but reported separately.
+        assert_eq!(book.remaining("lot-sleeve"), 4.0);
+        assert_eq!(book.in_doubt("lot-sleeve"), 1.0);
+        assert!(matches!(book.reserve("lot-sleeve", "a2", 4.5), Err(ReservationError::Insufficient { .. })));
+        // A failure after an ACK does not prove that nothing was consumed.
+        let mut other = sleeves();
+        assert_eq!(settle(&mut other, "a1", ActionState::Acknowledged, ActionState::Failed, 100), Settlement::InDoubt);
+        // Resolution: a later verification consumes it ...
+        assert_eq!(
+            settle(&mut book, "a1", ActionState::OutcomeUnknown, ActionState::Verified, 2_000),
+            Settlement::Consumed
+        );
+        assert_eq!(book.in_doubt("lot-sleeve"), 0.0);
+        assert_eq!(book.available("lot-sleeve"), Some(4.0));
+    }
+
+    #[test]
+    fn sap6_2_in_doubt_reservations_escalate_and_settle_by_recount() {
+        let mut book = sleeves();
+        settle(&mut book, "a1", ActionState::Dispatched, ActionState::OutcomeUnknown, 1_000);
+        assert!(book.overdue_in_doubt(5_000, 10_000).is_empty());
+        assert_eq!(book.overdue_in_doubt(20_000, 10_000), vec![("lot-sleeve".to_string(), "a1".to_string())]);
+        // A recount before the command could still execute must not settle it.
+        assert!(book.recount("lot-sleeve", 4.0, 9_000).is_err());
+        // After the command's valid_until the executor rejects it, so the count is final.
+        book.recount("lot-sleeve", 4.0, 10_001).unwrap();
+        assert_eq!(book.in_doubt("lot-sleeve"), 0.0);
+        assert_eq!(book.available("lot-sleeve"), Some(4.0));
+        assert_eq!(book.remaining("lot-sleeve"), 4.0);
+    }
 }
