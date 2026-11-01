@@ -7,6 +7,7 @@
 - **需要谁**：2–3 位领域外读者（工业自动化、过程安全、分布式系统/形式化方法背景各一为佳）。
 - **审读材料**：[Physical Ontology v0.3-draft](../../specifications/physical-ontology.zh-CN.md)、[State & Action Protocol v0.2-draft](../../specifications/state-action-protocol.zh-CN.md)、[Viability & Expansion Contract v0.2-draft](../../specifications/viability-expansion.zh-CN.md)。
 - **问题包**：[契约自审与外部评审问题包](contract-self-audit.zh-CN.md)（逐条开放问题、反例方向、建议评审顺序）；评论模板 [contract-review](../../.github/ISSUE_TEMPLATE/contract-review.yml)。
+- **AI 预演起点**（不计入评审）：[三方评审汇总](ai-preview/contract-review-summary.zh-CN.md)（36 条、去重 25、13 高；P4/P5 已代码核对）。请真人评审判断哪些是 AI 误报、还漏了什么。
 - **审读方式**：按"能否构造反例"审读，而非文风；每条意见登记为 GitHub issue（模板 `contract-review`）。
 - **验收**：评审意见全部登记，并逐条标注**接受 / 拒绝（附理由）/ 推迟**（DEVELOPMENT M1.8）。
 - **请求**：指定评审者与期望完成日期；仓库维护者负责响应与修订。
@@ -22,14 +23,14 @@
 ## C. M1.10 正式商标检索
 
 - **需要谁**：知识产权代理或发起方法务；预算与类别决策。
-- **现状**：[ADR-0002 §7](../adr/0002-rename-to-poieweave.zh-CN.md) 记录初步检索（TMview/Trademarkia 未见完全同名，POIE 词根有残余风险；官方库直连被阻断）。
+- **现状**：[ADR-0002 §7](../adr/0002-rename-to-poieweave.zh-CN.md) 记录初步检索（TMview/Trademarkia 未见完全同名，POIE 词根有残余风险；官方库直连被阻断）。AI 补充检索见 [trademark-supplement](ai-preview/trademark-supplement.zh-CN.md)（普通法/包名/域名；USPTO 50154930），不替代正式检索。
 - **建议检索**：类别 7（机械/泵）、9（软件/控制）、42（工程/技术服务）；辖区 US/EU/CN/WIPO。
 - **验收**：USPTO/EUIPO/CNIPA/WIPO 结果记入 ADR-0002，并给出是否申请及类别建议。
 
 ## D. M3.3 外部贡献用例（配额 ≥ 1/4）
 
 - **需要谁**：至少 1–2 位独立贡献者（非项目作者）。
-- **材料**：模板 [case-contribution-template.zh-CN.md](case-contribution-template.zh-CN.md)；现有 40 例见 [Base-01 cases](../../scenarios/base-01/cases.toml)。
+- **材料**：模板 [case-contribution-template.zh-CN.md](case-contribution-template.zh-CN.md)；现有 40 例见 [Base-01 cases](../../scenarios/base-01/cases.toml)。AI 独立编写的 [10 个参考用例](../../scenarios/base-01/ai-preview-cases.toml) 可作示例，但**不占外部配额**。
 - **要求**：用例在**运行前**写入预期；覆盖扰动分层标签；通过加载器与 CI；贡献者需在 PR 中声明独立性。
 - **验收**：≥10 个外部用例（40 的 1/4），全部有预登记预期并通过 CI；`docs/progress/foundation-tasks.md` 更新配额。
 
@@ -44,6 +45,7 @@
 - **需要谁**：能提供测试实例与网络访问的环境。
 - **需要的信息**：版本、端点、认证方式、只读凭据、时间戳语义、断连行为、是否支持命令幂等（写入 M10 使用前必须）。
 - **验收**：每个适配器有兼容性测试记录（ADR），只读影子运行可跑通。
+- **已有 AI 预演**：[BaSyx 本机容器预演](../../experiments/basyx-shadow/REPORT.md)（9/9，单容器/回环/无认证，不计入验收）。
 
 ## G. M9.6 / M10 物理试验台与安全演练
 
@@ -62,6 +64,7 @@
 - **需要谁**：两台可隔离网络的节点（物理或 VM）与时钟/分区控制能力。
 - **测试**：SAP-T5–T8 复测、长时间分区、反复分区、重连对账、无双重控制/超额预留。
 - **验收**：[ADR-0008](../adr/0008-federation-sync.zh-CN.md) 的生产传输验收要求全部满足。
+- **已有 AI 预演**：[双容器网络分区预演](../../experiments/federation-docker/REPORT.md)（14/14，共享宿主机内核与时钟，非真实多节点，不计入验收）。
 
 ## 优先级建议
 

@@ -164,3 +164,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：状态快照与干净克隆记录刷新至 `e8f72aa`：Rust 列表测试更新为 282（库 276 + runner 6），干净克隆在该提交上通过。
 - 2026-10-31：手动 dispatch scheduled workflow（[run 41246880552](https://github.com/haeliotang/poieweave/actions/runs/41246880552)）五个 job 全部成功：verify-all、release-mode test suite、fresh-clone（runner 上干净克隆复现）、advisories、licenses/bans/sources。
 - 2026-11-01：外部依赖项 AI 预演完成（不计入退出条件），见 [自主范围审计 §6](../status/autonomous-scope-audit.zh-CN.md) 与 [ai-preview-tasks](ai-preview-tasks.md)。
+- 2026-11-01：对齐 AI 预演进度：状态快照新增 §2.1（预演结果、限制与待裁定问题）、测试矩阵加入 BaSyx/双容器/AI 用例并更新计数为 299、外部行动清单加入预演起点链接、stage-gates/契约自审加入说明；P4/P5 已确认但仍待维护者裁定，里程碑状态不变。

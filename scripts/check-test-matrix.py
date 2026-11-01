@@ -2,13 +2,14 @@
 """Check that docs/status/test-matrix.zh-CN.md matches the actual test counts.
 
 Parses the library-crate table, the total and the status-snapshot count, runs
-`cargo test -q -p <crate> -- --list` for every listed crate and for the two
-test-bearing experiment runners, and fails when a count or a total drifts.
-Keeps evidence documents honest as tests are added.
+`cargo test -q -p <crate> -- --list` for every listed crate and for every other
+workspace package (experiment/adaptor runners), and fails when a count or a
+total drifts. Keeps evidence documents honest as tests are added.
 
 Usage: python3 scripts/check-test-matrix.py [repo-root]
 """
 
+import json
 import re
 import subprocess
 import sys
@@ -16,9 +17,22 @@ from pathlib import Path
 
 ROW = re.compile(r"^\|\s*`(poie-[a-z0-9-]+)`\s*\|\s*(\d+)\s*\|", re.MULTILINE)
 TOTAL = re.compile(r"\*\*库 crate 测试合计：(\d+) 个已列出的测试\*\*")
-SNAPSHOT = re.compile(r"Rust 列表测试\s*\|\s*\*\*(\d+)\*\*（库 crate (\d+) \+ 实验 runner (\d+)）")
-RUNNERS = ("poie-h1-baseline", "poie-vec-base01")
+SNAPSHOT = re.compile(r"Rust 列表测试\s*\|\s*\*\*(\d+)\*\*（库 crate (\d+) \+ 其他包 (\d+)）")
 LIST_END = ": test"
+
+
+def workspace_packages(root: Path) -> list[str]:
+    completed = subprocess.run(
+        ["cargo", "metadata", "--no-deps", "--format-version", "1", "--offline"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(f"cannot read cargo metadata: {completed.stderr.strip()}")
+    return sorted(
+        package["name"] for package in json.loads(completed.stdout)["packages"] if package["name"].startswith("poie-")
+    )
 
 
 def listed_tests(root: Path, package: str) -> int:
@@ -64,16 +78,18 @@ def main():
         failures += 1
     else:
         print(f"ok total: {actual_total}")
-    runner_total = sum(listed_tests(root, package) for package in RUNNERS)
-    snap_total, snap_library, snap_runner = (int(value) for value in snapshot_match.groups())
-    if (snap_library, snap_runner, snap_total) != (actual_total, runner_total, actual_total + runner_total):
+    matrix_packages = {package for package, _ in rows}
+    other_packages = [package for package in workspace_packages(root) if package not in matrix_packages]
+    other_total = sum(listed_tests(root, package) for package in other_packages)
+    snap_total, snap_library, snap_other = (int(value) for value in snapshot_match.groups())
+    if (snap_library, snap_other, snap_total) != (actual_total, other_total, actual_total + other_total):
         print(
-            f"MISMATCH status snapshot: documented {snap_total} ({snap_library} library + {snap_runner} runner), "
-            f"actual {actual_total + runner_total} ({actual_total} library + {runner_total} runner)"
+            f"MISMATCH status snapshot: documented {snap_total} ({snap_library} library + {snap_other} other), "
+            f"actual {actual_total + other_total} ({actual_total} library + {other_total} other: {other_packages})"
         )
         failures += 1
     else:
-        print(f"ok status snapshot: {snap_total} ({snap_library} + {snap_runner})")
+        print(f"ok status snapshot: {snap_total} ({snap_library} + {snap_other})")
     if failures:
         print(f"FAILED: {failures} test-matrix mismatch(es)")
         return 1

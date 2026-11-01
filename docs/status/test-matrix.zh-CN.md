@@ -1,4 +1,4 @@
-# 测试与证据矩阵（2026-10-31）
+# 测试与证据矩阵（2026-11-01）
 
 本表把"代码测试、随机性质测试、场景/实验重放、CI 步骤"与里程碑对应起来，便于外部评审快速核对。数字取自 `cargo test -- --list` 与 CI 配置；随机性质测试在列表中计为 1 个测试，但内部运行多次随机试验（trials）。
 
@@ -17,7 +17,7 @@
 | `poie-expansion` | 11 | 结构 40/时序 40 trials；提案 TOML 变异不 panic（120） | M11 |
 | `poie-federation` | 10 | HLC 80 trials；分区/重连 120 trials | M12 |
 
-**库 crate 测试合计：284 个已列出的测试**；另有实验 runner 6 个（`poie-h1-baseline` 5、`poie-vec-base01` 1），总计 290。
+**库 crate 测试合计：284 个已列出的测试**；另有其他包 15 个（`poie-h1-baseline` 5、`poie-vec-base01` 1、`poie-basyx-shadow` 9），总计 299。
 
 ## 2. 场景与实验重放
 
@@ -36,6 +36,9 @@
 | 本机 TCP 双进程联邦 | 2 站点 × 3 类冲突 | ✅ |
 | 两站点影子集成 | 7/7 断言 | ✅ |
 | M9.4 影子运行演示 | 7/7 断言（不派发、两类分歧） | ✅ |
+| BaSyx AAS 只读适配器预演（M9.2，AI 预演） | 9/9 检查 | 非 CI 重放（live 容器；报告标注 AI 预演） |
+| 双容器网络分区预演（M12.6，AI 预演） | 14/14 | 判定从 `raw/` 在 CI/`verify-all.sh` 重放 |
+| AI 预演 Base-01 用例（M3.3，AI 预演） | 10 例 / 10 通过 | 运行输出提交，未纳入 CI；不占外部配额 |
 | Python 水模型/桥 | 9 个 unittest | ✅ |
 
 ## 3. CI 步骤（`main` 每次合并）
@@ -48,13 +51,15 @@
 6. 实验重放覆盖检查：`python3 scripts/check-experiment-replays.py`
 7. 测试矩阵与状态快照计数校验：`python3 scripts/check-test-matrix.py`
 8. Python：`python3 -m unittest discover -s python/poie_models`
-6. Base-01 40 例、Base-02 8 例
-7. M12 分区模拟重放、e2e 重放、TCP 重放、两站点重放
-8. Base-01 时间版用例与摘要校验
-9. VEC 报告重放、H1 结构层/时间版重放、H2 开发集/留出集重放、H3 模拟重放、H4 报告重放
-10. `cargo-deny`（advisories、licenses/bans/sources）
+9. Base-01 40 例、Base-02 8 例
+10. M12 分区模拟重放、双容器分区判定重放、e2e 重放、TCP 重放、两站点重放、影子运行重放
+11. Base-01 时间版用例与摘要校验
+12. VEC 报告重放、H1 结构层/时间版重放、H2 开发集/留出集重放、H3 模拟重放、H4 报告重放
+13. `cargo-deny`（advisories、licenses/bans/sources）
 
 本地一键复现：`scripts/verify-all.sh`（与 CI 相同的步骤序列）；干净克隆复现：`scripts/check-fresh-clone.sh`。
+
+AI 预演（2026-11-01）列在上表最后三行：它们为外部参与者提供起点，**不改变任何里程碑的退出条件**；限制见 [autonomous-scope-audit §6](autonomous-scope-audit.zh-CN.md)。
 
 另：`.github/workflows/scheduled.yml` 每周一 04:17 UTC（或手动触发）运行 `verify-all.sh`（`SKIP_DENY=1`）、`cargo test --release` 与独立的 `cargo-deny` job；手动触发时还会运行 `fresh-clone` job（干净克隆内重跑完整套件）。
 
