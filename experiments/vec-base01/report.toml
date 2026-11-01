@@ -10,8 +10,8 @@ metric_definition_version = "vec-metrics/0.1"
 confidence_intervals = []
 
 [input_hashes]
-initial_state = "af6cd92603e983a7"
-scenario_set = "a8a4f2eafff4b74b"
+initial_state = "b4d9ce2a451a4a7b"
+scenario_set = "7c3970f1a2695bdb"
 models = "3f60c700752970cc"
 policy = "559e3937a92e400b"
 contract_version = "viability-expansion/0.2"

@@ -81,6 +81,9 @@ fn main() -> ExitCode {
         if !outcome.detail.is_empty() {
             println!("  detail: {}", outcome.detail);
         }
+        for warning in &outcome.warnings {
+            println!("  warning: {warning}");
+        }
         for mismatch in &mismatches {
             println!("  !! {mismatch}");
         }

@@ -63,6 +63,9 @@ fn main() -> ExitCode {
         .collect();
     println!("  mass balance: {balanced} balanced, {} unchecked {:?}", unchecked.len(), unchecked);
     println!("  external dependencies (no local producer): {}", m.external_resources().join(", "));
+    // PO §3.1 (issue #111): statuses without `status_evidence` are synthetic
+    // observations by the model author and must be reported as such.
+    println!("  declared statuses (synthetic, no status_evidence): {}", m.declared_status_assets().join(", "));
     println!();
 
     let mut failed = 0;
