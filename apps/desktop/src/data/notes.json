@@ -1,0 +1,270 @@
+[
+  {
+    "id": "conservation",
+    "title": "Base-01 守恒修复",
+    "kind": "实践",
+    "domains": "领域未设 · 项目实现 · 设…",
+    "updated": "今天 15:20",
+    "nextStep": "复跑 Base-01 与仿真守恒用例，确认 mass_unchecked 工艺不再进入候选路线。",
+    "intro": "P4/P5 修复之后，守恒容差、unchecked 与 mass_unchecked 的关系需要一条能复跑的验收线。",
+    "goal": "守住 Base-01 的守恒边界，同时不把合法的浮渣产出判成违规。",
+    "status": {
+      "proven": 2,
+      "unstable": 1,
+      "discarded": 0,
+      "practice": 2,
+      "opposed": 1,
+      "unknown": 0,
+      "evidence": "依据：Base-01 全量 40/40（2026-11-01 重跑）与 poie-sim 17/17；H4 净增益仍为负。"
+    },
+    "nextSteps": [
+      "限时二十分钟，不看参考，只跑 Base-01 全量用例与 17 个仿真测试，确认 mass_unchecked 不再进入候选。",
+      "复跑 H4 扩张提案，记录浮渣产出显式建模对净增益的影响。",
+      "把核对结果写回这条线，保留失败与不确定。"
+    ],
+    "materials": [
+      "PO §5 守恒条款（2026-11-01 修订）",
+      "crates/poie-ontology/tests 与 poie-sim 测试",
+      "issue #105 的预登记反例"
+    ],
+    "proven": [
+      "限时 20 分钟复跑 Base-01 40/40 与仿真 17/17 通过。依据：CI run 41299482461。",
+      "浮渣显式产出 0.5 kg 后，H4 不再依赖 0.2 容差；净增益仍为负。依据：H4 报告（2026-11-01 重跑）。"
+    ],
+    "unstable": [
+      "容差上限 0.05 是否覆盖所有合法工艺，只核对过 Base-01 与扩张提案。",
+      "mass_unchecked 与 unknown 在规划层的区分还没有专门的回归用例。"
+    ],
+    "agent": {
+      "request": "把 P4/P5 的验收证据整理成可以复跑的清单",
+      "independent": "独立复跑 Base-01 与仿真守恒测试",
+      "sources": "PO §5、issue #105、H4 报告",
+      "note": "这一轮送了外来资料：标准授权不代批，每一条审批都交人。",
+      "existing": 1,
+      "suggestion": "复跑 Base-01 全量用例，把 mass_unchecked 的用例输出贴进这条线。"
+    }
+  },
+  {
+    "id": "contract-review",
+    "title": "契约评审处置",
+    "kind": "精进",
+    "domains": "领域未设 · 研究 · 设…",
+    "updated": "5 天前",
+    "nextStep": "把 3 项推迟的条目写成可证伪的触发条件，再邀请真人评审。",
+    "intro": "AI 预演给出 25 项去重问题，维护者已逐条处置；接下来要让人来验证哪些是误报。",
+    "goal": "把 AI 预演的结论变成真人评审可以核对的起点，而不是替代评审。",
+    "status": {
+      "proven": 3,
+      "unstable": 2,
+      "discarded": 0,
+      "practice": 0,
+      "opposed": 0,
+      "unknown": 3,
+      "evidence": "依据：contract-review-summary（2026-11-01）；22 接受 / 3 推迟 / 0 拒绝。"
+    },
+    "nextSteps": [
+      "为 P18–P20 三项推迟写下重开条件与最小反例。",
+      "邀请 2–3 位领域外读者，附 AI 汇总但要求独立判断。",
+      "把真人意见登记为 issue，逐条标注接受/拒绝/推迟。"
+    ],
+    "materials": [
+      "docs/status/ai-preview/contract-review-summary.zh-CN.md",
+      "docs/status/contract-self-audit.zh-CN.md",
+      "contract-review issue 模板"
+    ],
+    "proven": [
+      "22 项接受、3 项推迟、0 拒绝已记录；#105–#112 已登记，其中 #105–#111 已合并。",
+      "P4/P5 的代码事实已由主线程独立核对并在 #105 修复。",
+      "守恒暂停在 #114 合并后解除。"
+    ],
+    "unstable": [
+      "AI 评审是否漏掉作者自审没有列出的结构性问题。",
+      "推迟的三项是否会在 M11 物理实施前变成阻塞。"
+    ],
+    "agent": {
+      "request": "整理 25 项评审问题的处置与修复状态",
+      "independent": "逐项对照契约条款与合并记录，不依赖评审语气",
+      "sources": "contract-review-summary、issues #105–#112、DEVELOPMENT 0.1.99–0.1.100",
+      "note": "评审材料只送入公开契约与仓库证据；不送个人信息。",
+      "existing": 2,
+      "suggestion": "给 P18–P20 各写一个最小反例，作为真人评审的第一组试读材料。"
+    }
+  },
+  {
+    "id": "federation-preview",
+    "title": "双容器分区预演",
+    "kind": "实践",
+    "domains": "领域未设 · 网络 · 设…",
+    "updated": "昨天",
+    "nextStep": "补时钟偏差与非对称分区，判断是否需要真实节点。",
+    "intro": "两个容器共享内核与时钟，网络层分区由 docker network disconnect 制造；14/14 符合预登记。",
+    "goal": "在真实网络栈上复现分区与重连对账，缩小 M12.6 的差距。",
+    "status": {
+      "proven": 2,
+      "unstable": 2,
+      "discarded": 0,
+      "practice": 3,
+      "opposed": 0,
+      "unknown": 4,
+      "evidence": "依据：federation-docker 报告与 raw/D0–D4；判定从 raw 在 CI 重放。"
+    },
+    "nextSteps": [
+      "加入时钟偏差与非对称分区。",
+      "记录崩溃重启后的日志与租约状态。",
+      "明确哪些结论必须在真实多节点上重测。"
+    ],
+    "materials": [
+      "experiments/federation-docker/PREREG.md",
+      "ADR-0008 生产传输验收要求",
+      "federation-docker raw 输出"
+    ],
+    "proven": [
+      "两端都检测到分区，分区期间本地写入不受阻。",
+      "重连后三类冲突全部报告，反复分区不产生重复记录。"
+    ],
+    "unstable": [
+      "共享宿主机时钟，不能证明租约在真实时钟偏差下的安全性。",
+      "没有覆盖崩溃重启、认证加密与广域网。"
+    ],
+    "agent": {
+      "request": "比较双容器预演与真实多节点的差距",
+      "independent": "从 raw 重算判定，不直接引用报告结论",
+      "sources": "federation-docker raw、ADR-0008、SAP §6",
+      "note": "容器日志只包含合成站点与合成键；不包含真实凭据。",
+      "existing": 1,
+      "suggestion": "把时钟偏差加入 D5 场景，先写预登记再运行。"
+    }
+  },
+  {
+    "id": "adapter-preview",
+    "title": "适配器影子运行",
+    "kind": "实践",
+    "domains": "领域未设 · 接口 · 设…",
+    "updated": "2026/10/12",
+    "nextStep": "让影子计划出现非空动作，再验证“不派发”不是平凡满足。",
+    "intro": "BaSyx AAS 本机容器 9/9 通过；影子计划动作数为 0，C4 的结论需要补强。",
+    "goal": "证明只读适配器可以把真实容器观测送进投影，并保持影子模式不派发。",
+    "status": {
+      "proven": 1,
+      "unstable": 3,
+      "discarded": 0,
+      "practice": 1,
+      "opposed": 0,
+      "unknown": 5,
+      "evidence": "依据：basyx-shadow 报告；单容器、回环、无认证。"
+    },
+    "nextSteps": [
+      "构造一个会触发非空计划的现场状态。",
+      "让影子 guard 在非空计划上被调用。",
+      "记录断连、404 与重注入的投影差异。"
+    ],
+    "materials": [
+      "experiments/basyx-shadow/REPORT.md",
+      "crates/poie-runtime/src/adapter.rs",
+      "ADR-0007"
+    ],
+    "proven": [
+      "只读 HTTP 适配器读到了 Submodel 属性，单位与时间戳语义符合声明。"
+    ],
+    "unstable": [
+      "C4 的“不派发”在空计划上自然成立。",
+      "没有覆盖认证、TLS、MongoDB 后端与订阅。",
+      "Ditto 与 ROS 2 未测。"
+    ],
+    "agent": {
+      "request": "审查 BaSyx 预演里哪些结论是平凡满足",
+      "independent": "从 raw 阶段输出与报告逐项对照",
+      "sources": "basyx-shadow REPORT、phase-*.txt、adapter-log.jsonl",
+      "note": "只读适配器，未向容器写入；所有值都是合成的。",
+      "existing": 1,
+      "suggestion": "先补非空影子计划，再谈 M9.2 的兼容性结论。"
+    }
+  },
+  {
+    "id": "vec-revision",
+    "title": "VEC 核算复跑",
+    "kind": "理解",
+    "domains": "领域未设 · 统计 · 设…",
+    "updated": "2026/10/11",
+    "nextStep": "确认截尾分位数与终端条件在 Base-01 报告中的实际影响。",
+    "intro": "扩张三时点核算、截尾估计量、终端条件与非预知性检查都已进入 VEC v0.2-draft 修订。",
+    "goal": "判断修订后的核算规则会不会改变已发布报告的结论。",
+    "status": {
+      "proven": 2,
+      "unstable": 1,
+      "discarded": 0,
+      "practice": 0,
+      "opposed": 0,
+      "unknown": 2,
+      "evidence": "依据：VEC §4–§8 修订与 vec-base01 重放；H4 改为净增益为负。"
+    },
+    "nextSteps": [
+      "重放 vec-base01 报告并比较指标差异。",
+      "确认截尾样本不再进入均值或分位数。",
+      "把终端条件写进时域实验的预登记模板。"
+    ],
+    "materials": [
+      "specifications/viability-expansion.zh-CN.md",
+      "experiments/vec-base01/report.toml",
+      "issues #109/#110"
+    ],
+    "proven": [
+      "H4 按三时点核算重跑后，净增益为负；第一次“不确定”保留在报告里。",
+      "vec-base01 在修订后重放一致。"
+    ],
+    "unstable": [
+      "截尾估计量在样本极少时的偏差还没有模拟边界。"
+    ],
+    "agent": {
+      "request": "比较 VEC 修订前后的指标差异",
+      "independent": "从报告重放输出计算差异，不修改原始运行",
+      "sources": "VEC §4–§8、vec-base01 报告、H4 报告",
+      "note": "报告只包含合成场景与模型版本，不含现场数据。",
+      "existing": 1,
+      "suggestion": "把截尾样本的计数与分位数变化列成一张对照表。"
+    }
+  },
+  {
+    "id": "external-review",
+    "title": "外部评审邀约",
+    "kind": "精进",
+    "domains": "领域未设 · 协作 · 设…",
+    "updated": "2026/10/06",
+    "nextStep": "指定 2–3 位领域外读者，发出第一封邀约并约定时间盒。",
+    "intro": "M1.8 仍需要真人评审；AI 预演只是起点，不能替代退出条件。",
+    "goal": "在 Foundation 门槛上拿到可逐条处置的外部评审意见。",
+    "status": {
+      "proven": 1,
+      "unstable": 1,
+      "discarded": 0,
+      "practice": 0,
+      "opposed": 0,
+      "unknown": 0,
+      "evidence": "依据：external-actions、outreach-templates 与 AI 评审汇总。"
+    },
+    "nextSteps": [
+      "确定评审者与期望完成日期。",
+      "附上三份契约、自审问题包与 AI 汇总，明确只要反例。",
+      "收到意见后逐条标注接受/拒绝/推迟。"
+    ],
+    "materials": [
+      "docs/status/outreach-templates.zh-CN.md",
+      "docs/status/contract-self-audit.zh-CN.md",
+      ".github/ISSUE_TEMPLATE/contract-review.yml"
+    ],
+    "proven": [
+      "邀约文本、问题包与 issue 模板已就绪。"
+    ],
+    "unstable": [
+      "真人评审的时间与范围尚未确定。"
+    ],
+    "agent": {
+      "request": "起草 M1.8 外部评审的邀约与问题清单",
+      "independent": "只引用公开契约与 AI 汇总，不替评审者下结论",
+      "sources": "contract-self-audit、outreach-templates、AI 汇总",
+      "note": "不发送个人信息；联系人由发起方决定。",
+      "existing": 2,
+      "suggestion": "先选一位过程安全背景的读者，只审 SAP §4–§6。"
+    }
+  }
+]

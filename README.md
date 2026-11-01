@@ -17,7 +17,7 @@ Our central question is simple:
 
 > Can an industrial system preserve and increase its ability to survive, repair, and produce when resources are limited, communications disappear, and equipment keeps wearing out?
 
-**Status: reference implementation and simulated validation.** Foundation (M0–M5) and Autonomy (M6–M8) are complete against their internal reference criteria. Embodiment (M9–M10), Expansion (M11) and Federation (M12) are implemented and tested at library/simulated level; their stage gates still need the physical testbed, real adapters, real multi-node tests and external participation. The repository contains three revised draft contracts, Rust reference implementations, Python process models behind a versioned bridge, pre-registered scenarios and experiments (including negative results and explicitly simulated-only claims), and a CI/replay evidence chain. There is no validated benchmark, calibrated plant model, hardware deployment or real multi-site deployment yet.
+**Status: reference implementation, simulated validation, and a desktop shell.** Foundation (M0–M5) and Autonomy (M6–M8) are complete against their internal reference criteria. Embodiment (M9–M10), Expansion (M11) and Federation (M12) are implemented and tested at library/simulated level; their stage gates still need the physical testbed, real adapters, real multi-node tests and external participation. The repository contains three revised draft contracts, Rust reference implementations, Python process models behind a versioned bridge, pre-registered scenarios and experiments (including negative results and explicitly simulated-only claims), and a CI/replay evidence chain. A Tauri 2 desktop shell now provides the workline UI and the host boundary for app-data files, SQLite state and a sandbox; it is not yet wired to the domain crates. There is no validated benchmark, calibrated plant model, hardware deployment or real multi-site deployment yet.
 
 [中文研究文档 / Research & architecture](docs/research/FOUNDATIONS.zh-CN.md) · [开发文档 / Development plan](docs/DEVELOPMENT.zh-CN.md)
 
@@ -50,6 +50,7 @@ Our central question is simple:
 | [Dual-container partition preview](experiments/federation-docker/REPORT.md) | Two containers, real network-layer partitions via `docker network disconnect`; D0–D4 14/14. Containers share the host kernel and clock; **not real multi-node**, and clock skew, asymmetric partitions, crash/restart and auth are untested. **AI preview, not M12.6 exit evidence.** |
 | [Localhost TCP federation demo](experiments/federation-tcp/REPORT.md) | Two OS processes exchange records, reservations and leases over real loopback TCP sockets; both sites report the same three expected conflicts (over-reservation, double ownership, duplicate idempotency key). Localhost only — not real multi-site. |
 | [End-to-end pipeline demo](experiments/e2e-pipeline/REPORT.md) | Simulated field observation → projection with evidence expiry → joint plan → SAP-validated authorized actions → execution gate (takeover, degradation) → simulated executor → independent verification → prediction check; 9/9 assertions, CI replay. |
+| [Desktop shell](apps/desktop) | Tauri 2 host + React 19/TypeScript three-pane workline UI styled with the Inceptless light theme (`#e8e8ea` sidebar, `#f7f7f8` pane, `#efeff1` surface, `#0369CC` accent). Host commands expose seeded SQLite notes/events and a size-limited app-data sandbox; the shell is not yet wired to the `poie-*` domain crates. See [apps/desktop/README.md](apps/desktop/README.md). |
 | [Base-02 shared depot](scenarios/base-02/model.toml) | Second scenario sharing inventory and a transport truck with Base-01 (heat-treatment workshop); 8 pre-registered structural cases run in CI. |
 | [M12.6 simulated partition](experiments/federation-partition/REPORT.sim.md) | Pre-registered simulated partition/reconnect experiment: over-reservation, overlapping leases, duplicate keys and double dispatch are all reported (not silently merged); repeated exchanges are idempotent. **Simulated only** — real multi-node tests remain external. |
 | [H4 expansion accounting](experiments/h4-expansion/REPORT.md) | Pre-registered H4 on the Base-01 recycling-furnace proposal. Re-run on 2026-11-01 under the revised VEC expansion accounting (issues #109/#110): judged at the operating threshold (`demonstrated`), with the construction draw deducted and the occupied robot unavailable during construction. The structural gain (`obtain sleeve-p1 4` blocked → candidate) exists only once commissioning reaches `demonstrated`; during construction the potable-water recovery route is **lost**, and the 20 kWh construction draw cannot be paid from the 0.5–2 kWh stored in any of the 16 scenarios. Verdict **net gain negative**, claim level `proposed`. The first run (2026-10-31) reported **uncertain** because the costs were not deducted; both are kept in the report. |
@@ -65,6 +66,24 @@ cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml
 cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml --routes 3
 cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml --external-deps 3
 ```
+
+## Desktop shell
+
+The first desktop shell lives in [`apps/desktop`](apps/desktop): a Tauri 2 host
+(Rust) with a React 19 + TypeScript workline UI. The host owns the app-data
+directory, a SQLite database, a size-limited file sandbox and packaging; the
+frontend follows the Inceptless light-theme tokens exactly (sidebar `#e8e8ea`,
+pane `#f7f7f8`, surface `#efeff1`, accent `#0369CC`). It currently runs on
+seeded demo worklines and is not yet wired to the `poie-*` domain crates.
+
+```bash
+cd apps/desktop
+pnpm install
+pnpm tauri dev
+```
+
+See [apps/desktop/README.md](apps/desktop/README.md) for the host commands,
+build steps and current boundaries.
 
 ## The ambition
 

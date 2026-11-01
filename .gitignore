@@ -4,3 +4,10 @@
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Desktop app (Tauri + Vite)
+apps/desktop/node_modules/
+apps/desktop/dist/
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+.pnpm-store/
