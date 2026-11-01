@@ -5,7 +5,9 @@
 //! [`Simulation::run_until`] calls. Fixed trajectories are plain scheduled events;
 //! state-dependent disturbances are declarative [`StateRule`]s evaluated after
 //! every event. Every internal [`EventKind::Transfer`] is checked for mass
-//! conservation; external stock flows are recorded separately.
+//! conservation; external stock flows are recorded separately. Negative stock is
+//! reported, and [`Simulation::mass_audit`] keeps a global mass account so that
+//! per-transfer tolerances cannot accumulate unnoticed (PO §3.10).
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
@@ -35,8 +37,56 @@ pub struct ExternalFlow {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConservationViolation {
-    Imbalanced { at_s: f64, transfer: String, input_kg: f64, output_kg: f64, asset_kg: f64 },
-    Unchecked { at_s: f64, transfer: String, missing: Vec<String> },
+    Imbalanced {
+        at_s: f64,
+        transfer: String,
+        input_kg: f64,
+        output_kg: f64,
+        asset_kg: f64,
+    },
+    Unchecked {
+        at_s: f64,
+        transfer: String,
+        missing: Vec<String>,
+    },
+    /// A stock went below zero: the run consumed material it did not have.
+    NegativeStock {
+        at_s: f64,
+        resource: String,
+        stock_si: f64,
+    },
+}
+
+/// Global mass account of a run (PO §3.10): opening stock + external inputs −
+/// external outputs − mass into assets must equal closing stock.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MassAudit {
+    pub initial_kg: f64,
+    pub external_in_kg: f64,
+    pub external_out_kg: f64,
+    pub into_assets_kg: f64,
+    pub final_kg: f64,
+    /// `final_kg` minus the expected closing mass.
+    pub residual_kg: f64,
+    /// Material resources without a known mass; they are left out of the account.
+    pub unmassed: Vec<String>,
+}
+
+impl MassAudit {
+    /// Opening stock plus everything that entered from outside.
+    pub fn reference_kg(&self) -> f64 {
+        self.initial_kg + self.external_in_kg
+    }
+
+    pub fn within_tolerance(&self) -> bool {
+        let reference = self.reference_kg();
+        self.residual_kg.abs() <= DEFAULT_MASS_TOLERANCE * reference + ROUNDING_TOLERANCE * reference.max(1.0)
+    }
+
+    /// True when every material resource that moved had a known mass.
+    pub fn is_complete(&self) -> bool {
+        self.unmassed.is_empty()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -118,6 +168,10 @@ pub struct Simulation<'m> {
     log: Vec<LogEntry>,
     external_flows: Vec<ExternalFlow>,
     violations: Vec<ConservationViolation>,
+    initial_stocks: BTreeMap<String, f64>,
+    external_in_kg: f64,
+    external_out_kg: f64,
+    into_assets_kg: f64,
 }
 
 impl<'m> Simulation<'m> {
@@ -127,6 +181,7 @@ impl<'m> Simulation<'m> {
         for lot in model.lots.iter().filter(|lot| lot.quality == LotQuality::Accepted) {
             *stocks.entry(lot.resource.clone()).or_insert(0.0) += lot.si;
         }
+        let initial_stocks = stocks.clone();
         Simulation {
             model,
             queue: BinaryHeap::new(),
@@ -140,6 +195,10 @@ impl<'m> Simulation<'m> {
             log: Vec::new(),
             external_flows: Vec::new(),
             violations: Vec::new(),
+            initial_stocks,
+            external_in_kg: 0.0,
+            external_out_kg: 0.0,
+            into_assets_kg: 0.0,
         }
     }
 
@@ -218,6 +277,35 @@ impl<'m> Simulation<'m> {
         &self.external_flows
     }
 
+    pub fn mass_audit(&self) -> MassAudit {
+        let mut unmassed = BTreeSet::new();
+        let mut total = |stocks: &BTreeMap<String, f64>| -> f64 {
+            let mut kg = 0.0;
+            for (resource, amount) in stocks {
+                match self.mass_kg(resource, *amount) {
+                    Ok(Some(mass)) => kg += mass,
+                    Ok(None) if self.is_energy(resource) => {}
+                    _ => {
+                        unmassed.insert(resource.clone());
+                    }
+                }
+            }
+            kg
+        };
+        let initial_kg = total(&self.initial_stocks);
+        let final_kg = total(&self.stocks);
+        let expected = initial_kg + self.external_in_kg - self.external_out_kg - self.into_assets_kg;
+        MassAudit {
+            initial_kg,
+            external_in_kg: self.external_in_kg,
+            external_out_kg: self.external_out_kg,
+            into_assets_kg: self.into_assets_kg,
+            final_kg,
+            residual_kg: final_kg - expected,
+            unmassed: unmassed.into_iter().collect(),
+        }
+    }
+
     pub fn violations(&self) -> &[ConservationViolation] {
         &self.violations
     }
@@ -267,7 +355,15 @@ impl<'m> Simulation<'m> {
                         resource: resource.clone(),
                         delta_si: *delta_si,
                     });
+                    if let Some(mass) = self.mass_kg(resource, delta_si.abs())? {
+                        if *delta_si >= 0.0 {
+                            self.external_in_kg += mass;
+                        } else {
+                            self.external_out_kg += mass;
+                        }
+                    }
                 }
+                self.check_stock(event.at_s, resource);
             }
             EventKind::Transfer { id, inputs, outputs, asset_mass_change_kg } => {
                 let mut input_kg = 0.0;
@@ -276,6 +372,7 @@ impl<'m> Simulation<'m> {
                 for flow in inputs {
                     match self.mass_kg(&flow.resource, flow.amount_si)? {
                         Some(mass) => input_kg += mass,
+                        None if self.is_energy(&flow.resource) => {}
                         None => missing.push(flow.resource.clone()),
                     }
                     *self.stocks.entry(flow.resource.clone()).or_insert(0.0) -= flow.amount_si;
@@ -283,9 +380,14 @@ impl<'m> Simulation<'m> {
                 for flow in outputs {
                     match self.mass_kg(&flow.resource, flow.amount_si)? {
                         Some(mass) => output_kg += mass,
+                        None if self.is_energy(&flow.resource) => {}
                         None => missing.push(flow.resource.clone()),
                     }
                     *self.stocks.entry(flow.resource.clone()).or_insert(0.0) += flow.amount_si;
+                }
+                self.into_assets_kg += asset_mass_change_kg;
+                for flow in inputs {
+                    self.check_stock(event.at_s, &flow.resource);
                 }
                 if !missing.is_empty() {
                     missing.sort();
@@ -358,6 +460,21 @@ impl<'m> Simulation<'m> {
             RuleCondition::StockBelow { resource, amount_si } => {
                 self.stocks.get(resource).copied().unwrap_or(0.0) < *amount_si
             }
+        }
+    }
+
+    fn is_energy(&self, resource: &str) -> bool {
+        self.model.resources.get(resource).is_some_and(|definition| definition.is_energy())
+    }
+
+    fn check_stock(&mut self, at_s: f64, resource: &str) {
+        let stock_si = self.stocks.get(resource).copied().unwrap_or(0.0);
+        if stock_si < -ROUNDING_TOLERANCE * stock_si.abs().max(1.0) {
+            self.violations.push(ConservationViolation::NegativeStock {
+                at_s,
+                resource: resource.to_string(),
+                stock_si,
+            });
         }
     }
 
@@ -541,5 +658,76 @@ mod tests {
             ),
             Err(SimError::EventInThePast { .. })
         ));
+    }
+
+    // Issue #105 (P5, review A-02): PO §3.10 — the simulator must report
+    // negative stock and keep a global mass account, not only per-transfer balance.
+
+    #[test]
+    fn po3_10_overdrawing_a_stock_is_reported() {
+        let model = base01();
+        let mut sim = Simulation::new(&model);
+        sim.schedule(transfer("overdraw", vec![("bronze-bar", 10.0)], vec![("bronze-swarf", 10.0)])).unwrap();
+        sim.run_to_completion().unwrap();
+        assert!(
+            sim.violations().iter().any(|v| matches!(
+                v,
+                ConservationViolation::NegativeStock { resource, .. } if resource == "bronze-bar"
+            )),
+            "{:?}",
+            sim.violations()
+        );
+    }
+
+    #[test]
+    fn po3_10_global_audit_catches_closed_loop_drift() {
+        let model = base01();
+        let mut sim = Simulation::new(&model);
+        let gain = 1.0099;
+        let mut amount = 3.0;
+        for round in 0..200 {
+            sim.schedule(transfer(
+                &format!("melt-{round}"),
+                vec![("bronze-bar", amount)],
+                vec![("bronze-swarf", amount * gain)],
+            ))
+            .unwrap();
+            amount *= gain;
+            sim.schedule(transfer(
+                &format!("cast-{round}"),
+                vec![("bronze-swarf", amount)],
+                vec![("bronze-bar", amount * gain)],
+            ))
+            .unwrap();
+            amount *= gain;
+        }
+        sim.run_to_completion().unwrap();
+        assert!(
+            sim.violations().iter().all(|v| !matches!(v, ConservationViolation::Imbalanced { .. })),
+            "each transfer is within tolerance on its own"
+        );
+        let audit = sim.mass_audit();
+        assert!(!audit.within_tolerance(), "{audit:?}");
+    }
+
+    #[test]
+    fn po3_10_global_audit_balances_a_conserving_run_with_external_flow() {
+        let model = base01();
+        let mut sim = Simulation::new(&model);
+        sim.schedule(transfer(
+            "turn-sleeve",
+            vec![("bronze-bar", 1.2), ("cutting-insert", 1.0)],
+            vec![("sleeve-p1-raw", 1.0), ("bronze-swarf", 0.4), ("worn-insert", 1.0)],
+        ))
+        .unwrap();
+        sim.schedule(
+            Event::new(5.0, EventKind::StockFlow { resource: "bronze-bar".into(), delta_si: 2.0, external: true })
+                .unwrap(),
+        )
+        .unwrap();
+        sim.run_to_completion().unwrap();
+        let audit = sim.mass_audit();
+        assert!(audit.within_tolerance(), "{audit:?}");
+        assert!((audit.external_in_kg - 2.0).abs() < 1e-9, "{audit:?}");
     }
 }

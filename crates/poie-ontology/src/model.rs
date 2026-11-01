@@ -11,6 +11,9 @@ use crate::units::{self, Dimension, Quantity, Unit};
 
 pub const MODEL_SCHEMA: &str = "poie.physical-ontology/0.3";
 pub const DEFAULT_MASS_TOLERANCE: f64 = 0.01;
+/// Hard cap on a process's declared `mass_tolerance` (PO §5 rule 3). Larger
+/// losses must be modelled as explicit outputs rather than absorbed by tolerance.
+pub const MAX_MASS_TOLERANCE: f64 = 0.05;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModelError(pub String);
@@ -399,8 +402,10 @@ impl Model {
                         bail!("resource {}: energy resources must not declare mass_per_unit", r.id);
                     }
                     let q = parse_dim(&format!("resource {}.mass_per_unit", r.id), s, Dimension::MASS)?;
-                    if q.si <= 0.0 {
-                        bail!("resource {}: mass_per_unit must be positive", r.id);
+                    // Zero is allowed for non-material tokens (work orders, permits),
+                    // which keeps the balance checkable (PO §5 rule 1).
+                    if q.si.is_nan() || q.si < 0.0 {
+                        bail!("resource {}: mass_per_unit must not be negative", r.id);
                     }
                     Some(q.si)
                 }
@@ -557,8 +562,11 @@ impl Model {
                 .transpose()?
                 .unwrap_or(0.0);
             let mass_tolerance = p.mass_tolerance.unwrap_or(DEFAULT_MASS_TOLERANCE);
-            if !(0.0..1.0).contains(&mass_tolerance) {
-                bail!("process {}: mass_tolerance must be in [0, 1)", p.id);
+            if !(0.0..=MAX_MASS_TOLERANCE).contains(&mass_tolerance) {
+                bail!(
+                    "process {}: mass_tolerance must be in [0, {MAX_MASS_TOLERANCE}]; model larger losses as explicit outputs",
+                    p.id
+                );
             }
             processes.push(Process {
                 id: p.id.clone(),
@@ -825,8 +833,7 @@ fn check_requires_acyclic(assets: &BTreeMap<String, Asset>) -> Result<(), ModelE
 }
 
 fn check_mass(p: &Process, resources: &BTreeMap<String, Resource>) -> MassBalance {
-    let mut missing = Vec::new();
-    let mut sum = |flows: &[Flow]| -> f64 {
+    let sum = |flows: &[Flow], missing: &mut Vec<String>| -> f64 {
         let mut total = 0.0;
         for f in flows {
             let r = &resources[&f.resource];
@@ -840,21 +847,32 @@ fn check_mass(p: &Process, resources: &BTreeMap<String, Resource>) -> MassBalanc
         }
         total
     };
-    let input_kg = sum(&p.inputs);
-    let output_kg = sum(&p.outputs);
+    let mut missing_in = Vec::new();
+    let mut missing_out = Vec::new();
+    let input_kg = sum(&p.inputs, &mut missing_in);
+    let output_kg = sum(&p.outputs, &mut missing_out);
+    let asset_kg = p.asset_mass_change_kg;
+    let scale = input_kg.max(output_kg);
+    let allowance = p.mass_tolerance * scale + units::rounding_tolerance(scale);
+    // Unknown masses can only add to their own side, so the known part is still
+    // checked in the direction the unknowns cannot repair (PO §5 rule 4).
+    let excess_out = output_kg + asset_kg - input_kg;
+    let violated = match (missing_in.is_empty(), missing_out.is_empty()) {
+        (true, true) => excess_out.abs() > allowance,
+        (true, false) => excess_out > allowance,
+        (false, true) => -excess_out > allowance,
+        (false, false) => false,
+    };
+    if violated {
+        return MassBalance::Violated { input_kg, output_kg, asset_kg };
+    }
+    let mut missing: Vec<String> = missing_in.into_iter().chain(missing_out).collect();
     if !missing.is_empty() {
         missing.sort();
         missing.dedup();
         return MassBalance::Unchecked { missing };
     }
-    let asset_kg = p.asset_mass_change_kg;
-    let residual = (input_kg - output_kg - asset_kg).abs();
-    let scale = input_kg.max(output_kg);
-    if residual <= p.mass_tolerance * scale + units::rounding_tolerance(scale) {
-        MassBalance::Balanced { input_kg, output_kg, asset_kg }
-    } else {
-        MassBalance::Violated { input_kg, output_kg, asset_kg }
-    }
+    MassBalance::Balanced { input_kg, output_kg, asset_kg }
 }
 
 #[cfg(test)]
@@ -1176,5 +1194,62 @@ verification = "declared"
         let mut d = doc("");
         d.assets[0].id = "Lathe".into();
         assert!(Model::from_doc(d).unwrap_err().0.contains("must match"));
+    }
+
+    // Issue #105 (P4, review A-01 / C-11): PO §5 conservation must not be
+    // bypassable through the tolerance or through one unmassed flow.
+
+    #[test]
+    fn po5_mass_tolerance_above_the_cap_is_rejected() {
+        let process = |tolerance: f64| {
+            format!(
+                r#"
+[[process]]
+id = "turn"
+inputs = [{{ resource = "bar", quantity = "1.2 kg" }}]
+outputs = [{{ resource = "part", quantity = "1 item" }}, {{ resource = "chips", quantity = "400 g" }}]
+verification = "demonstrated"
+mass_tolerance = {tolerance}
+"#
+            )
+        };
+        assert!(Model::from_doc(doc(&process(MAX_MASS_TOLERANCE))).is_ok());
+        let err = Model::from_doc(doc(&process(0.2))).unwrap_err();
+        assert!(err.0.contains("mass_tolerance"), "{err}");
+    }
+
+    #[test]
+    fn po5_known_outputs_heavier_than_all_inputs_violate_despite_an_unmassed_output() {
+        let d = doc(r#"
+[[resource]]
+id = "work-order"
+unit = "item"
+
+[[process]]
+id = "conjure"
+inputs = [{ resource = "bar", quantity = "1 kg" }]
+outputs = [{ resource = "chips", quantity = "500 kg" }, { resource = "work-order", quantity = "1 item" }]
+verification = "demonstrated"
+"#);
+        let err = Model::from_doc(d).unwrap_err();
+        assert!(err.0.contains("violates mass conservation"), "{err}");
+    }
+
+    #[test]
+    fn po5_an_explicitly_massless_item_keeps_the_balance_checkable() {
+        let m = Model::from_doc(doc(r#"
+[[resource]]
+id = "work-order"
+unit = "item"
+mass_per_unit = "0 kg"
+
+[[process]]
+id = "turn"
+inputs = [{ resource = "bar", quantity = "1.2 kg" }, { resource = "work-order", quantity = "1 item" }]
+outputs = [{ resource = "part", quantity = "1 item" }, { resource = "chips", quantity = "400 g" }]
+verification = "demonstrated"
+"#))
+        .unwrap();
+        assert!(matches!(m.mass_balance["turn"], MassBalance::Balanced { .. }));
     }
 }

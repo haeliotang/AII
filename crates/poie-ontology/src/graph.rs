@@ -12,7 +12,7 @@ use std::fmt::Write as _;
 
 use serde::Deserialize;
 
-use crate::model::{AssetStatus, LotQuality, Model, Verification};
+use crate::model::{AssetStatus, LotQuality, MassBalance, Model, Verification};
 use crate::units::{self, Quantity};
 
 pub const DEFAULT_MAX_DEPTH: usize = 48;
@@ -57,6 +57,9 @@ pub enum BlockerKind {
     NoAlternativeSupport,
     DegradedRestriction,
     DepthExceeded,
+    /// The process's mass balance could not be checked (PO §5 rule 4), so it
+    /// cannot be a step of a candidate route.
+    MassUnchecked,
 }
 
 impl BlockerKind {
@@ -72,6 +75,7 @@ impl BlockerKind {
             BlockerKind::NoAlternativeSupport => "no_alternative_support",
             BlockerKind::DegradedRestriction => "degraded_restriction",
             BlockerKind::DepthExceeded => "depth_exceeded",
+            BlockerKind::MassUnchecked => "mass_unchecked",
         }
     }
 }
@@ -546,6 +550,16 @@ impl<'m> Solver<'m> {
                 BlockerKind::BelowVerification,
                 &p.id,
                 format!("{} is {}, query requires at least {}", p.id, p.verification, self.min),
+                true,
+            );
+            self.leave();
+            return Err(vec![b]);
+        }
+        if let Some(MassBalance::Unchecked { missing }) = model.mass_balance.get(&p.id) {
+            let b = self.blocker(
+                BlockerKind::MassUnchecked,
+                &p.id,
+                format!("{} has no checkable mass balance (no mass for {})", p.id, missing.join(", ")),
                 true,
             );
             self.leave();
@@ -1562,5 +1576,46 @@ verification = "declared"
         assert_eq!(r.verdict, Verdict::Candidate, "{}", render(&m, &r));
         assert_eq!(r.steps.len(), 1);
         assert_eq!(r.steps[0].process, "fix-alt-b");
+    }
+
+    // Issue #105 (P4, review A-01): a process whose mass balance is unchecked
+    // must not appear as a step of a candidate route (PO §5, §6).
+    #[test]
+    fn po5_unchecked_process_is_not_a_candidate_step() {
+        let text = r#"
+schema = "poie.physical-ontology/0.3"
+name = "conjure-test"
+
+[[resource]]
+id = "work-order"
+unit = "item"
+
+[[resource]]
+id = "bar"
+unit = "kg"
+
+[[lot]]
+id = "lot-orders"
+resource = "work-order"
+quantity = "5 item"
+quality = "accepted"
+
+[[process]]
+id = "conjure-bar"
+inputs = [{ resource = "work-order", quantity = "1 item" }]
+outputs = [{ resource = "bar", quantity = "500 kg" }]
+verification = "verified"
+"#;
+        let m = Model::from_doc(toml::from_str(text).unwrap()).unwrap();
+        let r = solve(
+            &m,
+            &Query {
+                goal: Goal::Obtain { resource: "bar".into(), quantity: "500 kg".parse().unwrap() },
+                min_verification: Verification::Declared,
+                max_depth: DEFAULT_MAX_DEPTH,
+            },
+        );
+        assert_eq!(r.verdict, Verdict::Blocked, "{r:?}");
+        assert!(r.root_causes().any(|b| b.kind == BlockerKind::MassUnchecked && b.subject == "conjure-bar"), "{r:?}");
     }
 }

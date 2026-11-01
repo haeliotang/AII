@@ -6,9 +6,9 @@
 
 | crate | 列出测试数 | 其中随机性质测试 | 主要里程碑 |
 | --- | ---: | --- | --- |
-| `poie-ontology` | 83 | 图求解 120 trials；调度 120 trials；TOML 变异不 panic（120×2）；单位换算/解析 200×2；路线枚举 120+80 | M2、M4 |
+| `poie-ontology` | 87 | 图求解 120 trials；调度 120 trials；TOML 变异不 panic（120×2）；单位换算/解析 200×2；路线枚举 120+80 | M2、M4 |
 | `poie-state` | 73 | 状态机 10⁵ 序列（单元内）；投影 120 trials；记录验证/往返 120 trials；日志重开/崩溃尾部随机测试 | M4、M5、M12 |
-| `poie-sim` | 14 | 仿真 80 trials | M4、M6 |
+| `poie-sim` | 17 | 仿真 80 trials | M4、M6 |
 | `poie-viability` | 38 | 指标 60 轨迹；报告 20 份 × 16 类变异 | M6 |
 | `poie-plan` | 22 | 规划器 80 trials；重规划/基线 80+20+60 trials | M8 |
 | `poie-process` | 7 | Rust 客户端 40 trials（故障/超时分类）；Python 侧 9 个 unittest | M7 |
@@ -17,7 +17,7 @@
 | `poie-expansion` | 11 | 结构 40/时序 40 trials；提案 TOML 变异不 panic（120） | M11 |
 | `poie-federation` | 10 | HLC 80 trials；分区/重连 120 trials | M12 |
 
-**库 crate 测试合计：284 个已列出的测试**；另有其他包 15 个（`poie-h1-baseline` 5、`poie-vec-base01` 1、`poie-basyx-shadow` 9），总计 299。
+**库 crate 测试合计：291 个已列出的测试**；另有其他包 15 个（`poie-h1-baseline` 5、`poie-vec-base01` 1、`poie-basyx-shadow` 9），总计 306。
 
 ## 2. 场景与实验重放
 
