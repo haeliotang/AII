@@ -161,6 +161,33 @@ cd src-tauri && cargo test --offline    # 13 tests: DB, sandbox, domain, executi
 cd .. && pnpm tauri build --no-bundle
 ```
 
+## Cross-platform builds
+
+The [`Desktop build`](../../.github/workflows/desktop-build.yml) workflow builds on
+every push/PR that touches the desktop app, and on `v*` tags:
+
+| Runner | Bundle | Artifact |
+| --- | --- | --- |
+| `ubuntu-24.04` | `.deb` | `poieweave-desktop-linux-x86_64` |
+| `windows-latest` | NSIS `.exe` | `poieweave-desktop-windows-x86_64` |
+
+Both jobs run the frontend build and the 13 host tests before bundling. The Linux
+job installs WebKitGTK 4.1, GTK/AppIndicator and patchelf prerequisites; Windows
+uses the runner's WebView2 and Tauri's NSIS bundler.
+
+Local Linux prerequisites (Debian/Ubuntu):
+
+```bash
+sudo apt-get install -y build-essential libwebkit2gtk-4.1-dev \
+  libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev patchelf
+cd apps/desktop
+pnpm install
+pnpm tauri build --bundles deb
+```
+
+Windows: install Node 22 + pnpm 10, Rust 1.94, and WebView2 (present on Windows
+10/11); then `pnpm install` and `pnpm tauri build --bundles nsis`.
+
 The desktop crate is excluded from the root Cargo workspace, so the existing
 Rust CI and `scripts/verify-all.sh` do not require WebKit.
 
