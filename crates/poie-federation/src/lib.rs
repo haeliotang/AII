@@ -4,7 +4,8 @@
 //! logical clock. Sites exchange logs on reconnection; records are deduplicated
 //! by `RecordId` and causally ordered by HLC. Reconciliation reports conflicts
 //! instead of applying last-write-wins: duplicate idempotency keys, double
-//! dispatch, overlapping command ownership and over-reservation are all
+//! dispatch, overlapping command ownership, over-reservation and reused
+//! sequence numbers with different content (`sequence_collision`) are all
 //! surfaced for human resolution, and reservations/leases are never silently
 //! dropped.
 

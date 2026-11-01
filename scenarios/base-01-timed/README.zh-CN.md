@@ -28,10 +28,18 @@
 | pump-p1 | 初始 degraded；6 h 磨损为 failed；预测失效窗口 4–8 h |
 | bus-1 | 初始 available；16 h failed；预测失效窗口 5–9 h |
 | lathe-1 | 初始 available；12 h failed |
-| pv-1 | 无状态证据（unknown） |
+| pv-1 | 初始 unknown：结构模型对它只有声明状态（无 `status_evidence`，按 PO §3.1 是模型作者的合成观测）；本场景有意撤回该声明，以检验 `unknown` 路径（T7） |
 | electric-energy | 初始 1 kWh；8 h 光伏补给 +40 kWh |
 | bronze-bar | 初始 3 kg；10 h 补给中断 −3 kg |
 | cutting-insert | 初始 4 item；10 h 离场 −4 item |
+
+**证据有效期**：`scenario.toml` 声明 `evidence_validity = "24 h"`（合成策略；schema 0.2 起必填）。初态和每次状态变更都是带时间的证据（初态记在 t = 0），超过有效期即投影为 `unknown`（PO §3.8 第 1 条、§4 第 4 条）。预测失效只是警告：窗口内资产状态仍由证据决定，运行器在 `warnings` 中标出与预测窗口重叠的步骤；窗口结束后不再一律降为 `unknown`（PO §3.8 第 2 条）。所有预登记用例的开始时刻都早于 24 h，因此 20 个用例的结论和摘要都不受影响。
+
+**变更记录**
+
+| 日期 | 变更 |
+| --- | --- |
+| 2026-11-01 | issue #111：schema 升为 `poie.timed-scenario/0.2`，新增必填 `evidence_validity`；pv-1 的注释改为说明「撤回声明状态」这一场景假设。用例、预期和 `digests.toml` 均未改变。`scenario.toml` 的文本变了，所以 `experiments/vec-base01/report.toml` 中由它计算的两个输入哈希（`initial_state`、`scenario_set`）随之更新；20 条运行记录与结论不变 |
 
 ## 5. 运行与复现
 

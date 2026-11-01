@@ -176,6 +176,29 @@ impl Federation {
             ..ReconciliationReport::default()
         };
 
+        // 0. A record id names one record (SAP §2.1). After a rollback a site can
+        //    reuse `<site>/<seq>` for different content; deduplication by id
+        //    would then let the logs diverge silently (issue #111, review B-06).
+        let mut by_id: BTreeMap<&RecordId, Vec<(&str, &Record)>> = BTreeMap::new();
+        for (name, site) in &self.sites {
+            for record in site.records() {
+                by_id.entry(&record.envelope.record_id).or_default().push((name.as_str(), record));
+            }
+        }
+        for (id, copies) in by_id {
+            let first = copies[0].1;
+            if let Some((other_site, _)) = copies.iter().find(|(_, record)| *record != first) {
+                report.conflicts.push(Conflict {
+                    kind: ConflictKind::SequenceCollision,
+                    detail: format!(
+                        "record {}/{} has different content at {} and {other_site}: a sequence number was reused",
+                        id.site, id.seq, copies[0].0
+                    ),
+                    records: vec![id.clone()],
+                });
+            }
+        }
+
         // 1. One idempotency key must not be used by two actions.
         let mut by_key: BTreeMap<String, Vec<(&str, RecordId)>> = BTreeMap::new();
         for record in &records {

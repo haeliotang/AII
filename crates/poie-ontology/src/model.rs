@@ -256,6 +256,9 @@ pub struct Asset {
     pub id: String,
     pub kind: String,
     pub status: AssetStatus,
+    /// Evidence record cited for `status`. `None` means the status is
+    /// *declared*: a synthetic observation by the model author (PO §3.1).
+    pub status_evidence: Option<String>,
     pub requires: Vec<String>,
     pub requires_any: Vec<String>,
     pub provides: Vec<String>,
@@ -424,6 +427,7 @@ impl Model {
                 id: a.id.clone(),
                 kind: a.kind.clone(),
                 status: a.status,
+                status_evidence: a.status_evidence.clone(),
                 requires: a.requires.clone(),
                 requires_any: a.requires_any.clone(),
                 provides: a.provides.clone(),
@@ -675,6 +679,18 @@ impl Model {
 
     pub fn process(&self, id: &str) -> Option<&Process> {
         self.processes.iter().find(|p| p.id == id)
+    }
+
+    /// Assets whose known status is declared without `status_evidence`. PO §3.1
+    /// treats such a status as a synthetic observation by the model author: it
+    /// may be used, but reports must list it (issue #111, review A-06).
+    /// `unknown` statuses need no evidence and are not listed.
+    pub fn declared_status_assets(&self) -> Vec<&str> {
+        self.assets
+            .values()
+            .filter(|asset| asset.status_evidence.is_none() && asset.status != AssetStatus::Unknown)
+            .map(|asset| asset.id.as_str())
+            .collect()
     }
 
     /// Resource types with no local producing process (§6.5).

@@ -6,6 +6,10 @@
 //! maximum sequence number) that actions reference in their preconditions.
 //! Evidence older than the policy's maximum age projects to `unknown` instead of
 //! silently keeping the last value (Physical Ontology §4).
+//!
+//! Because expiry depends on the evaluation time, the state version alone does
+//! not determine the state: the state identity is `(state version, projection
+//! version, evidence policy, as_of)` ([`StateId`]; SAP §2.3, issue #111).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -43,6 +47,33 @@ pub struct ProjectedState {
     pub lots: BTreeMap<String, Projected<f64>>,
     pub state_version: BTreeMap<String, u64>,
     pub projection_version: String,
+    /// Evaluation time of the projection (evidence age is measured against it).
+    pub as_of_ms: i64,
+    /// The evidence policy the projection applied.
+    pub evidence_policy: EvidencePolicy,
+}
+
+/// Everything that determines a projected state (SAP §2.3 rule 2): the same
+/// identity over the same records always yields the same state. References to
+/// "the state" — action preconditions, VEC `initial_state` — must use the full
+/// identity, not the state version alone.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct StateId {
+    pub state_version: BTreeMap<String, u64>,
+    pub projection_version: String,
+    pub evidence_max_age_ms: u64,
+    pub as_of_ms: i64,
+}
+
+impl ProjectedState {
+    pub fn state_id(&self) -> StateId {
+        StateId {
+            state_version: self.state_version.clone(),
+            projection_version: self.projection_version.clone(),
+            evidence_max_age_ms: self.evidence_policy.max_age_ms,
+            as_of_ms: self.as_of_ms,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -58,7 +89,9 @@ enum Evidence {
 /// - the latest contributing observation/estimate per subject wins (log order);
 /// - evidence older than `policy.max_age_ms` projects to `Unknown { expired: true }`;
 /// - the state version is the per-site maximum sequence number over the live
-///   records read, including superseded ones.
+///   records read, including superseded ones;
+/// - `now_ms` is recorded as the projection's `as_of_ms` and is part of the
+///   state identity ([`StateId`]).
 pub fn project(records: &[Record], policy: EvidencePolicy, now_ms: i64) -> ProjectedState {
     let corrected: BTreeSet<RecordId> = records
         .iter()
@@ -116,7 +149,14 @@ pub fn project(records: &[Record], policy: EvidencePolicy, now_ms: i64) -> Proje
             }
         }
     }
-    ProjectedState { assets, lots, state_version, projection_version: PROJECTION_VERSION.to_string() }
+    ProjectedState {
+        assets,
+        lots,
+        state_version,
+        projection_version: PROJECTION_VERSION.to_string(),
+        as_of_ms: now_ms,
+        evidence_policy: policy,
+    }
 }
 
 fn finite(value: f64) -> Option<f64> {

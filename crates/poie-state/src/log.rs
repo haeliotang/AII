@@ -5,6 +5,15 @@
 //! On open, a trailing incomplete line left by a crash is truncated; a corrupt
 //! line anywhere else is an error and is never silently dropped. Sequence
 //! numbers must increase strictly per site.
+//!
+//! Sequence numbers are never reused (SAP §2.1, §5; issue #111). A log that was
+//! rolled back (restored from a snapshot, lost a segment) no longer shows the
+//! sequences it already handed out; peers may still hold them. When a site
+//! learns such a high-water mark (from peers, or from a store outside the
+//! log), [`AppendLog::raise_high_water`] persists it in a sidecar file
+//! (`<log>.hwm`) and every later append must exceed it. The sidecar lives next
+//! to the log, so a rollback of the whole medium can still lose it; the
+//! reconnect check for `sequence_collision` (SAP §6.4) is the backstop.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -18,6 +27,15 @@ use crate::record::Record;
 pub struct AppendLog {
     path: PathBuf,
     last_seq: BTreeMap<String, u64>,
+    /// High-water marks learned outside this log (persisted in the sidecar).
+    learned: BTreeMap<String, u64>,
+}
+
+/// The sidecar file holding learned high-water marks for the log at `path`.
+pub fn high_water_path(path: &Path) -> PathBuf {
+    let mut name = path.as_os_str().to_owned();
+    name.push(".hwm");
+    PathBuf::from(name)
 }
 
 impl AppendLog {
@@ -55,15 +73,21 @@ impl AppendLog {
         for record in &records {
             last_seq.insert(record.envelope.record_id.site.clone(), record.envelope.record_id.seq);
         }
-        Ok(AppendLog { path, last_seq })
+        let learned = match fs::read(high_water_path(&path)) {
+            Ok(bytes) => serde_json::from_slice(&bytes)
+                .map_err(|error| LogError::Corrupt(format!("high-water sidecar: {error}")))?,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => BTreeMap::new(),
+            Err(error) => return Err(error.into()),
+        };
+        Ok(AppendLog { path, last_seq, learned })
     }
 
     /// Appends one record. The sequence number must be strictly greater than the
-    /// site's previous record.
+    /// site's previous record and than any learned high-water mark.
     pub fn append(&mut self, record: &Record) -> Result<(), LogError> {
         let site = record.envelope.record_id.site.clone();
         let seq = record.envelope.record_id.seq;
-        if let Some(previous) = self.last_seq.get(&site) {
+        if let Some(previous) = self.high_water(&site).as_ref() {
             if seq <= *previous {
                 return Err(LogError::SequenceOutOfOrder { site, last: *previous, got: seq });
             }
@@ -96,6 +120,42 @@ impl AppendLog {
 
     pub fn last_seq(&self, site: &str) -> Option<u64> {
         self.last_seq.get(site).copied()
+    }
+
+    /// The highest sequence number known to be used by `site`: the log's own
+    /// last sequence or a learned high-water mark, whichever is larger. New
+    /// records must exceed it.
+    pub fn high_water(&self, site: &str) -> Option<u64> {
+        match (self.last_seq.get(site).copied(), self.learned.get(site).copied()) {
+            (Some(own), Some(learned)) => Some(own.max(learned)),
+            (own, learned) => own.or(learned),
+        }
+    }
+
+    /// Records that `site` has already used sequences up to `seq` (learned from
+    /// peers after a rollback, SAP §5). The mark is persisted before returning,
+    /// so it survives a restart; it never goes down.
+    pub fn raise_high_water(&mut self, site: &str, seq: u64) -> Result<(), LogError> {
+        if self.high_water(site).is_some_and(|current| current >= seq) {
+            return Ok(());
+        }
+        let mut learned = self.learned.clone();
+        learned.insert(site.to_string(), seq);
+        let sidecar = high_water_path(&self.path);
+        let temporary = {
+            let mut name = sidecar.as_os_str().to_owned();
+            name.push(".tmp");
+            PathBuf::from(name)
+        };
+        let bytes = serde_json::to_vec(&learned).map_err(LogError::Serialize)?;
+        {
+            let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(&temporary)?;
+            file.write_all(&bytes)?;
+            file.sync_data()?;
+        }
+        fs::rename(&temporary, &sidecar)?;
+        self.learned = learned;
+        Ok(())
     }
 
     pub fn path(&self) -> &Path {
