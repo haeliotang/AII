@@ -5,7 +5,7 @@ horizon_s = 86400.0
 seeds = []
 solver_version = "poie-viability 0.1.0 + poie-sim timed 0.1.0"
 solver_settings = "finite fixed-trajectory set (20 pre-registered cases); no random sampling"
-actual_cost_s = 1.551941125
+actual_cost_s = 2.524001542
 metric_definition_version = "vec-metrics/0.1"
 confidence_intervals = []
 
@@ -95,9 +95,11 @@ scenario_id = "T6"
 method = "enumerated"
 budget_used_s = 0.0
 
-[runs.verdict.infeasible_in_model]
-certificate = "capability-graph blocked: below_verification turn-lathe-nut"
-checkable = "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml"
+[runs.verdict.counterexample]
+scenario_id = "T6"
+first_violation_s = 46800.0
+constraint = "structural_route"
+state = "capability-graph blocked: below_verification turn-lathe-nut; the tested policy found no structural route on the start snapshot (replay: cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml); not a proof of infeasibility in the model"
 
 [[runs]]
 scenario_id = "T7"
@@ -144,9 +146,11 @@ scenario_id = "T11"
 method = "enumerated"
 budget_used_s = 0.0
 
-[runs.verdict.infeasible_in_model]
-certificate = "capability-graph blocked: cycle bus-1"
-checkable = "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml"
+[runs.verdict.counterexample]
+scenario_id = "T11"
+first_violation_s = 61200.0
+constraint = "structural_route"
+state = "capability-graph blocked: cycle bus-1; the tested policy found no structural route on the start snapshot (replay: cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml); not a proof of infeasibility in the model"
 
 [[runs]]
 scenario_id = "T12"
@@ -163,9 +167,11 @@ scenario_id = "T13"
 method = "enumerated"
 budget_used_s = 0.0
 
-[runs.verdict.infeasible_in_model]
-certificate = "capability-graph blocked: missing_resource bronze-bar"
-checkable = "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml"
+[runs.verdict.counterexample]
+scenario_id = "T13"
+first_violation_s = 28800.0
+constraint = "structural_route"
+state = "capability-graph blocked: missing_resource bronze-bar; the tested policy found no structural route on the start snapshot (replay: cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml); not a proof of infeasibility in the model"
 
 [[runs]]
 scenario_id = "T14"
@@ -214,9 +220,11 @@ scenario_id = "T18"
 method = "enumerated"
 budget_used_s = 0.0
 
-[runs.verdict.infeasible_in_model]
-certificate = "capability-graph blocked: cycle bus-1"
-checkable = "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml"
+[runs.verdict.counterexample]
+scenario_id = "T18"
+first_violation_s = 61200.0
+constraint = "structural_route"
+state = "capability-graph blocked: cycle bus-1; the tested policy found no structural route on the start snapshot (replay: cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml); not a proof of infeasibility in the model"
 
 [[runs]]
 scenario_id = "T19"
