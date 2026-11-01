@@ -6,10 +6,19 @@ owns the app-data directory, SQLite state and a size-limited sandbox; it embeds 
 Base-01 model and runs the real `poie-*` domain crates. The frontend is React 19 +
 TypeScript + Vite.
 
-![Poieweave cockpit, light](preview.png)
-![Poieweave cockpit, dark](preview-dark.png)
-![Poieweave execution monitor](preview-execution.png)
-![Poieweave federation wall](preview-federation.png)
+## Screens (English UI)
+
+| Overview | Capabilities |
+| --- | --- |
+| ![Overview](screenshots/en-overview.png) | ![Capabilities](screenshots/en-capabilities.png) |
+| **Planning** | **Execution** |
+| ![Planning](screenshots/en-planning.png) | ![Execution](screenshots/en-execution.png) |
+| **Federation** | **Evidence** |
+| ![Federation](screenshots/en-federation.png) | ![Evidence](screenshots/en-evidence.png) |
+| **Settings** | **Dark theme** |
+| ![Settings](screenshots/en-settings.png) | ![Overview, dark](screenshots/en-overview-dark.png) |
+
+![Focused federation window](screenshots/en-federation-focus.png)
 
 This is deliberately **not** a notes/workline layout copied from Inceptless. It
 keeps the Inceptless light/dark colour tokens, but the information architecture is
@@ -36,8 +45,6 @@ Views:
 | Execution | **`poie-state`** action ledger (validated → authorized), the seven SAP dispatch checks, execution gate (human takeover / safe degradation) and the deliberate "executor not wired" warning. |
 | Federation | **`poie-federation`** sites (HLC, records, reservations, leases), exchange counts and all preserved reconciliation conflicts. |
 | Evidence | Pre-registered experiments with replay badges, contract revisions and the 384-test evidence summary. |
-
-![Focused federation window](preview-focus.png)
 
 `open_workspace_window` opens focused secondary windows rather than another full
 cockpit: federation uses a wide wall, execution an execution monitor, evidence a
