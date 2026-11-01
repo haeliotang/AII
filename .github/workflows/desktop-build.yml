@@ -83,7 +83,7 @@ jobs:
 
       - name: Host tests
         working-directory: apps/desktop/src-tauri
-        run: cargo test --offline
+        run: cargo test
 
       - name: Build desktop bundles
         working-directory: apps/desktop
