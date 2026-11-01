@@ -88,6 +88,20 @@ pnpm tauri dev
 See [apps/desktop/README.md](apps/desktop/README.md) for the host commands,
 build steps and current boundaries.
 
+### Desktop screens (English UI)
+
+| Overview | Capabilities |
+| --- | --- |
+| ![Overview](apps/desktop/screenshots/en-overview.png) | ![Capabilities](apps/desktop/screenshots/en-capabilities.png) |
+| **Planning** | **Execution** |
+| ![Planning](apps/desktop/screenshots/en-planning.png) | ![Execution](apps/desktop/screenshots/en-execution.png) |
+| **Federation** | **Evidence** |
+| ![Federation](apps/desktop/screenshots/en-federation.png) | ![Evidence](apps/desktop/screenshots/en-evidence.png) |
+| **Settings** | **Dark theme** |
+| ![Settings](apps/desktop/screenshots/en-settings.png) | ![Overview, dark](apps/desktop/screenshots/en-overview-dark.png) |
+
+![Focused federation window](apps/desktop/screenshots/en-federation-focus.png)
+
 ## The ambition
 
 A collection of capable robots does not automatically become a capable industrial system. A facility can complete every scheduled task while consuming the spare part, energy reserve, or manufacturing capacity it will need to survive tomorrow.
