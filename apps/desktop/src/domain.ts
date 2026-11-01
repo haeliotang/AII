@@ -289,3 +289,48 @@ export const fallbackFederation: FederationSnapshot = {
   transferredBa: 4,
   duplicatesSkipped: 0,
 };
+
+export interface AuthStatus {
+  hasOperator: boolean;
+  signedIn: boolean;
+  displayName?: string | null;
+  sessionExpiresAtMs?: number | null;
+}
+
+export interface AuditRow {
+  id: number;
+  atMs: number;
+  actor: string;
+  event: string;
+  detail: string;
+}
+
+export interface InferenceStatus {
+  configured: boolean;
+  endpoint?: string | null;
+  model?: string | null;
+  hasKey: boolean;
+  updatedAtMs?: number | null;
+}
+
+export interface InferenceResult {
+  text: string;
+  model: string;
+  endpoint: string;
+  latencyMs: number;
+}
+
+export const fallbackAuth: AuthStatus = {
+  hasOperator: false,
+  signedIn: false,
+  displayName: null,
+  sessionExpiresAtMs: null,
+};
+
+export const fallbackInference: InferenceStatus = {
+  configured: false,
+  endpoint: null,
+  model: null,
+  hasKey: false,
+  updatedAtMs: null,
+};
