@@ -586,6 +586,7 @@ expect = {{ verdict = "blocked" }}
             completion_s: None,
             detail: "missing_resource bronze-bar".into(),
             violation: None,
+            warnings: Vec::new(),
         };
         let verdict = map_verdict(&case("T13"), &outcome);
         assert!(!matches!(verdict, Verdict::InfeasibleInModel { .. }), "{verdict:?}");
