@@ -3,15 +3,21 @@ import { invoke } from "@tauri-apps/api/core";
 import type { HostInfo } from "./types";
 import {
   experiments,
+  fallbackAuth,
   fallbackExecution,
   fallbackFederation,
+  fallbackInference,
   fallbackOverview,
   scenarios,
+  type AuditRow,
+  type AuthStatus,
   type DomainOverview,
   type EntityView,
   type ExecutionSnapshot,
   type ExperimentEntry,
   type FederationSnapshot,
+  type InferenceResult,
+  type InferenceStatus,
   type NavKey,
 } from "./domain";
 import { detectLang, messagesFor, type Lang } from "./i18n";
@@ -1099,20 +1105,123 @@ function SettingsDialog({
   lang,
   theme,
   host,
+  auth,
+  inference,
+  audit,
+  hosted,
   onClose,
   onTheme,
   onLang,
   onWindow,
+  onAuthChange,
+  onInferenceChange,
+  onAuditRefresh,
 }: {
   lang: Lang;
   theme: Theme;
   host: HostInfo | null;
+  auth: AuthStatus;
+  inference: InferenceStatus;
+  audit: AuditRow[];
+  hosted: boolean;
   onClose: () => void;
   onTheme: (theme: Theme) => void;
   onLang: (lang: Lang) => void;
   onWindow: () => void;
+  onAuthChange: (status: AuthStatus) => void;
+  onInferenceChange: (status: InferenceStatus) => void;
+  onAuditRefresh: () => void;
 }) {
   const t = (key: string) => messagesFor(lang)[key] ?? key;
+  const [displayName, setDisplayName] = useState("");
+  const [passphrase, setPassphrase] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [endpoint, setEndpoint] = useState(inference.endpoint ?? "");
+  const [model, setModel] = useState(inference.model ?? "");
+  const [apiKey, setApiKey] = useState("");
+  const [testPrompt, setTestPrompt] = useState("Reply with the single word: pong.");
+  const [testResult, setTestResult] = useState<InferenceResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (inference.endpoint) setEndpoint(inference.endpoint);
+    if (inference.model) setModel(inference.model);
+  }, [inference.endpoint, inference.model]);
+
+  const run = async <T,>(action: () => Promise<T>): Promise<T | undefined> => {
+    setBusy(true);
+    setError("");
+    try {
+      return await action();
+    } catch (caught) {
+      setError(String(caught));
+      return undefined;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createOperator = async () => {
+    if (passphrase !== confirm) {
+      setError(t("settings.auth.error") + ": passphrases do not match");
+      return;
+    }
+    const status = await run(() => invoke<AuthStatus>("auth_register", { displayName, passphrase }));
+    if (status) {
+      onAuthChange(status);
+      setPassphrase("");
+      setConfirm("");
+      onAuditRefresh();
+    }
+  };
+
+  const signIn = async () => {
+    const status = await run(() => invoke<AuthStatus>("auth_sign_in", { passphrase }));
+    if (status) {
+      onAuthChange(status);
+      setPassphrase("");
+      onAuditRefresh();
+    }
+  };
+
+  const signOut = async () => {
+    const status = await run(() => invoke<AuthStatus>("auth_sign_out"));
+    if (status) {
+      onAuthChange(status);
+      onAuditRefresh();
+    }
+  };
+
+  const saveInference = async () => {
+    const status = await run(() => invoke<InferenceStatus>("inference_configure", { endpoint, model, apiKey }));
+    if (status) {
+      onInferenceChange(status);
+      setApiKey("");
+      onAuditRefresh();
+    }
+  };
+
+  const testInference = async () => {
+    const result = await run(() => invoke<InferenceResult>("inference_test", { prompt: testPrompt }));
+    if (result) {
+      setTestResult(result);
+      onAuditRefresh();
+    }
+  };
+
+  const forgetInference = async () => {
+    const status = await run(() => invoke<InferenceStatus>("inference_forget"));
+    if (status) {
+      onInferenceChange(status);
+      setTestResult(null);
+      onAuditRefresh();
+    }
+  };
+
+  const authDisabled = !hosted || busy;
+  const inferenceDisabled = !hosted || !auth.signedIn || busy;
+
   return (
     <div className="modal-scrim" role="dialog" aria-modal="true" aria-label={t("settings.title")}>
       <div className="modal">
@@ -1141,20 +1250,84 @@ function SettingsDialog({
             <h3><WindowIcon size={14} /> {t("settings.window")}</h3>
             <button className="secondary" type="button" onClick={onWindow}>{t("settings.openWindow")}</button>
           </section>
+
           <section className="settings-section">
             <h3><LockIcon size={14} /> {t("settings.auth")} <span className="pill pill--neutral">{t("settings.auth.local")}</span></h3>
-            <p className="muted">{t("settings.auth.note")}</p>
-            <button className="secondary" type="button" disabled>{t("settings.auth.signIn")}</button>
+            {!hosted ? <p className="muted">{t("settings.auth.hostOnly")}</p> : null}
+            {hosted && auth.signedIn ? (
+              <>
+                <div className="kv"><span>{t("settings.auth.signedInAs")}</span><strong>{auth.displayName}</strong></div>
+                {auth.sessionExpiresAtMs ? (
+                  <div className="kv"><span>{t("settings.auth.expires")}</span><span>{new Date(auth.sessionExpiresAtMs).toLocaleTimeString()}</span></div>
+                ) : null}
+                <button className="secondary" type="button" onClick={signOut} disabled={busy}>{t("settings.auth.signOut")}</button>
+              </>
+            ) : null}
+            {hosted && !auth.signedIn && !auth.hasOperator ? (
+              <>
+                <p className="muted">{t("settings.auth.passphraseHint")}</p>
+                <div className="field-grid">
+                  <label>{t("settings.auth.displayName")}<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} disabled={authDisabled} autoComplete="username" /></label>
+                  <label>{t("settings.auth.passphrase")}<input type="password" value={passphrase} onChange={(event) => setPassphrase(event.target.value)} disabled={authDisabled} autoComplete="new-password" /></label>
+                  <label>{t("settings.auth.confirm")}<input type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} disabled={authDisabled} autoComplete="new-password" /></label>
+                </div>
+                <button className="secondary" type="button" onClick={createOperator} disabled={authDisabled}>{t("settings.auth.createButton")}</button>
+              </>
+            ) : null}
+            {hosted && !auth.signedIn && auth.hasOperator ? (
+              <>
+                <label className="field-single">{t("settings.auth.passphrase")}<input type="password" value={passphrase} onChange={(event) => setPassphrase(event.target.value)} disabled={authDisabled} autoComplete="current-password" /></label>
+                <button className="secondary" type="button" onClick={signIn} disabled={authDisabled}>{t("settings.auth.signInButton")}</button>
+              </>
+            ) : null}
+            {error ? <p className="form-error">{error}</p> : null}
           </section>
+
           <section className="settings-section">
-            <h3><CloudIcon size={14} /> {t("settings.inference")}</h3>
+            <h3><CloudIcon size={14} /> {t("settings.inference")} <span className={`pill pill--${inference.configured ? "ok" : "neutral"}`}>{inference.configured ? t("settings.inference.configured") : t("settings.inference.notConfigured")}</span></h3>
+            {!hosted ? <p className="muted">{t("settings.inference.hostOnly")}</p> : null}
+            {hosted && !auth.signedIn ? <p className="muted">{t("settings.inference.needsAuth")}</p> : null}
             <div className="field-grid">
-              <label>{t("settings.inference.endpoint")}<input disabled placeholder="https://…" /></label>
-              <label>{t("settings.inference.model")}<input disabled placeholder="provider / model" /></label>
+              <label>{t("settings.inference.endpoint")}<input value={endpoint} onChange={(event) => setEndpoint(event.target.value)} disabled={inferenceDisabled} placeholder="https://provider.example/v1" /></label>
+              <label>{t("settings.inference.model")}<input value={model} onChange={(event) => setModel(event.target.value)} disabled={inferenceDisabled} placeholder="provider / model" /></label>
+              <label>{t("settings.inference.key")}<input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} disabled={inferenceDisabled} placeholder={t("settings.inference.keyPlaceholder")} autoComplete="off" /></label>
             </div>
             <p className="muted">{t("settings.inference.note")}</p>
-            <button className="secondary" type="button" disabled>{t("settings.inference.save")}</button>
+            <div className="form-actions">
+              <button className="secondary" type="button" onClick={saveInference} disabled={inferenceDisabled || !endpoint || !model || !apiKey}>{t("settings.inference.saveButton")}</button>
+              <button className="secondary" type="button" onClick={testInference} disabled={inferenceDisabled || !inference.configured}>{t("settings.inference.test")}</button>
+              {inference.configured ? <button className="secondary" type="button" onClick={forgetInference} disabled={inferenceDisabled}>{t("settings.inference.forget")}</button> : null}
+            </div>
+            {auth.signedIn ? (
+              <>
+                <label className="field-single">{t("settings.inference.testPrompt")}<input value={testPrompt} onChange={(event) => setTestPrompt(event.target.value)} disabled={inferenceDisabled} /></label>
+                {testResult ? (
+                  <div className="inference-result">
+                    <span className="eyebrow">{t("settings.inference.result")} · {t("settings.inference.latency")} {testResult.latencyMs} ms</span>
+                    <p>{testResult.text}</p>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
           </section>
+
+          {hosted && auth.signedIn ? (
+            <section className="settings-section">
+              <h3>{t("settings.audit.title")}</h3>
+              {audit.length === 0 ? <p className="muted">{t("settings.audit.empty")}</p> : null}
+              <ul className="audit-list">
+                {audit.slice(0, 8).map((row) => (
+                  <li key={row.id}>
+                    <span className="mono">{new Date(row.atMs).toLocaleTimeString()}</span>
+                    <span>{row.actor}</span>
+                    <strong>{row.event}</strong>
+                    <span className="muted">{row.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           <section className="settings-section">
             <h3>{t("settings.about")}</h3>
             <div className="kv"><span>{t("settings.version")}</span><span className="mono">{host?.version ?? "0.1.0"}</span></div>
@@ -1166,7 +1339,7 @@ function SettingsDialog({
   );
 }
 
-function Statusbar({ lang, overview, host }: { lang: Lang; overview: DomainOverview; host: HostInfo | null }) {
+function Statusbar({ lang, overview, host, auth }: { lang: Lang; overview: DomainOverview; host: HostInfo | null; auth: AuthStatus }) {
   const t = (key: string) => messagesFor(lang)[key] ?? key;
   return (
     <footer className="statusbar">
@@ -1174,6 +1347,7 @@ function Statusbar({ lang, overview, host }: { lang: Lang; overview: DomainOverv
       <span className="statusbar__item">{t("status.model")} · {overview.modelName}</span>
       <span className="statusbar__item">{t("status.plan")} · {shortDigest(overview.plan.digest)}</span>
       <span className="statusbar__spacer" />
+      <span className="statusbar__item">{t("status.operator")} · {auth.signedIn ? auth.displayName : t("status.signedOut")}</span>
       <span className="statusbar__item">{t("status.host")} {host?.version ?? "—"}</span>
       <span className="statusbar__item">{t("status.sandbox")} {host ? host.sandboxRoot.split("/").slice(-1)[0] : "preview"}</span>
       <span className="statusbar__item">{new Date().toLocaleTimeString(lang === "zh" ? "zh-CN" : "en-GB", { hour: "2-digit", minute: "2-digit" })}</span>
@@ -1195,6 +1369,9 @@ export default function App() {
   const [gate, setGate] = useState({ takeover: false, degraded: false });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [focusMode] = useState(initialFocusMode);
+  const [auth, setAuth] = useState<AuthStatus>(fallbackAuth);
+  const [inference, setInference] = useState<InferenceStatus>(fallbackInference);
+  const [audit, setAudit] = useState<AuditRow[]>([]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -1215,7 +1392,20 @@ export default function App() {
     void invoke<HostInfo>("host_info").then(setHost).catch(() => undefined);
     void invoke<ExecutionSnapshot>("execution_snapshot").then(setExecution).catch(() => undefined);
     void invoke<FederationSnapshot>("federation_snapshot").then(setFederation).catch(() => undefined);
+    void invoke<AuthStatus>("auth_status").then(setAuth).catch(() => undefined);
+    void invoke<InferenceStatus>("inference_status").then(setInference).catch(() => undefined);
   }, []);
+
+  const refreshAudit = () => {
+    if (!isTauri()) return;
+    void invoke<AuditRow[]>("audit_list", { limit: 12 }).then(setAudit).catch(() => undefined);
+  };
+
+  const applyAuth = (status: AuthStatus) => {
+    setAuth(status);
+    if (status.signedIn) refreshAudit();
+    else setAudit([]);
+  };
 
   const navigate = (next: NavKey) => {
     setNav(next);
@@ -1303,16 +1493,23 @@ export default function App() {
           }}
         />
       ) : null}
-      <Statusbar lang={lang} overview={overview} host={host} />
+      <Statusbar lang={lang} overview={overview} host={host} auth={auth} />
       {settingsOpen ? (
         <SettingsDialog
           lang={lang}
           theme={theme}
           host={host}
+          auth={auth}
+          inference={inference}
+          audit={audit}
+          hosted={isTauri()}
           onClose={() => setSettingsOpen(false)}
           onTheme={setTheme}
           onLang={setLang}
           onWindow={openWindow}
+          onAuthChange={applyAuth}
+          onInferenceChange={setInference}
+          onAuditRefresh={refreshAudit}
         />
       ) : null}
     </div>

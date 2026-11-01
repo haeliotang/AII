@@ -28,6 +28,10 @@ poie-plan = { path = "../../../crates/poie-plan" }
 poie-state = { path = "../../../crates/poie-state" }
 poie-federation = { path = "../../../crates/poie-federation" }
 toml = "0.8"
+pbkdf2 = "0.12"
+sha2 = "0.10"
+getrandom = "0.2"
+hex = "0.4"
 
 [profile.release]
 codegen-units = 1

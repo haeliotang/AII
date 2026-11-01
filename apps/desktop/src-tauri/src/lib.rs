@@ -4,30 +4,41 @@
 //! notes/events backed by SQLite, and a size-limited read/write sandbox under
 //! the app data directory. Packaging lives in `tauri.conf.json`.
 
+mod auth;
 mod db;
 mod domain;
 mod execution;
 mod federation_view;
+mod http;
+mod inference;
 mod sandbox;
+mod secrets;
 
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
 use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
 
-use crate::db::{Db, EventRow};
+use crate::auth::{AuthStatus, SessionState};
+use crate::db::{AuditRow, Db, EventRow};
 use crate::domain::DomainOverview;
 use crate::execution::ExecutionSnapshot;
 use crate::federation_view::FederationSnapshot;
+use crate::http::CurlTransport;
+use crate::inference::{InferenceResult, InferenceStatus};
+use crate::secrets::SystemSecretStore;
 
 struct AppState {
-    db: Mutex<Db>,
+    db: Arc<Mutex<Db>>,
     data_dir: PathBuf,
     sandbox_root: PathBuf,
     domain: DomainOverview,
     execution: ExecutionSnapshot,
     federation: FederationSnapshot,
+    session: Arc<SessionState>,
+    secrets: Arc<dyn secrets::SecretStore>,
+    http: Arc<dyn http::HttpTransport>,
 }
 
 #[derive(Serialize)]
@@ -42,6 +53,74 @@ struct HostInfo {
 
 fn lock_db(state: &AppState) -> Result<std::sync::MutexGuard<'_, Db>, String> {
     state.db.lock().map_err(|_| "database lock poisoned".to_string())
+}
+
+#[tauri::command]
+fn auth_status(state: State<'_, AppState>) -> Result<AuthStatus, String> {
+    let db = lock_db(&state)?;
+    auth::status(&db, &state.session)
+}
+
+#[tauri::command]
+fn auth_register(display_name: String, passphrase: String, state: State<'_, AppState>) -> Result<AuthStatus, String> {
+    let db = lock_db(&state)?;
+    auth::register(&db, &state.session, &display_name, &passphrase)
+}
+
+#[tauri::command]
+fn auth_sign_in(passphrase: String, state: State<'_, AppState>) -> Result<AuthStatus, String> {
+    let db = lock_db(&state)?;
+    auth::sign_in(&db, &state.session, &passphrase)
+}
+
+#[tauri::command]
+fn auth_sign_out(state: State<'_, AppState>) -> Result<AuthStatus, String> {
+    let db = lock_db(&state)?;
+    auth::sign_out(&db, &state.session)
+}
+
+#[tauri::command]
+fn audit_list(limit: Option<usize>, state: State<'_, AppState>) -> Result<Vec<AuditRow>, String> {
+    auth::require(&state.session)?;
+    let db = lock_db(&state)?;
+    db.audit(limit.unwrap_or(20).clamp(1, 100))
+}
+
+#[tauri::command]
+fn inference_status(state: State<'_, AppState>) -> Result<InferenceStatus, String> {
+    let db = lock_db(&state)?;
+    inference::status(&db)
+}
+
+#[tauri::command]
+fn inference_configure(
+    endpoint: String,
+    model: String,
+    api_key: String,
+    state: State<'_, AppState>,
+) -> Result<InferenceStatus, String> {
+    let db = lock_db(&state)?;
+    inference::configure(&db, state.secrets.as_ref(), &state.session, &endpoint, &model, &api_key)
+}
+
+#[tauri::command]
+fn inference_forget(state: State<'_, AppState>) -> Result<InferenceStatus, String> {
+    let db = lock_db(&state)?;
+    inference::forget(&db, state.secrets.as_ref(), &state.session)
+}
+
+#[tauri::command]
+async fn inference_test(prompt: String, state: State<'_, AppState>) -> Result<InferenceResult, String> {
+    let db = Arc::clone(&state.db);
+    let secrets = Arc::clone(&state.secrets);
+    let http = Arc::clone(&state.http);
+    let session = Arc::clone(&state.session);
+    tauri::async_runtime::spawn_blocking(move || {
+        let db = db.lock().map_err(|_| "database lock poisoned".to_string())?;
+        inference::complete(&db, secrets.as_ref(), &session, http.as_ref(), &prompt)
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
@@ -141,10 +220,29 @@ pub fn run() {
             let domain = domain::overview().map_err(|error| format!("domain snapshot: {error}"))?;
             let execution = execution::snapshot(&domain).map_err(|error| format!("execution snapshot: {error}"))?;
             let federation = federation_view::snapshot().map_err(|error| format!("federation snapshot: {error}"))?;
-            app.manage(AppState { db: Mutex::new(db), data_dir, sandbox_root, domain, execution, federation });
+            app.manage(AppState {
+                db: Arc::new(Mutex::new(db)),
+                data_dir,
+                sandbox_root,
+                domain,
+                execution,
+                federation,
+                session: Arc::new(SessionState::new(None)),
+                secrets: Arc::new(SystemSecretStore),
+                http: Arc::new(CurlTransport),
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            auth_status,
+            auth_register,
+            auth_sign_in,
+            auth_sign_out,
+            audit_list,
+            inference_status,
+            inference_configure,
+            inference_forget,
+            inference_test,
             open_workspace_window,
             host_info,
             domain_overview,

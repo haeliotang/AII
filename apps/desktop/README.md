@@ -96,22 +96,51 @@ solver, ledger or reconciler access from the webview.
 | `domain_overview` | Base-01 snapshot from `poie-ontology` + `poie-plan`. |
 | `execution_snapshot` | `poie-state` ledgers + seven dispatch checks. |
 | `federation_snapshot` | `poie-federation` exchange/reconcile snapshot. |
+| `auth_status` / `auth_register` / `auth_sign_in` / `auth_sign_out` | Local operator session. |
+| `audit_list` | Audit events (requires sign-in). |
+| `inference_status` / `inference_configure` / `inference_forget` / `inference_test` | Remote inference settings and OpenAI-compatible test call. |
 | `notes_all` / `events_list` / `event_append` | SQLite-backed workline data kept for the next integration step. |
 | `sandbox_read` / `sandbox_write` / `sandbox_root` | Relative-path, 1 MiB-limited access under `<app-data>/sandbox`; traversal and absolute paths rejected. |
 | `open_workspace_window` | Opens a focused secondary window for one of the six views. |
 
-## Authentication and remote inference
+## Local authentication
 
-The settings sheet exposes both surfaces, but they are **not wired**:
+The desktop app supports a **local operator**, not a remote account service:
 
-- authentication shows "local mode" and a disabled sign-in button;
-- remote inference shows disabled endpoint/model fields and states that no data is
-  sent to any remote endpoint.
+- first run creates a display name + passphrase; only a salted PBKDF2-HMAC-SHA256
+  verifier (210,000 iterations) is stored in SQLite, never the passphrase;
+- sign-in creates an eight-hour session held **in the Rust host process only**; the
+  webview never receives a session token;
+- local operator identity is required to change inference settings or invoke
+  remote inference;
+- every register / failed sign-in / sign-in / sign-out / inference event is written
+  to the `audit` table and shown in Settings (last events).
 
-No fake token, fake login or fake inference call is implemented. The next
-iteration should add a host-side credential store (macOS Keychain / Windows
-Credential Manager via a Tauri plugin), an inference provider interface and an
-audit trail before enabling either surface.
+This is a real device-local lock, not multi-user or federated identity. OIDC /
+SSO is deliberately not faked.
+
+## Remote inference
+
+Remote inference is opt-in and unavailable until a signed-in operator configures it:
+
+- endpoint, model and API key are entered in Settings; the endpoint must be HTTPS
+  (HTTP is accepted only for loopback testing);
+- the API key goes to the **macOS Keychain** through the system `security` command,
+  or to the `POIEWEAVE_INFERENCE_API_KEY` environment variable for headless use;
+  it is never written to SQLite or to the frontend;
+- configuration is stored in SQLite; the HTTP call is an OpenAI-compatible
+  `/chat/completions` request made by the host through the system `curl` (the API
+  key is placed in a 0600 temporary config file, never argv);
+- the Settings test button sends the test prompt only; there is no automatic
+  project-data upload, and the request/response metadata (not prompt text) is
+  audited;
+- non-macOS credential stores are not implemented yet; the host returns an explicit
+  error instead of pretending to save a key.
+
+Host tests cover PBKDF2 registration/sign-in, the credential-store abstraction, the
+inference configuration, and a real curl POST against a loopback server. The macOS
+Keychain path itself is not exercised by the automated test because the test runner
+has no interactive Keychain; verification is by build + explicit UI error handling.
 
 ## Run and verify
 
@@ -123,7 +152,7 @@ pnpm dev                  # browser-only cockpit with preview data
 
 pnpm exec tsc --noEmit -p tsconfig.json
 pnpm build
-cd src-tauri && cargo test --offline    # 8 tests: DB, sandbox, domain, execution, federation
+cd src-tauri && cargo test --offline    # 13 tests: DB, sandbox, domain, execution, federation, auth, inference, curl
 cd .. && pnpm tauri build --no-bundle
 ```
 
@@ -132,10 +161,10 @@ Rust CI and `scripts/verify-all.sh` do not require WebKit.
 
 ## Next
 
-1. Wire authentication, the credential store and remote inference with explicit
-   opt-in, redaction and audit events.
-2. Drive the execution gate from host-side takeover/degraded state instead of the
+1. Drive the execution gate from host-side takeover/degraded state instead of the
    local UI toggle.
+2. Add a Windows Credential Manager / Linux Secret Service store and a native
+   TLS/HTTP client to replace the system curl dependency.
 3. Add site-specific federation windows and an execution monitor window that can
    stay open while the full cockpit changes scenario.
 4. Add a host command for replaying an evidence artifact from the desktop shell.
