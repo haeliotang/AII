@@ -26,3 +26,4 @@
 - 2026-11-01：双容器分区预演首次运行 D0–D4 共 14/14 PASS（Docker 29.8.1，rust:1.94-slim-bookworm 构建）。未覆盖：时钟偏差、非对称分区、崩溃重启、认证加密；评审 B-01 的 fencing 问题也不在本实验范围内。
 - 2026-11-01：BaSyx `2.0.0-milestone-15` 本机容器预演 9/9 PASS；局限：影子计划动作数为 0，不派发是平凡满足；预登记未先于运行单独提交。
 - 2026-11-01：重放检查器新增 LIVE_RAW_EXPERIMENTS / LIVE_REPORTS 豁免；federation-docker 的判定仍在 CI 中从 raw 重算。`scripts/verify-all.sh` → ALL GATES PASSED。
+- 2026-11-01：评审 25 项由维护者裁定：22 接受、3 推迟、0 拒绝；登记 issue #105–#112。#105（守恒）优先。
