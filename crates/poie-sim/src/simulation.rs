@@ -542,4 +542,67 @@ mod tests {
             Err(SimError::EventInThePast { .. })
         ));
     }
+
+    // Issue #105 (P5, review A-02): PO §3.10 — the simulator must report
+    // negative stock and keep a global mass account, not only per-transfer balance.
+
+    #[test]
+    fn po3_10_overdrawing_a_stock_is_reported() {
+        let model = base01();
+        let mut sim = Simulation::new(&model);
+        sim.schedule(transfer("overdraw", vec![("bronze-bar", 10.0)], vec![("bronze-swarf", 10.0)])).unwrap();
+        sim.run_to_completion().unwrap();
+        assert!(
+            sim.violations().iter().any(|v| matches!(
+                v,
+                ConservationViolation::NegativeStock { resource, .. } if resource == "bronze-bar"
+            )),
+            "{:?}",
+            sim.violations()
+        );
+    }
+
+    #[test]
+    fn po3_10_global_audit_catches_closed_loop_drift() {
+        let model = base01();
+        let mut sim = Simulation::new(&model);
+        let gain = 1.0099;
+        let mut amount = 3.0;
+        for round in 0..200 {
+            sim.schedule(transfer(&format!("melt-{round}"), vec![("bronze-bar", amount)], vec![("bronze-swarf", amount * gain)]))
+                .unwrap();
+            amount *= gain;
+            sim.schedule(transfer(&format!("cast-{round}"), vec![("bronze-swarf", amount)], vec![("bronze-bar", amount * gain)]))
+                .unwrap();
+            amount *= gain;
+        }
+        sim.run_to_completion().unwrap();
+        assert!(
+            sim.violations().iter().all(|v| !matches!(v, ConservationViolation::Imbalanced { .. })),
+            "each transfer is within tolerance on its own"
+        );
+        let audit = sim.mass_audit();
+        assert!(!audit.within_tolerance(), "{audit:?}");
+    }
+
+    #[test]
+    fn po3_10_global_audit_balances_a_conserving_run_with_external_flow() {
+        let model = base01();
+        let mut sim = Simulation::new(&model);
+        sim.schedule(transfer(
+            "turn-sleeve",
+            vec![("bronze-bar", 1.2), ("cutting-insert", 1.0)],
+            vec![("sleeve-p1-raw", 1.0), ("bronze-swarf", 0.4), ("worn-insert", 1.0)],
+        ))
+        .unwrap();
+        sim.schedule(
+            Event::new(5.0, EventKind::StockFlow { resource: "bronze-bar".into(), delta_si: 2.0, external: true })
+                .unwrap(),
+        )
+        .unwrap();
+        sim.run_to_completion().unwrap();
+        let audit = sim.mass_audit();
+        assert!(audit.within_tolerance(), "{audit:?}");
+        assert!((audit.external_in_kg - 2.0).abs() < 1e-9, "{audit:?}");
+    }
 }

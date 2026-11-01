@@ -1177,4 +1177,61 @@ verification = "declared"
         d.assets[0].id = "Lathe".into();
         assert!(Model::from_doc(d).unwrap_err().0.contains("must match"));
     }
+
+    // Issue #105 (P4, review A-01 / C-11): PO §5 conservation must not be
+    // bypassable through the tolerance or through one unmassed flow.
+
+    #[test]
+    fn po5_mass_tolerance_above_the_cap_is_rejected() {
+        let process = |tolerance: f64| {
+            format!(
+                r#"
+[[process]]
+id = "turn"
+inputs = [{{ resource = "bar", quantity = "1.2 kg" }}]
+outputs = [{{ resource = "part", quantity = "1 item" }}, {{ resource = "chips", quantity = "400 g" }}]
+verification = "demonstrated"
+mass_tolerance = {tolerance}
+"#
+            )
+        };
+        assert!(Model::from_doc(doc(&process(MAX_MASS_TOLERANCE))).is_ok());
+        let err = Model::from_doc(doc(&process(0.2))).unwrap_err();
+        assert!(err.0.contains("mass_tolerance"), "{err}");
+    }
+
+    #[test]
+    fn po5_known_outputs_heavier_than_all_inputs_violate_despite_an_unmassed_output() {
+        let d = doc(r#"
+[[resource]]
+id = "work-order"
+unit = "item"
+
+[[process]]
+id = "conjure"
+inputs = [{ resource = "bar", quantity = "1 kg" }]
+outputs = [{ resource = "chips", quantity = "500 kg" }, { resource = "work-order", quantity = "1 item" }]
+verification = "demonstrated"
+"#);
+        let err = Model::from_doc(d).unwrap_err();
+        assert!(err.0.contains("violates mass conservation"), "{err}");
+    }
+
+    #[test]
+    fn po5_an_explicitly_massless_item_keeps_the_balance_checkable() {
+        let m = Model::from_doc(doc(r#"
+[[resource]]
+id = "work-order"
+unit = "item"
+mass_per_unit = "0 kg"
+
+[[process]]
+id = "turn"
+inputs = [{ resource = "bar", quantity = "1.2 kg" }, { resource = "work-order", quantity = "1 item" }]
+outputs = [{ resource = "part", quantity = "1 item" }, { resource = "chips", quantity = "400 g" }]
+verification = "demonstrated"
+"#))
+        .unwrap();
+        assert!(matches!(m.mass_balance["turn"], MassBalance::Balanced { .. }));
+    }
 }

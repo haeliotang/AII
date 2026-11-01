@@ -1563,4 +1563,45 @@ verification = "declared"
         assert_eq!(r.steps.len(), 1);
         assert_eq!(r.steps[0].process, "fix-alt-b");
     }
+
+    // Issue #105 (P4, review A-01): a process whose mass balance is unchecked
+    // must not appear as a step of a candidate route (PO §5, §6).
+    #[test]
+    fn po5_unchecked_process_is_not_a_candidate_step() {
+        let text = r#"
+schema = "poie.physical-ontology/0.3"
+name = "conjure-test"
+
+[[resource]]
+id = "work-order"
+unit = "item"
+
+[[resource]]
+id = "bar"
+unit = "kg"
+
+[[lot]]
+id = "lot-orders"
+resource = "work-order"
+quantity = "5 item"
+quality = "accepted"
+
+[[process]]
+id = "conjure-bar"
+inputs = [{ resource = "work-order", quantity = "1 item" }]
+outputs = [{ resource = "bar", quantity = "500 kg" }]
+verification = "verified"
+"#;
+        let m = Model::from_doc(toml::from_str(text).unwrap()).unwrap();
+        let r = solve(
+            &m,
+            &Query {
+                goal: Goal::Obtain { resource: "bar".into(), quantity: "500 kg".parse().unwrap() },
+                min_verification: Verification::Declared,
+                max_depth: DEFAULT_MAX_DEPTH,
+            },
+        );
+        assert_eq!(r.verdict, Verdict::Blocked, "{r:?}");
+        assert!(r.root_causes().any(|b| b.kind == BlockerKind::MassUnchecked && b.subject == "conjure-bar"), "{r:?}");
+    }
 }
