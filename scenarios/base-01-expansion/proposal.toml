@@ -10,6 +10,11 @@ description = "A small induction furnace that remelts the historical bronze swar
 
 [adds]
 
+[[adds.resources]]
+id = "bronze-dross"
+unit = "kg"
+description = "Oxidised dross skimmed from remelting; waste, not reusable on site."
+
 [[adds.assets]]
 id = "furnace-1"
 kind = "furnace"
@@ -33,12 +38,14 @@ inputs = [
   { resource = "bronze-swarf", quantity = "4 kg" },
   { resource = "electric-energy", quantity = "4 kWh" },
 ]
-outputs = [{ resource = "bronze-bar", quantity = "3.5 kg" }]
+outputs = [
+  { resource = "bronze-bar", quantity = "3.5 kg" },
+  { resource = "bronze-dross", quantity = "0.5 kg" },
+]
 occupies = ["furnace-1"]
 requires_capabilities = ["scrap-recycling"]
 duration = "2 h"
 verification = "modeled"
-mass_tolerance = 0.2
 
 [construction]
 duration = "8 h"

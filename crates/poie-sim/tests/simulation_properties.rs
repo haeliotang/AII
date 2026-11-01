@@ -186,7 +186,7 @@ fn randomized_simulations_are_deterministic_and_conserve_mass() {
             .iter()
             .filter_map(|violation| match violation {
                 ConservationViolation::Imbalanced { transfer, .. } => Some(transfer.clone()),
-                ConservationViolation::Unchecked { .. } => None,
+                ConservationViolation::Unchecked { .. } | ConservationViolation::NegativeStock { .. } => None,
             })
             .collect();
         let flagged: std::collections::BTreeSet<String> = flagged.into_iter().collect();

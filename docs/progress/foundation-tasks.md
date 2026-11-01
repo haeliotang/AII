@@ -165,3 +165,4 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-10-31：手动 dispatch scheduled workflow（[run 41246880552](https://github.com/haeliotang/poieweave/actions/runs/41246880552)）五个 job 全部成功：verify-all、release-mode test suite、fresh-clone（runner 上干净克隆复现）、advisories、licenses/bans/sources。
 - 2026-11-01：外部依赖项 AI 预演完成（不计入退出条件），见 [自主范围审计 §6](../status/autonomous-scope-audit.zh-CN.md) 与 [ai-preview-tasks](ai-preview-tasks.md)。
 - 2026-11-01：对齐 AI 预演进度：状态快照新增 §2.1（预演结果、限制与待裁定问题）、测试矩阵加入 BaSyx/双容器/AI 用例并更新计数为 299、外部行动清单加入预演起点链接、stage-gates/契约自审加入说明；P4/P5 已确认但仍待维护者裁定，里程碑状态不变。
+- 2026-11-01：#105 守恒修复：反例测试先提交（9a91642，失败），再修复。PO §5 容差硬上限 0.05、缺失一侧时的方向性校验、`unchecked` 工艺以 `mass_unchecked` 阻断、`mass_per_unit` 允许 0（非实物凭证）；PO §3.10 负库存违规与 `mass_audit` 全局核算，能量流不再被误报为缺质量（自审 PO-7）；`proposal.toml` 的 0.2 容差改为显式浮渣产出 0.5 kg。测试：本体 83→87、仿真 14→17；全部实验重放无差异。

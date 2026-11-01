@@ -12,7 +12,7 @@ use std::fmt::Write as _;
 
 use serde::Deserialize;
 
-use crate::model::{AssetStatus, LotQuality, Model, Verification};
+use crate::model::{AssetStatus, LotQuality, MassBalance, Model, Verification};
 use crate::units::{self, Quantity};
 
 pub const DEFAULT_MAX_DEPTH: usize = 48;
@@ -57,6 +57,9 @@ pub enum BlockerKind {
     NoAlternativeSupport,
     DegradedRestriction,
     DepthExceeded,
+    /// The process's mass balance could not be checked (PO §5 rule 4), so it
+    /// cannot be a step of a candidate route.
+    MassUnchecked,
 }
 
 impl BlockerKind {
@@ -72,6 +75,7 @@ impl BlockerKind {
             BlockerKind::NoAlternativeSupport => "no_alternative_support",
             BlockerKind::DegradedRestriction => "degraded_restriction",
             BlockerKind::DepthExceeded => "depth_exceeded",
+            BlockerKind::MassUnchecked => "mass_unchecked",
         }
     }
 }
@@ -546,6 +550,16 @@ impl<'m> Solver<'m> {
                 BlockerKind::BelowVerification,
                 &p.id,
                 format!("{} is {}, query requires at least {}", p.id, p.verification, self.min),
+                true,
+            );
+            self.leave();
+            return Err(vec![b]);
+        }
+        if let Some(MassBalance::Unchecked { missing }) = model.mass_balance.get(&p.id) {
+            let b = self.blocker(
+                BlockerKind::MassUnchecked,
+                &p.id,
+                format!("{} has no checkable mass balance (no mass for {})", p.id, missing.join(", ")),
                 true,
             );
             self.leave();
