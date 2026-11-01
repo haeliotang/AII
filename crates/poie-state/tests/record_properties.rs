@@ -67,6 +67,7 @@ fn action_sample() -> Action {
             scope: "dispatch".to_string(),
             valid_until: Timestamp(120_000),
         }),
+        redispatch_of: None,
     }
 }
 
@@ -101,7 +102,13 @@ fn payload_samples() -> Vec<Payload> {
             reason: "dispatch".into(),
             actor: "dispatcher".into(),
         },
-        Payload::Receipt { action_id: "a1".into(), recipient: "exec-1".into(), ack: true, reason: None },
+        Payload::Receipt {
+            action_id: "a1".into(),
+            recipient: "exec-1".into(),
+            ack: true,
+            reason: None,
+            duplicate_of: None,
+        },
         Payload::Verification {
             action_id: "a1".into(),
             evidence: vec![RecordId::new("site-a", 2)],

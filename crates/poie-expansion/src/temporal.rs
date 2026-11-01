@@ -50,9 +50,13 @@ pub fn temporal_gain(
                 continue;
             }
             for (service, minimum) in minimum_levels {
-                let level = sample.service_levels.get(service).copied().unwrap_or(1.0);
-                if level + 1e-9 < *minimum {
-                    violations.push(format!("{} at {:.0}s: {:.3} < {:.3}", service, sample.at_s, level, minimum));
+                // VEC §4: a missing reading is unknown, never full service.
+                match sample.service_levels.get(service).copied() {
+                    Some(level) if level + 1e-9 < *minimum => {
+                        violations.push(format!("{} at {:.0}s: {:.3} < {:.3}", service, sample.at_s, level, minimum))
+                    }
+                    Some(_) => {}
+                    None => violations.push(format!("{} at {:.0}s: no reading (unknown)", service, sample.at_s)),
                 }
             }
         }
@@ -62,6 +66,26 @@ pub fn temporal_gain(
         expanded,
         min_maintained_delta_s: deltas,
         construction: ConstructionCheck { within_window: violations.is_empty(), violations },
+    }
+}
+
+impl TemporalGain {
+    /// Non-inferiority on one critical service (VEC §6.3 condition 3): the
+    /// expanded branch's smallest observed survival time may fall short of the
+    /// base by at most the pre-registered margin. A fully censored side counts
+    /// as "> follow-up". Undecided expanded runs fail the check. Returns
+    /// `None` when the service is not summarized.
+    pub fn non_inferior(&self, service: &str, margin_s: f64) -> Option<bool> {
+        let base = self.base.iter().find(|summary| summary.service == service)?;
+        let expanded = self.expanded.iter().find(|summary| summary.service == service)?;
+        if expanded.undecided > 0 || expanded.scenarios != base.scenarios {
+            return Some(false);
+        }
+        Some(match (base.min_maintained_s, expanded.min_maintained_s) {
+            (_, None) => true,
+            (None, Some(_)) => false,
+            (Some(before), Some(after)) => after + margin_s >= before,
+        })
     }
 }
 
@@ -120,5 +144,19 @@ mod tests {
         let gain = temporal_gain(&base, &expanded, &levels, construction_window());
         assert!(!gain.construction.within_window);
         assert_eq!(gain.construction.violations.len(), 1);
+    }
+
+    #[test]
+    fn vec6_3_non_inferiority_uses_the_preregistered_margin() {
+        let base = vec![trace("b", vec![sample(0.0, 1.0), sample(5_000.0, 0.5)])];
+        let worse = vec![trace("e", vec![sample(0.0, 1.0), sample(4_000.0, 0.5)])];
+        let levels = BTreeMap::from([("potable-water".to_string(), 1.0)]);
+        let gain = temporal_gain(&base, &worse, &levels, TimeWindow::new(0.0, 1_000.0).unwrap());
+        assert_eq!(gain.non_inferior("potable-water", 500.0), Some(false));
+        assert_eq!(gain.non_inferior("potable-water", 1_000.0), Some(true));
+        assert_eq!(gain.non_inferior("heat", 0.0), None);
+        // Fewer expanded runs than base runs (e.g. not buildable) is not non-inferior.
+        let gain = temporal_gain(&base, &[], &levels, TimeWindow::new(0.0, 1_000.0).unwrap());
+        assert_eq!(gain.non_inferior("potable-water", 1e9), None);
     }
 }

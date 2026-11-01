@@ -300,7 +300,7 @@ flowchart LR
 - [x] VEC 升为 v0.2-draft。
 
 > **M6 退出复核（2026-10-31）**：
-> - **报告覆盖**：`experiments/vec-base01/` 对 20 个时间版场景各生成一条运行记录（8 feasible → `held_on_tested`、7 counterexample、4 `infeasible_in_model`、1 `unknown_input`），机读报告通过 VEC §7 校验（输入哈希、划分、全部运行、求解器/设置/消耗、指标版本、置信区间缺省说明），人读报告复用了表述守卫；CI 用 `--check` 校验提交的报告可重放。
+> - **报告覆盖**：`experiments/vec-base01/` 对 20 个时间版场景各生成一条运行记录（8 feasible → `held_on_tested`、7 counterexample、4 `infeasible_in_model`、1 `unknown_input`）（2026-11-01 按 issue #106/#110 修订后：11 counterexample、8 `held_on_tested`、1 `unknown_input`；原 4 个 `infeasible_in_model` 改为针对被测策略的 counterexample，见 [vec-base01 README](../experiments/vec-base01/README.zh-CN.md)），机读报告通过 VEC §7 校验（输入哈希、划分、全部运行、求解器/设置/消耗、指标版本、置信区间缺省说明），人读报告复用了表述守卫；CI 用 `--check` 校验提交的报告可重放。
 > - **表述守卫**：`check_summary` 与报告测试保证 `held_on_tested` 不得说成安全/鲁棒/可生存、`timeout`/`numerical_failure` 不得说成不可行；人读摘要对未决运行与截尾均有显式说明，且不把有限样本表述为鲁棒保证。
 > - **截尾**：指标测试证明存在截尾样本时 `mean_maintained_s = None`，报告中以 `censored` 标记并给出说明。
 > - **指标**：Base-01 报告含 74 条指标（生存/韧性/独立性；本报告不含可持续性指标，因轨迹没有产出核算，报告的防作弊规则要求可持续性必须与产出、服务同时出现）。
@@ -415,8 +415,8 @@ flowchart LR
 | M11.1 扩张提案格式 | VEC §6.1 的全部字段；作为能力图增量加载。**已完成**（2026-10-31）：`crates/poie-expansion::proposal` 支持 adds（资源/资产/工艺/批次，作为 ontology patch）、建造、检验、维护、外部输入、bootstrap；校验 schema/时长/检验方法；[Base-01 切屑回收熔炉提案](../scenarios/base-01-expansion/proposal.toml) |
 | M11.2 结构层增益 | 在人类给定的目标集合 G 上统计"获得"和"失去"两个列表。**已完成**（2026-10-31）：`structural_gain` 在扩张前后比较每个目标的结论，**始终同时报告**获得与失去列表；测试覆盖熔炉使 `obtain sleeve-p1 4` 由 blocked 变 candidate |
 | M11.3 时域层增益 | 扩张与不扩张两条基线在同一扰动集合上的四组指标，覆盖建造期。**已完成（库级）**（2026-10-31）：`temporal_gain` 复用 VEC 生存指标比较扩张前后，并检查建造期关键服务最低水平；测试覆盖增益与建造期违反 |
-| M11.4 Base-01 扩张场景 | 候选：第二台维修机器人、切屑回收熔铸、应急直流母线；每个都有建造输入、检验与维护成本。**已完成**：切屑回收熔炉提案（建造 8 h、检验 modeled、维护、外部炉体模块、bootstrap 占用）；H4 运行使用该提案 |
-| M11.5 H4 实验 | 预先登记；报告净增益为正、为负或不确定的全部情形。**已完成（模拟）**（2026-10-31，先登记后运行）：结构层获得 `obtain:sleeve-p1`（blocked→candidate）、失去为空；时域层 16/16 与基线持平（扩张收益在准备目标，未进入服务时域表）；判定 **不确定**（建造消耗未在库存扣除、外部依赖 furnace-module 未闭合）；[REPORT.md](../experiments/h4-expansion/REPORT.md) 与 CI 重放校验 |
+| M11.4 Base-01 扩张场景 | 候选：第二台维修机器人、切屑回收熔铸、应急直流母线；每个都有建造输入、检验与维护成本。**已完成**：切屑回收熔炉提案（建造 8 h、检验 modeled、维护、外部炉体模块、bootstrap 占用）；H4 运行使用该提案。2026-11-01 按 VEC 修订（#109）：投运等级改为运营门槛 demonstrated，补充熔炉故障机制（合成 MTBF 500 h），描述改为“投运后计划状态” |
+| M11.5 H4 实验 | 预先登记；报告净增益为正、为负或不确定的全部情形。**已完成（模拟）**（2026-10-31，先登记后运行）：结构层获得 `obtain:sleeve-p1`（blocked→candidate）、失去为空；时域层 16/16 与基线持平（扩张收益在准备目标，未进入服务时域表）；判定 **不确定**（建造消耗未在库存扣除、外部依赖 furnace-module 未闭合）；[REPORT.md](../experiments/h4-expansion/REPORT.md) 与 CI 重放校验。**2026-11-01 按 VEC 修订（#109、#110）重跑，判定改为净增益为负**：在运营门槛 demonstrated 上，获得只在投运后出现；建造期间占用 robot-m1 使供水恢复路线失去；16 个场景储能 0.5–2 kWh 都付不起建造所需 20 kWh；声明等级 `proposed`。旧结论保留在报告变更记录中 |
 | M11.6 实物验证 | 至少一项扩张在试验台上实际实施，并按 VEC §6.4 升级声明等级。**未开始（外部条件）**：需要物理试验台、建造与安全评审；在此之前最多声明 `modeled_gain` |
 
 **退出条件（同时是 Expansion 阶段门槛）**：至少一项扩张达到 `demonstrated_gain`；所有提案的"失去"列表和未闭合外部依赖已公开。
@@ -593,3 +593,4 @@ flowchart LR
 | 0.1.97 | 2026-11-01 | 外部依赖项 AI 预演（不计入退出条件）：契约三视角评审、独立用例 10 例、商标补充检索、BaSyx 容器适配器、双容器分区 |
 | 0.1.98 | 2026-11-01 | 对齐 AI 预演：快照/矩阵/外部行动/证据包更新；测试计数 299；13 项高严重度问题待裁定（P4/P5 已确认） |
 | 0.1.99 | 2026-11-01 | 守恒修复（#105，P4/P5）：PO §5 容差硬上限 0.05、方向性校验、`unchecked` 工艺不进候选路线（`mass_unchecked`）、零质量凭证；§3.10 负库存报告与全局质量核算；扩张提案浮渣显式建模 |
+| 0.1.100 | 2026-11-01 | 契约 issue #106–#111 修复：`blocked` 语义与 solve/enumerate 一致（#106）；SAP 幂等键统一、DUPLICATE 回执、去重窗口、租约纪元 fencing 与接管（#107、#108）；VEC 扩张三时点核算与统计报告规则，H4 结论改为净增益为负（#109、#110）；状态时间线、`as_of` 投影、序号高水位、预留生命周期（#111） |

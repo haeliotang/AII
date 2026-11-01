@@ -1,6 +1,7 @@
 //! Randomized VEC report validation: valid reports round-trip, and every
 //! single-field anti-cheat mutation is rejected with the expected reason.
 
+use poie_viability::audit::DecisionRecord;
 use poie_viability::method::Method;
 use poie_viability::report::{
     ConfidenceInterval, InputHashes, MachineReport, MetricGroup, MetricRecord, ModelProvenance, RunRecord,
@@ -51,6 +52,14 @@ fn valid_report(rng: &mut SplitMix64) -> MachineReport {
         .collect();
     let mut metrics = vec![
         MetricRecord {
+            group: MetricGroup::Terminal,
+            name: "battery_kwh".into(),
+            service: None,
+            value: 1.5,
+            unit: "kWh".into(),
+            censored: false,
+        },
+        MetricRecord {
             group: MetricGroup::Viability,
             name: "maintained".into(),
             service: Some("water".into()),
@@ -97,6 +106,9 @@ fn valid_report(rng: &mut SplitMix64) -> MachineReport {
         solver_settings: "default".into(),
         actual_cost_s: 1.5,
         metric_definition_version: METRIC_DEFINITION_VERSION.into(),
+        registered_in: "PREREG.md (scenario-set hash)".into(),
+        seed_sets_drawn: usize::from(method == Method::Sampled),
+        terminal_condition: "battery >= 1 kWh at H".into(),
         confidence_intervals: intervals,
         model_provenance: vec![ModelProvenance {
             id: "water-treatment".into(),
@@ -104,6 +116,15 @@ fn valid_report(rng: &mut SplitMix64) -> MachineReport {
             synthetic: true,
             validity: "flow 5-15 m3/h".into(),
         }],
+        decisions: runs
+            .iter()
+            .map(|run| DecisionRecord {
+                scenario_id: run.scenario_id.clone(),
+                decided_at_s: 0.0,
+                observed_up_to_s: 0.0,
+                policy_instance: "policy@v1".into(),
+            })
+            .collect(),
         runs,
         metrics,
     }
@@ -162,6 +183,22 @@ fn mutations() -> Vec<(&'static str, Mutation)> {
                 state: "state".into(),
             };
         }),
+        // VEC §3.2: finite-scenario methods cannot prove infeasibility.
+        ("method/verdict", |report| {
+            report.runs[0].method = Method::Enumerated;
+            report.runs[0].verdict =
+                Verdict::InfeasibleInModel { certificate: "blocked".into(), checkable: "poie-graph".into() };
+        }),
+        // VEC §2.1: anticipating decisions and per-scenario policy instances.
+        ("anticipation", |report| report.decisions[0].observed_up_to_s = report.decisions[0].decided_at_s + 1.0),
+        ("policy instance", |report| {
+            let mut extra = report.decisions[0].clone();
+            extra.policy_instance = "tuned-for-this-scenario".into();
+            report.decisions.push(extra);
+        }),
+        ("terminal state", |report| report.metrics.retain(|metric| metric.group != MetricGroup::Terminal)),
+        // VEC §7: registration before running.
+        ("registration", |report| report.registered_in.clear()),
     ]
 }
 

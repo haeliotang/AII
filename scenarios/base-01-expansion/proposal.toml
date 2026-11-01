@@ -2,6 +2,13 @@
 # Adds a furnace and a remelting process that turns the site's historical
 # bronze-swarf stockpile into usable bronze bar. Construction, commissioning,
 # upkeep, external inputs and bootstrap are declared per VEC §6.1.
+#
+# Revised 2026-11-01 (issue #109, VEC §6.1–6.3): the additions describe the
+# planned post-commissioning state; before construction completes they do not
+# exist, and until commissioning they enter at their current level (modeled).
+# The commissioning target is the Base-01 operating threshold (demonstrated),
+# not a level chosen by the proposer; the furnace declares its own failure
+# mechanism so that the expanded branch carries it.
 
 schema = "poie.expansion-proposal/0.1"
 id = "recycle-furnace"
@@ -21,7 +28,7 @@ kind = "furnace"
 status = "available"
 provides = ["scrap-recycling"]
 capability_verification = { "scrap-recycling" = "modeled" }
-description = "Small induction furnace; modelled, not built."
+description = "Small induction furnace. Not built: status is the planned post-commissioning state; the capability is modeled until commissioning."
 
 [[adds.lots]]
 id = "lot-swarf-stock"
@@ -58,7 +65,9 @@ assets = ["robot-m1", "lathe-1"]
 goals = ["build furnace", "inspect furnace"]
 
 [commissioning]
-required_verification = "modeled"
+# Must reach the operating threshold of Base-01 planning (demonstrated) before
+# the furnace can be used in operation (VEC §6.3).
+required_verification = "demonstrated"
 inspection_method = "sample remelt mass balance + temperature log"
 
 [upkeep]
@@ -72,3 +81,10 @@ quantity = "1 item"
 [bootstrap]
 assets = ["robot-m1"]
 resources = [{ resource = "bronze-bar", quantity = "1 kg" }]
+
+# Failure mechanism of the added asset (VEC §2.3, §6.2). Synthetic MTBF.
+[[failure_modes]]
+asset = "furnace-1"
+mtbf = "500 h"
+synthetic = true
+source = "synthetic assumption, review C-08 example; not calibrated"

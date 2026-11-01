@@ -27,7 +27,7 @@
 | M9.1、M9.3–M9.5 | 适配器契约、本地运行时、影子运行、预测核对（库级/模拟） | `crates/poie-runtime`、`experiments/shadow-run/` |
 | M10.1–M10.3、M10.5 | 可写适配器契约、授权/接管、独立验证、安全降级（库级） | `crates/poie-exec`、ADR-0007 |
 | M10.4 模拟部分 | H3 14/14 模拟场景 | `experiments/h3-bounded-execution/` |
-| M11.1–M11.5 | 提案、结构/时序增益、Base-01 扩张、H4 模拟与不确定判定 | `crates/poie-expansion`、`experiments/h4-expansion/` |
+| M11.1–M11.5 | 提案、结构/时序增益、Base-01 扩张、H4 模拟（2026-11-01 按 VEC 修订重跑：净增益为负；原判定不确定） | `crates/poie-expansion`、`experiments/h4-expansion/` |
 | M12.1–M12.5、M12.6 模拟部分 | HLC/租约/预留/对账、Base-02、6/6 分区模拟、本机 TCP | `crates/poie-federation`、`scenarios/base-02/`、`experiments/federation-partition/`、`experiments/federation-tcp/` |
 | 证据与验证基础设施 | 单元/性质测试、场景/实验重放、链接/矩阵/重放覆盖检查、`verify-all`、干净克隆、scheduled workflow、维护手册 | `scripts/`、`.github/workflows/`、[test-matrix](test-matrix.zh-CN.md)、[MAINTENANCE](../MAINTENANCE.zh-CN.md) |
 

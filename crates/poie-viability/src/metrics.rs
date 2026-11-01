@@ -11,7 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use poie_ontology::graph::{self, Goal, Query, DEFAULT_MAX_DEPTH};
-use poie_ontology::model::{Model, Verification};
+use poie_ontology::model::{Model, Patch, Verification};
+use poie_ontology::units::Quantity;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConstraintViolation {
@@ -135,9 +136,14 @@ impl std::error::Error for MetricError {}
 pub struct ServiceViability {
     pub service: String,
     /// Time until the service first dropped below its minimum; `None` means
-    /// censored (it never dropped within the horizon).
+    /// censored (it never dropped within the horizon, or the reading went
+    /// missing before it could be shown to drop).
     pub maintained_s: Option<f64>,
     pub censored: bool,
+    /// Censoring time: the horizon when the service held throughout, or the
+    /// time of the first missing reading (VEC §4: a missing reading is
+    /// `unknown`, never full service). `None` when an event was observed.
+    pub censored_at_s: Option<f64>,
     pub first_violation_s: Option<f64>,
     pub violation_count: usize,
     pub recovery_path: Option<RecoveryPath>,
@@ -146,16 +152,48 @@ pub struct ServiceViability {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViabilitySummary {
     pub service: String,
+    /// All runs, including undecided ones (VEC §4: no run leaves the distribution).
     pub scenarios: usize,
-    /// Smallest non-censored survival time; `None` when every scenario censored.
+    /// Smallest observed survival time; `None` when every run is censored
+    /// (report as "> follow-up").
     pub min_maintained_s: Option<f64>,
+    /// Product-limit (Kaplan–Meier) quantiles over all runs, censored ones
+    /// included (VEC §4.1). `None` means the estimated failure fraction never
+    /// reaches the quantile: report it as "> `follow_up_s`", never as a value.
     pub median_maintained_s: Option<f64>,
     pub p90_maintained_s: Option<f64>,
+    /// Largest observed time (event or censoring) — the bound for "> …".
+    pub follow_up_s: f64,
+    /// Censored runs, including undecided runs censored at their stop time.
     pub censored: usize,
+    /// Runs that stopped undecided (timeout, numerical failure, unknown input).
+    pub undecided: usize,
+    /// Sensitivity analysis: undecided runs counted as failures at their stop time.
+    pub worst_case_min_maintained_s: Option<f64>,
+    pub worst_case_median_maintained_s: Option<f64>,
     /// Mean is only reported when no survival time is censored.
     pub mean_maintained_s: Option<f64>,
     pub first_violations: usize,
     pub violation_count: usize,
+}
+
+/// A run that ended undecided (timeout, numerical failure, unknown input)
+/// before its horizon. It still enters the survival distribution: censored at
+/// `stopped_at_s` for its services, and listed separately (VEC §4).
+#[derive(Clone, Debug, PartialEq)]
+pub struct UndecidedRun {
+    pub scenario_id: String,
+    pub stopped_at_s: f64,
+    /// The verdict class, e.g. `timeout`.
+    pub class: String,
+    /// Services the run was evaluating; empty means every summarized service.
+    pub services: Vec<String>,
+}
+
+impl UndecidedRun {
+    fn covers(&self, service: &str) -> bool {
+        self.services.is_empty() || self.services.iter().any(|item| item == service)
+    }
 }
 
 pub fn viability(trace: &RunTrace) -> Vec<ServiceViability> {
@@ -163,10 +201,23 @@ pub fn viability(trace: &RunTrace) -> Vec<ServiceViability> {
         .minimum_levels
         .iter()
         .map(|(service, minimum)| {
-            let first = trace
-                .samples
-                .iter()
-                .find(|sample| sample.service_levels.get(service).copied().unwrap_or(1.0) + 1e-9 < *minimum);
+            // Walk the samples in order: a reading below the minimum is the
+            // event; a missing reading censors the run at that time.
+            let mut event: Option<f64> = None;
+            let mut missing: Option<f64> = None;
+            for sample in &trace.samples {
+                match sample.service_levels.get(service) {
+                    Some(level) if level + 1e-9 < *minimum => {
+                        event = Some(sample.at_s);
+                        break;
+                    }
+                    Some(_) => {}
+                    None => {
+                        missing = Some(sample.at_s);
+                        break;
+                    }
+                }
+            }
             let violation_count = trace
                 .samples
                 .iter()
@@ -174,9 +225,10 @@ pub fn viability(trace: &RunTrace) -> Vec<ServiceViability> {
                 .count();
             ServiceViability {
                 service: service.clone(),
-                maintained_s: first.map(|sample| sample.at_s),
-                censored: first.is_none(),
-                first_violation_s: first.map(|sample| sample.at_s),
+                maintained_s: event,
+                censored: event.is_none(),
+                censored_at_s: if event.is_some() { None } else { Some(missing.unwrap_or(trace.horizon_s)) },
+                first_violation_s: event,
                 violation_count,
                 recovery_path: trace.recovery_paths.get(service).cloned(),
             }
@@ -185,30 +237,67 @@ pub fn viability(trace: &RunTrace) -> Vec<ServiceViability> {
 }
 
 pub fn summarize_viability(traces: &[RunTrace]) -> Vec<ViabilitySummary> {
+    summarize_runs(traces, &[])
+}
+
+/// Summaries over all runs (VEC §4.1): completed traces plus undecided runs.
+/// Undecided runs are censored at their stop time for each service they
+/// cover, and a worst-case sensitivity counts them as failures there.
+pub fn summarize_runs(traces: &[RunTrace], undecided: &[UndecidedRun]) -> Vec<ViabilitySummary> {
     let mut per_service: BTreeMap<String, Vec<ServiceViability>> = BTreeMap::new();
     for trace in traces {
         for entry in viability(trace) {
             per_service.entry(entry.service.clone()).or_default().push(entry);
         }
     }
+    for run in undecided {
+        for service in &run.services {
+            per_service.entry(service.clone()).or_default();
+        }
+    }
     per_service
         .into_iter()
         .map(|(service, entries)| {
-            let mut times: Vec<f64> = entries.iter().filter_map(|entry| entry.maintained_s).collect();
-            times.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            let censored = entries.iter().filter(|entry| entry.censored).count();
-            let mean = if censored == 0 && !times.is_empty() {
-                Some(times.iter().sum::<f64>() / times.len() as f64)
+            let undecided: Vec<&UndecidedRun> = undecided.iter().filter(|run| run.covers(&service)).collect();
+            // (time, is_event) for every run.
+            let mut observations: Vec<(f64, bool)> = entries
+                .iter()
+                .map(|entry| match entry.maintained_s {
+                    Some(time) => (time, true),
+                    None => (entry.censored_at_s.unwrap_or(f64::INFINITY), false),
+                })
+                .collect();
+            let undecided_times: Vec<f64> = undecided.iter().map(|run| run.stopped_at_s).collect();
+            let mut worst_case = observations.clone();
+            observations.extend(undecided_times.iter().map(|time| (*time, false)));
+            worst_case.extend(undecided_times.iter().map(|time| (*time, true)));
+            let events: Vec<f64> = entries.iter().filter_map(|entry| entry.maintained_s).collect();
+            let censored = entries.iter().filter(|entry| entry.censored).count() + undecided.len();
+            let mean = if censored == 0 && !events.is_empty() {
+                Some(events.iter().sum::<f64>() / events.len() as f64)
             } else {
                 None
             };
+            let minimum = |items: &[(f64, bool)]| {
+                items
+                    .iter()
+                    .filter(|(_, event)| *event)
+                    .map(|(time, _)| *time)
+                    .fold(None, |best: Option<f64>, time| Some(best.map_or(time, |current| current.min(time))))
+            };
+            let follow_up_s =
+                observations.iter().map(|(time, _)| *time).filter(|time| time.is_finite()).fold(0.0, f64::max);
             ViabilitySummary {
                 service,
-                scenarios: entries.len(),
-                min_maintained_s: times.first().copied(),
-                median_maintained_s: quantile(&times, 0.5),
-                p90_maintained_s: quantile(&times, 0.9),
+                scenarios: observations.len(),
+                min_maintained_s: minimum(&observations),
+                median_maintained_s: km_quantile(&observations, 0.5),
+                p90_maintained_s: km_quantile(&observations, 0.9),
+                follow_up_s,
                 censored,
+                undecided: undecided.len(),
+                worst_case_min_maintained_s: minimum(&worst_case),
+                worst_case_median_maintained_s: km_quantile(&worst_case, 0.5),
                 mean_maintained_s: mean,
                 first_violations: entries.iter().filter(|entry| entry.first_violation_s.is_some()).count(),
                 violation_count: entries.iter().map(|entry| entry.violation_count).sum(),
@@ -217,12 +306,38 @@ pub fn summarize_viability(traces: &[RunTrace]) -> Vec<ViabilitySummary> {
         .collect()
 }
 
-fn quantile(sorted: &[f64], fraction: f64) -> Option<f64> {
-    if sorted.is_empty() {
-        return None;
+/// Product-limit (Kaplan–Meier) quantile: the first time at which the
+/// estimated failure fraction reaches `fraction`. Events at a time are
+/// processed before censorings at the same time. `None` when the estimate
+/// never reaches `fraction` within the observed follow-up.
+pub fn km_quantile(observations: &[(f64, bool)], fraction: f64) -> Option<f64> {
+    let mut sorted: Vec<(f64, bool)> = observations.to_vec();
+    sorted.sort_by(|left, right| {
+        left.0.partial_cmp(&right.0).unwrap_or(std::cmp::Ordering::Equal).then_with(|| right.1.cmp(&left.1))
+    });
+    let mut at_risk = sorted.len() as f64;
+    let mut survival = 1.0_f64;
+    let mut index = 0;
+    while index < sorted.len() {
+        let time = sorted[index].0;
+        let mut events = 0.0;
+        let mut leaving = 0.0;
+        while index < sorted.len() && sorted[index].0 == time {
+            if sorted[index].1 {
+                events += 1.0;
+            }
+            leaving += 1.0;
+            index += 1;
+        }
+        if events > 0.0 && at_risk > 0.0 {
+            survival *= 1.0 - events / at_risk;
+            if 1.0 - survival + 1e-12 >= fraction {
+                return Some(time);
+            }
+        }
+        at_risk -= leaving;
     }
-    let index = ((fraction * sorted.len() as f64).ceil() as usize).saturating_sub(1).min(sorted.len() - 1);
-    Some(sorted[index])
+    None
 }
 
 // ---------------------------------------------------------------------------
@@ -235,32 +350,78 @@ pub struct IndependenceMetrics {
     pub external_inputs: BTreeMap<String, f64>,
     /// Critical external dependencies over all candidate recovery routes.
     pub critical_external_dependencies: Vec<String>,
-    /// (resources with a local producer at or above `min_verification`, critical resources).
+    /// The critical-resource set (denominator m), derived automatically: every
+    /// resource consumed on a candidate recovery route of a critical service,
+    /// plus the critical external dependencies (VEC §4.2). Never hand-picked.
+    pub critical_resources: Vec<String>,
+    /// Critical resources with a closed local production route (numerator n).
+    pub covered_resources: Vec<String>,
+    /// For each covered resource, the external inputs its local route still
+    /// draws from stock ("closed to the given stock level").
+    pub coverage_external_inputs: BTreeMap<String, Vec<String>>,
+    /// (n, m) = (covered critical resources, critical resources).
     pub local_coverage: (usize, usize),
 }
 
+/// Independence metrics (VEC §4.2).
+///
+/// A critical resource counts as locally covered only when, with its own stock
+/// set to zero, the capability graph still finds a candidate route that
+/// produces one unit at `min_verification` — route level including capability
+/// levels (PO §6.3 rule 13) — with all inputs closed to the current stock. A
+/// process whose consumable (e.g. a cutting insert) is out of stock does not
+/// cover anything.
 pub fn independence(model: &Model, services: &[String], min_verification: Verification) -> IndependenceMetrics {
     let mut dependencies: BTreeSet<String> = BTreeSet::new();
+    let mut critical: BTreeSet<String> = BTreeSet::new();
     for service in services {
         let query = Query { goal: Goal::Service(service.clone()), min_verification, max_depth: DEFAULT_MAX_DEPTH };
         let report = graph::external_dependency_report(model, &query, 32);
         dependencies.extend(report.resources().into_iter().map(str::to_string));
+        for route in graph::enumerate(model, &query, 32) {
+            critical.extend(route.consumed.keys().cloned());
+        }
     }
+    critical.extend(dependencies.iter().cloned());
     let critical_external_dependencies: Vec<String> = dependencies.into_iter().collect();
-    let mut covered = 0usize;
-    for resource in &critical_external_dependencies {
-        let local = model.producers.get(resource).is_some_and(|indices| {
-            indices.iter().any(|index| model.processes[*index].verification >= min_verification)
-        });
-        if local {
-            covered += 1;
+    let critical_resources: Vec<String> = critical.into_iter().collect();
+    let mut covered_resources = Vec::new();
+    let mut coverage_external_inputs = BTreeMap::new();
+    for resource in &critical_resources {
+        if let Some(inputs) = local_route(model, resource, min_verification) {
+            covered_resources.push(resource.clone());
+            coverage_external_inputs.insert(resource.clone(), inputs);
         }
     }
     IndependenceMetrics {
         external_inputs: BTreeMap::new(),
-        critical_external_dependencies: critical_external_dependencies.clone(),
-        local_coverage: (covered, critical_external_dependencies.len()),
+        critical_external_dependencies,
+        local_coverage: (covered_resources.len(), critical_resources.len()),
+        critical_resources,
+        covered_resources,
+        coverage_external_inputs,
     }
+}
+
+/// External inputs of a closed local production route for one unit of
+/// `resource`, or `None` when no such route exists.
+fn local_route(model: &Model, resource: &str, min_verification: Verification) -> Option<Vec<String>> {
+    let definition = model.resources.get(resource)?;
+    if model.producers.get(resource).is_none_or(|producers| producers.is_empty()) {
+        return None;
+    }
+    let mut patch = Patch::default();
+    for lot in model.lots.iter().filter(|lot| lot.resource == resource) {
+        patch.lot_quantity.insert(lot.id.clone(), format!("0 {}", definition.unit.symbol));
+    }
+    let zeroed = model.patched(&patch).ok()?;
+    let goal = Goal::Obtain { resource: resource.to_string(), quantity: Quantity::new(1.0, definition.unit) };
+    let query = Query { goal, min_verification, max_depth: DEFAULT_MAX_DEPTH };
+    if graph::solve(&zeroed, &query).verdict != graph::Verdict::Candidate {
+        return None;
+    }
+    let report = graph::external_dependency_report(&zeroed, &query, 8);
+    Some(report.resources().into_iter().map(str::to_string).collect())
 }
 
 pub fn aggregate_external_inputs(traces: &[RunTrace]) -> BTreeMap<String, f64> {
@@ -286,6 +447,14 @@ pub struct ResilienceMetrics {
     /// First-violation to recovery time per service; `None` means not recovered.
     pub recovery_time_s: BTreeMap<String, Option<f64>>,
     pub not_recovered: Vec<String>,
+    /// Deficit (minimum − level) still open at the horizon, from the last
+    /// sample; `None` when the last reading is missing (unknown). Reported
+    /// next to the loss integral so that "fail late, never recover" is visible
+    /// (VEC §4.3, terminal state §2.1).
+    pub gap_at_horizon: BTreeMap<String, Option<f64>>,
+    /// Time without a reading per service: excluded from the loss integral and
+    /// reported as unknown, never as full service.
+    pub unobserved_s: BTreeMap<String, f64>,
     pub propagation_services: usize,
     pub propagation_assets: usize,
 }
@@ -293,29 +462,36 @@ pub struct ResilienceMetrics {
 pub fn resilience(trace: &RunTrace) -> ResilienceMetrics {
     let mut service_loss: BTreeMap<String, f64> = BTreeMap::new();
     let mut recovery_time_s: BTreeMap<String, Option<f64>> = BTreeMap::new();
+    let mut gap_at_horizon: BTreeMap<String, Option<f64>> = BTreeMap::new();
+    let mut unobserved_s: BTreeMap<String, f64> = BTreeMap::new();
     let mut not_recovered = Vec::new();
     let mut first_violation_overall: Option<f64> = None;
 
     for (service, minimum) in &trace.minimum_levels {
         let mut loss = 0.0;
+        let mut unobserved = 0.0;
         for (index, sample) in trace.samples.iter().enumerate() {
             let end = trace.samples.get(index + 1).map_or(trace.horizon_s, |next| next.at_s);
             let dt = (end - sample.at_s).max(0.0);
-            let level = sample.service_levels.get(service).copied().unwrap_or(1.0);
-            loss += (minimum - level).max(0.0) * dt;
+            match sample.service_levels.get(service) {
+                Some(level) => loss += (minimum - level).max(0.0) * dt,
+                None => unobserved += dt,
+            }
         }
         service_loss.insert(service.clone(), loss);
+        unobserved_s.insert(service.clone(), unobserved);
+        gap_at_horizon
+            .insert(service.clone(), trace.end().service_levels.get(service).map(|level| (minimum - level).max(0.0)));
 
-        let first = trace
-            .samples
-            .iter()
-            .find(|sample| sample.service_levels.get(service).copied().unwrap_or(1.0) + 1e-9 < *minimum);
+        let below =
+            |sample: &&TimeSample| sample.service_levels.get(service).is_some_and(|level| level + 1e-9 < *minimum);
+        let first = trace.samples.iter().find(below);
         let recovery = first.and_then(|violation| {
             trace
                 .samples
                 .iter()
                 .filter(|sample| sample.at_s > violation.at_s)
-                .find(|sample| sample.service_levels.get(service).copied().unwrap_or(1.0) + 1e-9 >= *minimum)
+                .find(|sample| sample.service_levels.get(service).is_some_and(|level| level + 1e-9 >= *minimum))
         });
         match first {
             Some(violation) => {
@@ -348,6 +524,8 @@ pub fn resilience(trace: &RunTrace) -> ResilienceMetrics {
         service_loss,
         recovery_time_s,
         not_recovered,
+        gap_at_horizon,
+        unobserved_s,
         propagation_services: propagation_services.len(),
         propagation_assets: propagation_assets.len(),
     }
@@ -510,7 +688,12 @@ mod tests {
         assert!(!metrics.critical_external_dependencies.is_empty());
         let (covered, total) = metrics.local_coverage;
         assert!(covered <= total);
-        assert_eq!(total, metrics.critical_external_dependencies.len());
+        // VEC §4.2: the denominator is the derived critical-resource set,
+        // which contains every external dependency.
+        assert_eq!(total, metrics.critical_resources.len());
+        for dependency in &metrics.critical_external_dependencies {
+            assert!(metrics.critical_resources.contains(dependency));
+        }
     }
 
     #[test]

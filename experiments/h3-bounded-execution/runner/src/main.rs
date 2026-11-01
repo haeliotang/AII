@@ -77,6 +77,7 @@ fn action(id: &str, key: &str, process: &str, target: &str) -> Action {
             scope: "dispatch".to_string(),
             valid_until: Timestamp(3_600_000),
         }),
+        redispatch_of: None,
     }
 }
 
@@ -139,6 +140,7 @@ fn run(fault: Fault, process: &str, index: usize) -> Row {
         DispatchOutcome::RecordedOnly { .. } => "recorded_only",
         DispatchOutcome::Fallback { .. } => "fallback",
         DispatchOutcome::Rejected { .. } => "rejected",
+        DispatchOutcome::Duplicate { .. } => "duplicate",
     };
     let state_ok = match fault {
         Fault::None | Fault::Duplicate => state == "acknowledged",

@@ -5,13 +5,16 @@ horizon_s = 86400.0
 seeds = []
 solver_version = "poie-viability 0.1.0 + poie-sim timed 0.1.0"
 solver_settings = "finite fixed-trajectory set (20 pre-registered cases); no random sampling"
-actual_cost_s = 1.551941125
+actual_cost_s = 0.741903042
 metric_definition_version = "vec-metrics/0.1"
+registered_in = "scenarios/base-01-timed/cases.toml (20 pre-registered cases; fnv1a b18c7dcee53e59c2)"
+seed_sets_drawn = 0
+terminal_condition = "none declared: the timed Base-01 cases carry no terminal stock or storage requirement; the open service gap at H is reported per case (terminal group)"
 confidence_intervals = []
 
 [input_hashes]
-initial_state = "af6cd92603e983a7"
-scenario_set = "a8a4f2eafff4b74b"
+initial_state = "b4d9ce2a451a4a7b"
+scenario_set = "7c3970f1a2695bdb"
 models = "3f60c700752970cc"
 policy = "559e3937a92e400b"
 contract_version = "viability-expansion/0.2"
@@ -95,9 +98,11 @@ scenario_id = "T6"
 method = "enumerated"
 budget_used_s = 0.0
 
-[runs.verdict.infeasible_in_model]
-certificate = "capability-graph blocked: below_verification turn-lathe-nut"
-checkable = "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml"
+[runs.verdict.counterexample]
+scenario_id = "T6"
+first_violation_s = 46800.0
+constraint = "structural_route"
+state = "capability-graph blocked: below_verification turn-lathe-nut; the tested policy found no structural route on the start snapshot (replay: cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml); not a proof of infeasibility in the model"
 
 [[runs]]
 scenario_id = "T7"
@@ -144,9 +149,11 @@ scenario_id = "T11"
 method = "enumerated"
 budget_used_s = 0.0
 
-[runs.verdict.infeasible_in_model]
-certificate = "capability-graph blocked: cycle bus-1"
-checkable = "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml"
+[runs.verdict.counterexample]
+scenario_id = "T11"
+first_violation_s = 61200.0
+constraint = "structural_route"
+state = "capability-graph blocked: cycle bus-1; the tested policy found no structural route on the start snapshot (replay: cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml); not a proof of infeasibility in the model"
 
 [[runs]]
 scenario_id = "T12"
@@ -163,9 +170,11 @@ scenario_id = "T13"
 method = "enumerated"
 budget_used_s = 0.0
 
-[runs.verdict.infeasible_in_model]
-certificate = "capability-graph blocked: missing_resource bronze-bar"
-checkable = "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml"
+[runs.verdict.counterexample]
+scenario_id = "T13"
+first_violation_s = 28800.0
+constraint = "structural_route"
+state = "capability-graph blocked: missing_resource bronze-bar; the tested policy found no structural route on the start snapshot (replay: cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml); not a proof of infeasibility in the model"
 
 [[runs]]
 scenario_id = "T14"
@@ -214,9 +223,11 @@ scenario_id = "T18"
 method = "enumerated"
 budget_used_s = 0.0
 
-[runs.verdict.infeasible_in_model]
-certificate = "capability-graph blocked: cycle bus-1"
-checkable = "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml"
+[runs.verdict.counterexample]
+scenario_id = "T18"
+first_violation_s = 61200.0
+constraint = "structural_route"
+state = "capability-graph blocked: cycle bus-1; the tested policy found no structural route on the start snapshot (replay: cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml); not a proof of infeasibility in the model"
 
 [[runs]]
 scenario_id = "T19"
@@ -227,6 +238,22 @@ budget_used_s = 0.0
 tested_scenarios = 1
 method = "enumerated"
 uncovered = "only the fixed trajectory of case T19"
+
+[[metrics]]
+group = "viability"
+name = "median_maintained_s"
+service = "obtain:lathe-nut"
+value = 86400.0
+unit = "s"
+censored = true
+
+[[metrics]]
+group = "viability"
+name = "p90_maintained_s"
+service = "obtain:lathe-nut"
+value = 86400.0
+unit = "s"
+censored = true
 
 [[metrics]]
 group = "viability"
@@ -256,7 +283,7 @@ censored = false
 group = "viability"
 name = "median_maintained_s"
 service = "obtain:sleeve-p1"
-value = 28800.0
+value = 39600.0
 unit = "s"
 censored = false
 
@@ -264,9 +291,9 @@ censored = false
 group = "viability"
 name = "p90_maintained_s"
 service = "obtain:sleeve-p1"
-value = 43200.0
+value = 165600.0
 unit = "s"
-censored = false
+censored = true
 
 [[metrics]]
 group = "viability"
@@ -296,7 +323,7 @@ censored = false
 group = "viability"
 name = "median_maintained_s"
 service = "potable-water"
-value = 18000.0
+value = 61200.0
 unit = "s"
 censored = false
 
@@ -304,9 +331,9 @@ censored = false
 group = "viability"
 name = "p90_maintained_s"
 service = "potable-water"
-value = 61200.0
+value = 118800.0
 unit = "s"
-censored = false
+censored = true
 
 [[metrics]]
 group = "viability"
@@ -416,17 +443,17 @@ censored = false
 group = "viability"
 name = "median_maintained_s"
 service = "restore:pump-p1"
-value = 43200.0
+value = 122400.0
 unit = "s"
-censored = false
+censored = true
 
 [[metrics]]
 group = "viability"
 name = "p90_maintained_s"
 service = "restore:pump-p1"
-value = 43200.0
+value = 122400.0
 unit = "s"
-censored = false
+censored = true
 
 [[metrics]]
 group = "viability"
@@ -446,19 +473,11 @@ censored = true
 
 [[metrics]]
 group = "viability"
-name = "min_maintained_s"
-service = "restore:pv-1"
-value = 0.0
-unit = "s"
-censored = false
-
-[[metrics]]
-group = "viability"
 name = "median_maintained_s"
 service = "restore:pv-1"
 value = 0.0
 unit = "s"
-censored = false
+censored = true
 
 [[metrics]]
 group = "viability"
@@ -466,11 +485,19 @@ name = "p90_maintained_s"
 service = "restore:pv-1"
 value = 0.0
 unit = "s"
+censored = true
+
+[[metrics]]
+group = "viability"
+name = "undecided_count"
+service = "restore:pv-1"
+value = 1.0
+unit = "count"
 censored = false
 
 [[metrics]]
 group = "viability"
-name = "mean_maintained_s"
+name = "worst_case_min_maintained_s"
 service = "restore:pv-1"
 value = 0.0
 unit = "s"
@@ -480,8 +507,24 @@ censored = false
 group = "viability"
 name = "censored_count"
 service = "restore:pv-1"
-value = 0.0
+value = 1.0
 unit = "count"
+censored = false
+
+[[metrics]]
+group = "viability"
+name = "mean_suppressed_by_censoring"
+service = "restore:pv-1"
+value = 1.0
+unit = "flag"
+censored = true
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "potable-water"
+value = 0.0
+unit = "1"
 censored = false
 
 [[metrics]]
@@ -498,6 +541,14 @@ name = "recovery_time_s"
 service = "potable-water"
 value = 0.0
 unit = "s"
+censored = false
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "potable-water"
+value = 0.8
+unit = "1"
 censored = false
 
 [[metrics]]
@@ -517,6 +568,14 @@ unit = "s"
 censored = true
 
 [[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "obtain:sleeve-p1"
+value = 0.8
+unit = "1"
+censored = false
+
+[[metrics]]
 group = "resilience"
 name = "service_loss"
 service = "obtain:sleeve-p1"
@@ -533,6 +592,14 @@ unit = "s"
 censored = true
 
 [[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "obtain:sleeve-p1"
+value = 0.0
+unit = "1"
+censored = false
+
+[[metrics]]
 group = "resilience"
 name = "service_loss"
 service = "obtain:sleeve-p1"
@@ -546,6 +613,14 @@ name = "recovery_time_s"
 service = "obtain:sleeve-p1"
 value = 0.0
 unit = "s"
+censored = false
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "obtain:sleeve-p1"
+value = 0.8
+unit = "1"
 censored = false
 
 [[metrics]]
@@ -565,6 +640,14 @@ unit = "s"
 censored = true
 
 [[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "potable-water"
+value = 0.0
+unit = "1"
+censored = false
+
+[[metrics]]
 group = "resilience"
 name = "service_loss"
 service = "potable-water"
@@ -578,6 +661,14 @@ name = "recovery_time_s"
 service = "potable-water"
 value = 0.0
 unit = "s"
+censored = false
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "restore:lathe-1"
+value = 0.8
+unit = "1"
 censored = false
 
 [[metrics]]
@@ -597,6 +688,14 @@ unit = "s"
 censored = true
 
 [[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "restore:pv-1"
+value = 0.8
+unit = "1"
+censored = false
+
+[[metrics]]
 group = "resilience"
 name = "service_loss"
 service = "restore:pv-1"
@@ -613,6 +712,14 @@ unit = "s"
 censored = true
 
 [[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "potable-water"
+value = 0.0
+unit = "1"
+censored = false
+
+[[metrics]]
 group = "resilience"
 name = "service_loss"
 service = "potable-water"
@@ -626,6 +733,14 @@ name = "recovery_time_s"
 service = "potable-water"
 value = 0.0
 unit = "s"
+censored = false
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "potable-water"
+value = 0.8
+unit = "1"
 censored = false
 
 [[metrics]]
@@ -645,6 +760,14 @@ unit = "s"
 censored = true
 
 [[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "obtain:sleeve-p1"
+value = 0.8
+unit = "1"
+censored = false
+
+[[metrics]]
 group = "resilience"
 name = "service_loss"
 service = "obtain:sleeve-p1"
@@ -659,6 +782,14 @@ service = "obtain:sleeve-p1"
 value = 0.0
 unit = "s"
 censored = true
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "potable-water"
+value = 0.8
+unit = "1"
+censored = false
 
 [[metrics]]
 group = "resilience"
@@ -677,6 +808,14 @@ unit = "s"
 censored = true
 
 [[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "restore:pump-p1"
+value = 0.0
+unit = "1"
+censored = false
+
+[[metrics]]
 group = "resilience"
 name = "service_loss"
 service = "restore:pump-p1"
@@ -690,6 +829,62 @@ name = "recovery_time_s"
 service = "restore:pump-p1"
 value = 0.0
 unit = "s"
+censored = false
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "obtain:sleeve-p1"
+value = 0.8
+unit = "1"
+censored = false
+
+[[metrics]]
+group = "resilience"
+name = "service_loss"
+service = "obtain:sleeve-p1"
+value = 69120.0
+unit = "level·s"
+censored = false
+
+[[metrics]]
+group = "resilience"
+name = "recovery_time_s"
+service = "obtain:sleeve-p1"
+value = 0.0
+unit = "s"
+censored = true
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "restore:pump-p1"
+value = 0.0
+unit = "1"
+censored = false
+
+[[metrics]]
+group = "resilience"
+name = "service_loss"
+service = "restore:pump-p1"
+value = 0.0
+unit = "level·s"
+censored = false
+
+[[metrics]]
+group = "resilience"
+name = "recovery_time_s"
+service = "restore:pump-p1"
+value = 0.0
+unit = "s"
+censored = false
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "obtain:sleeve-p1"
+value = 0.8
+unit = "1"
 censored = false
 
 [[metrics]]
@@ -709,36 +904,12 @@ unit = "s"
 censored = true
 
 [[metrics]]
-group = "resilience"
-name = "service_loss"
+group = "terminal"
+name = "gap_at_horizon"
 service = "restore:pump-p1"
-value = 0.0
-unit = "level·s"
+value = 0.8
+unit = "1"
 censored = false
-
-[[metrics]]
-group = "resilience"
-name = "recovery_time_s"
-service = "restore:pump-p1"
-value = 0.0
-unit = "s"
-censored = false
-
-[[metrics]]
-group = "resilience"
-name = "service_loss"
-service = "obtain:sleeve-p1"
-value = 69120.0
-unit = "level·s"
-censored = false
-
-[[metrics]]
-group = "resilience"
-name = "recovery_time_s"
-service = "obtain:sleeve-p1"
-value = 0.0
-unit = "s"
-censored = true
 
 [[metrics]]
 group = "resilience"
@@ -757,6 +928,14 @@ unit = "s"
 censored = true
 
 [[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "obtain:sleeve-p1"
+value = 0.0
+unit = "1"
+censored = false
+
+[[metrics]]
 group = "resilience"
 name = "service_loss"
 service = "obtain:sleeve-p1"
@@ -770,6 +949,14 @@ name = "recovery_time_s"
 service = "obtain:sleeve-p1"
 value = 0.0
 unit = "s"
+censored = false
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "restore:bus-1"
+value = 0.8
+unit = "1"
 censored = false
 
 [[metrics]]
@@ -787,6 +974,14 @@ service = "restore:bus-1"
 value = 0.0
 unit = "s"
 censored = true
+
+[[metrics]]
+group = "terminal"
+name = "gap_at_horizon"
+service = "obtain:lathe-nut"
+value = 0.0
+unit = "1"
+censored = false
 
 [[metrics]]
 group = "resilience"
@@ -814,8 +1009,23 @@ censored = false
 [[metrics]]
 group = "independence"
 name = "local_coverage_covered"
-value = 0.0
+value = 1.0
 unit = "count"
+censored = false
+
+[[metrics]]
+group = "independence"
+name = "local_coverage_critical_resources"
+value = 3.0
+unit = "count"
+censored = false
+
+[[metrics]]
+group = "independence"
+name = "local_coverage_resource"
+service = "sleeve-p1"
+value = 1.0
+unit = "flag"
 censored = false
 
 [[metrics]]
@@ -845,3 +1055,123 @@ name = "synthetic"
 value = 1.0
 unit = "flag"
 censored = false
+
+[[decisions]]
+scenario_id = "T0"
+decided_at_s = 0.0
+observed_up_to_s = 0.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T1"
+decided_at_s = 10800.0
+observed_up_to_s = 10800.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T2"
+decided_at_s = 0.0
+observed_up_to_s = 0.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T3"
+decided_at_s = 28800.0
+observed_up_to_s = 28800.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T4"
+decided_at_s = 28800.0
+observed_up_to_s = 28800.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T5"
+decided_at_s = 28800.0
+observed_up_to_s = 28800.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T6"
+decided_at_s = 46800.0
+observed_up_to_s = 46800.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T7"
+decided_at_s = 0.0
+observed_up_to_s = 0.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T8"
+decided_at_s = 10800.0
+observed_up_to_s = 10800.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T9"
+decided_at_s = 10800.0
+observed_up_to_s = 10800.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T10"
+decided_at_s = 14400.0
+observed_up_to_s = 14400.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T11"
+decided_at_s = 61200.0
+observed_up_to_s = 61200.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T12"
+decided_at_s = 0.0
+observed_up_to_s = 0.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T13"
+decided_at_s = 28800.0
+observed_up_to_s = 28800.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T14"
+decided_at_s = 36000.0
+observed_up_to_s = 36000.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T15"
+decided_at_s = 39600.0
+observed_up_to_s = 39600.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T16"
+decided_at_s = 36000.0
+observed_up_to_s = 36000.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T17"
+decided_at_s = 28800.0
+observed_up_to_s = 28800.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T18"
+decided_at_s = 61200.0
+observed_up_to_s = 61200.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"
+
+[[decisions]]
+scenario_id = "T19"
+decided_at_s = 0.0
+observed_up_to_s = 0.0
+policy_instance = "earliest-start scheduling at case start (poie-sim timed 0.1.0)"

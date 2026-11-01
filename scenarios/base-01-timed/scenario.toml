@@ -3,9 +3,16 @@
 # Specification: Physical Ontology §3.8–3.10; development plan M5.
 # All numbers are SYNTHETIC assumptions, not calibrated data.
 
-schema = "poie.timed-scenario/0.1"
+schema = "poie.timed-scenario/0.2"
 model = "../base-01/model.toml"
 description = "Timed Base-01: pump wear-out, predicted bus failure, day/night energy, supply interruption."
+
+# Evidence validity (PO §4 rule 4; required since schema 0.2, issue #111).
+# Every status in this file and every status declared in the structural model
+# is evidence at its time (initial statuses at t = 0); evidence older than this
+# projects to `unknown`. 24 h is a SYNTHETIC policy; every pre-registered case
+# starts before 24 h, so no case depends on expiry.
+evidence_validity = "24 h"
 
 # The pump is degraded from the start; it wears out at 6 h. Its failure is
 # predicted in the window 4-8 h, so repairs should aim to finish by 4 h.
@@ -43,7 +50,12 @@ initial = "available"
 at = "12 h"
 status = "failed"
 
-# The PV array has no status evidence.
+# The PV array: the structural model declares it `available` without
+# status_evidence, i.e. a synthetic observation by the model author (PO §3.1).
+# This timed scenario deliberately withdraws that declaration — no inspection
+# record exists at t = 0 — so its initial status is `unknown`. Case T7 tests
+# exactly this path (issue #111, review A-06: the difference is an explicit
+# scenario assumption, not two readings of one fact).
 [[asset_timeline]]
 asset = "pv-1"
 initial = "unknown"

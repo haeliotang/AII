@@ -256,6 +256,9 @@ pub struct Asset {
     pub id: String,
     pub kind: String,
     pub status: AssetStatus,
+    /// Evidence record cited for `status`. `None` means the status is
+    /// *declared*: a synthetic observation by the model author (PO §3.1).
+    pub status_evidence: Option<String>,
     pub requires: Vec<String>,
     pub requires_any: Vec<String>,
     pub provides: Vec<String>,
@@ -424,6 +427,7 @@ impl Model {
                 id: a.id.clone(),
                 kind: a.kind.clone(),
                 status: a.status,
+                status_evidence: a.status_evidence.clone(),
                 requires: a.requires.clone(),
                 requires_any: a.requires_any.clone(),
                 provides: a.provides.clone(),
@@ -675,6 +679,18 @@ impl Model {
 
     pub fn process(&self, id: &str) -> Option<&Process> {
         self.processes.iter().find(|p| p.id == id)
+    }
+
+    /// Assets whose known status is declared without `status_evidence`. PO §3.1
+    /// treats such a status as a synthetic observation by the model author: it
+    /// may be used, but reports must list it (issue #111, review A-06).
+    /// `unknown` statuses need no evidence and are not listed.
+    pub fn declared_status_assets(&self) -> Vec<&str> {
+        self.assets
+            .values()
+            .filter(|asset| asset.status_evidence.is_none() && asset.status != AssetStatus::Unknown)
+            .map(|asset| asset.id.as_str())
+            .collect()
     }
 
     /// Resource types with no local producing process (§6.5).
@@ -1251,5 +1267,20 @@ verification = "demonstrated"
 "#))
         .unwrap();
         assert!(matches!(m.mass_balance["turn"], MassBalance::Balanced { .. }));
+    }
+
+    // Issue #111 (P14, review A-06): a status declared without
+    // `status_evidence` is a synthetic observation by the model author (PO
+    // §3.1); it may be used, but it must be reported as such.
+    #[test]
+    fn po3_1_declared_status_without_evidence_is_reported_as_synthetic() {
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../scenarios/base-01/model.toml");
+        let m = Model::load(&path).unwrap();
+        let declared = m.declared_status_assets();
+        for asset in ["pv-1", "bat-1", "bus-1", "filter-1", "lathe-1", "gauge-1", "charger-1", "robot-m1"] {
+            assert!(declared.contains(&asset), "{asset} has no status evidence: {declared:?}");
+        }
+        assert!(!declared.contains(&"pump-p1"), "pump-p1 cites obs/vibration-p1-0031");
+        assert_eq!(m.assets["pump-p1"].status_evidence.as_deref(), Some("obs/vibration-p1-0031"));
     }
 }

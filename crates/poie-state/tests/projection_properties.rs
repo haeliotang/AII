@@ -195,7 +195,14 @@ fn expected_state(records: &[Record], policy: EvidencePolicy, now_ms: i64) -> Pr
         let expired = now_ms.saturating_sub(event_time) > policy.max_age_ms as i64;
         lots.insert(subject, if expired { Projected::Unknown { expired } } else { Projected::Known(amount) });
     }
-    ProjectedState { assets, lots, state_version, projection_version: "poie.projection/0.1".to_string() }
+    ProjectedState {
+        assets,
+        lots,
+        state_version,
+        projection_version: "poie.projection/0.1".to_string(),
+        as_of_ms: now_ms,
+        evidence_policy: policy,
+    }
 }
 
 #[test]

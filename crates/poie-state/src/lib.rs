@@ -6,21 +6,23 @@
 //! - [`record`]: the nine record kinds, the common envelope and schema
 //!   validation (SAP §2.1–2.2).
 //! - [`action`]: actions, the exhaustive lifecycle transition table, and a
-//!   ledger that rejects out-of-table transitions and duplicate dispatch of one
-//!   idempotency key (SAP §3).
+//!   ledger that rejects out-of-table transitions and enforces the single
+//!   idempotency-key rule, including re-dispatch with the original key (SAP §3).
 //! - [`projection`]: versioned projections with state versions and evidence
 //!   expiry (SAP §2.3, Physical Ontology §4).
-//! - [`review`]: the six pre-dispatch checks with traceable rejection reasons
+//! - [`review`]: the seven pre-dispatch checks with traceable rejection reasons
 //!   (SAP §4).
 //! - [`log`]: the append-only local log with per-site sequence numbers and
 //!   crash-tail recovery (SAP §1, §5; ADR-0003).
 //! - [`executor`]: a deterministic simulated executor with dedup, expiry and
-//!   receipt-loss/NACK/restart fault injection (SAP §4, §9).
+//!   DUPLICATE receipts, lease-epoch fencing and receipt-loss/NACK/restart
+//!   fault injection (SAP §4, §6.1, §9).
 //! - [`recovery`]: restart replay of transition records and SAP §5 decisions
 //!   (dispatched -> outcome_unknown, authorized -> re-review, ...).
 //! - [`isolation`]: simulation branches can never dispatch a field action
 //!   (SAP §7).
-//! - [`ownership`]: command ownership, leases and clock-skew detection (SAP §6.1).
+//! - [`ownership`]: command ownership, leases with epochs (fencing tokens),
+//!   negotiated hand-over vs expiry takeover, and clock-skew detection (SAP §6.1).
 //! - [`reservations`]: site-local inventory reservations with partition-safe
 //!   remote requests (SAP §6.2).
 //! - [`bridge`]: projected asset statuses feed the physical-ontology model used

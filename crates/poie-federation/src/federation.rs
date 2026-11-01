@@ -176,24 +176,52 @@ impl Federation {
             ..ReconciliationReport::default()
         };
 
-        // 1. One idempotency key must not be used by two actions.
-        let mut by_key: BTreeMap<String, Vec<(&str, RecordId)>> = BTreeMap::new();
+        // 0. A record id names one record (SAP §2.1). After a rollback a site can
+        //    reuse `<site>/<seq>` for different content; deduplication by id
+        //    would then let the logs diverge silently (issue #111, review B-06).
+        let mut by_id: BTreeMap<&RecordId, Vec<(&str, &Record)>> = BTreeMap::new();
+        for (name, site) in &self.sites {
+            for record in site.records() {
+                by_id.entry(&record.envelope.record_id).or_default().push((name.as_str(), record));
+            }
+        }
+        for (id, copies) in by_id {
+            let first = copies[0].1;
+            if let Some((other_site, _)) = copies.iter().find(|(_, record)| *record != first) {
+                report.conflicts.push(Conflict {
+                    kind: ConflictKind::SequenceCollision,
+                    detail: format!(
+                        "record {}/{} has different content at {} and {other_site}: a sequence number was reused",
+                        id.site, id.seq, copies[0].0
+                    ),
+                    records: vec![id.clone()],
+                });
+            }
+        }
+
+        // 1. One idempotency key must not be used by actions of two sites
+        //    (SAP §6.4 rule 3). Within one site, several actions may share a
+        //    key as a re-dispatch chain (SAP §3.2 rule 2); the site's own
+        //    ledger enforces that chain, so it is not a conflict here.
+        let mut by_key: BTreeMap<String, Vec<(&str, &str, RecordId)>> = BTreeMap::new();
         for record in &records {
             if let Payload::Action(action) = &record.payload {
-                by_key
-                    .entry(action.idempotency_key.clone())
-                    .or_default()
-                    .push((&action.action_id, record.envelope.record_id.clone()));
+                by_key.entry(action.idempotency_key.clone()).or_default().push((
+                    &action.action_id,
+                    &record.envelope.site,
+                    record.envelope.record_id.clone(),
+                ));
             }
         }
         for (key, actions) in &by_key {
-            let distinct_actions: BTreeSet<&str> = actions.iter().map(|(action_id, _)| *action_id).collect();
-            if distinct_actions.len() > 1 {
+            let distinct_actions: BTreeSet<&str> = actions.iter().map(|(action_id, _, _)| *action_id).collect();
+            let sites: BTreeSet<&str> = actions.iter().map(|(_, site, _)| *site).collect();
+            if sites.len() > 1 {
                 report.duplicate_actions += 1;
                 report.conflicts.push(Conflict {
                     kind: ConflictKind::DuplicateIdempotencyKey,
                     detail: format!("idempotency key {key:?} used by {} actions", distinct_actions.len()),
-                    records: actions.iter().map(|(_, record)| record.clone()).collect(),
+                    records: actions.iter().map(|(_, _, record)| record.clone()).collect(),
                 });
             }
         }
@@ -316,6 +344,7 @@ mod tests {
                 scope: "dispatch".to_string(),
                 valid_until: Timestamp(hlc.physical_ms + 120_000),
             }),
+            redispatch_of: None,
         };
         Record::new(envelope(site, seq, hlc), Payload::Action(Box::new(action))).unwrap()
     }
@@ -443,5 +472,72 @@ mod tests {
         });
         let report = sequential.reconcile(&BTreeMap::new(), 2_000);
         assert!(report.conflicts.is_empty());
+    }
+
+    /// Review B-04 counterexample 3 (issue #107): a legitimate same-site
+    /// re-dispatch that reuses its original key (SAP §3.2 rule 2) is not a
+    /// cross-site key conflict.
+    #[test]
+    fn sap6_4_same_site_redispatch_chain_is_not_a_key_conflict() {
+        let mut federation = Federation::new();
+        federation.add_site("site-a", 1_000).unwrap();
+        federation.add_site("site-b", 1_000).unwrap();
+        federation.append("site-a", action_record("site-a", 1, Hlc::new(1_100, 0), "a1", "k")).unwrap();
+        let mut retry = action_record("site-a", 2, Hlc::new(1_200, 0), "a2", "k");
+        if let Payload::Action(action) = &mut retry.payload {
+            action.redispatch_of = Some("a1".to_string());
+        }
+        federation.append("site-a", retry).unwrap();
+        federation.exchange("site-a", "site-b").unwrap();
+        let report = federation.reconcile(&BTreeMap::new(), 2_000);
+        assert!(
+            !report.conflicts.iter().any(|conflict| conflict.kind == ConflictKind::DuplicateIdempotencyKey),
+            "{:?}",
+            report.conflicts
+        );
+        assert_eq!(report.duplicate_actions, 0);
+    }
+
+    // Issue #111 (P16, review B-06): site-a writes A/1 (`dose-1`), syncs it to
+    // site-b, is restored from an empty snapshot and writes a different A/1
+    // (`flush-7`). The two logs must not diverge silently.
+    #[test]
+    fn sap6_4_reused_sequence_with_different_content_is_a_collision() {
+        let mut federation = Federation::new();
+        federation.add_site("site-a", 1_000).unwrap();
+        federation.add_site("site-b", 1_000).unwrap();
+        federation.append("site-a", action_record("site-a", 1, Hlc::new(1_100, 0), "dose-1", "key-dose")).unwrap();
+        federation.exchange("site-a", "site-b").unwrap();
+        // Rollback: site-a restarts from an empty snapshot.
+        federation.add_site("site-a", 1_000).unwrap();
+        federation.append("site-a", action_record("site-a", 1, Hlc::new(1_300, 0), "flush-7", "key-flush")).unwrap();
+        federation.exchange("site-a", "site-b").unwrap();
+        let report = federation.reconcile(&BTreeMap::new(), 2_000);
+        let collision = report
+            .conflicts
+            .iter()
+            .find(|conflict| conflict.kind == ConflictKind::SequenceCollision)
+            .expect("a reused record id with different content is a sequence collision");
+        assert_eq!(collision.records, vec![RecordId::new("site-a", 1)]);
+    }
+
+    #[test]
+    fn sap6_4_a_rolled_back_site_learns_its_high_water_mark_from_peers() {
+        let mut federation = Federation::new();
+        federation.add_site("site-a", 1_000).unwrap();
+        federation.add_site("site-b", 1_000).unwrap();
+        federation.append("site-a", action_record("site-a", 1, Hlc::new(1_100, 0), "dose-1", "key-dose")).unwrap();
+        federation.exchange("site-a", "site-b").unwrap();
+        federation.add_site("site-a", 1_000).unwrap();
+        // Exchanging before writing restores the site's own history ...
+        federation.exchange("site-a", "site-b").unwrap();
+        assert_eq!(federation.site("site-a").unwrap().last_seq(), 1);
+        // ... so the old sequence number cannot be reused.
+        assert!(federation
+            .append("site-a", action_record("site-a", 1, Hlc::new(1_300, 0), "flush-7", "key-flush"))
+            .is_err());
+        federation.append("site-a", action_record("site-a", 2, Hlc::new(1_300, 0), "flush-7", "key-flush")).unwrap();
+        let report = federation.reconcile(&BTreeMap::new(), 2_000);
+        assert!(report.conflicts.iter().all(|conflict| conflict.kind != ConflictKind::SequenceCollision));
     }
 }

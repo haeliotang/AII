@@ -46,7 +46,12 @@ pub fn recovery_path_for_goal(model: &Model, goal: &Goal, min_verification: Veri
                 steps.join(" -> ")
             )
         }
-        graph::Verdict::Blocked => format!("blocked: root causes [{}]", causes.join(", ")),
+        // VEC §3.3 (issue #106): relative to the current snapshot and a bounded,
+        // incomplete search; the label says so wherever the path is reported.
+        graph::Verdict::Blocked => format!(
+            "blocked: root causes [{}] (current snapshot, bounded search; not a proof of infeasibility)",
+            causes.join(", ")
+        ),
         graph::Verdict::Unknown => format!("unknown: root causes [{}]", causes.join(", ")),
         graph::Verdict::SearchLimit => "search_limit: budget exhausted".to_string(),
     };
@@ -147,6 +152,8 @@ mod tests {
         let path = &trace.recovery_paths["potable-water"];
         assert!(path.structural.starts_with("blocked:"), "{}", path.structural);
         assert!(path.structural.contains("bus-1"), "{}", path.structural);
+        // VEC §3.3 (issue #106): the recovery path must not read as a proof.
+        assert!(path.structural.contains("not a proof of infeasibility"), "{}", path.structural);
     }
 
     #[test]

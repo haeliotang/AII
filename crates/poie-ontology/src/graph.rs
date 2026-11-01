@@ -503,7 +503,8 @@ impl<'m> Solver<'m> {
         // Multi-source top-up (§6.3 rule 10): when no single process covers the
         // whole shortfall, several alternative processes may each contribute a
         // part of it. Greedy, deterministic and bounded; failed attempts never
-        // mutate the ledger.
+        // mutate the ledger. Greedy is incomplete (issue #106): `solve` falls
+        // back to rotated orders (rule 17), which is still not exhaustive.
         let mut trial = ledger.clone();
         let mut progressed = true;
         let mut attempts = 0usize;
@@ -698,8 +699,39 @@ fn dedup(blockers: Vec<Blocker>) -> Vec<Blocker> {
     blockers.into_iter().filter(|b| seen.insert((b.kind, b.subject.clone(), b.path.clone(), b.root))).collect()
 }
 
+/// Number of rotated attempts shared by [`solve`] and [`enumerate`] (§6.3 rule 17).
+pub const MAX_ATTEMPTS: usize = 64;
+
+/// Finds one structural candidate route (§6.3).
+///
+/// The declared-order attempt (shift 0) is tried first. When it finds no
+/// candidate, the solver falls back to the same bounded rotated attempts that
+/// [`enumerate`] uses (§6.3 rule 17), so `solve` reports a non-candidate verdict
+/// exactly when `enumerate` finds no route. The search is still bounded and
+/// incomplete: `blocked` means *this solver found no route on the current
+/// snapshot*, not that no route exists (§6.4).
 pub fn solve(model: &Model, query: &Query) -> QueryResult {
-    solve_attempt(model, query, 0)
+    let first = solve_attempt(model, query, 0);
+    if first.verdict == Verdict::Candidate {
+        return first;
+    }
+    let mut failures = vec![first];
+    for shift in 1..MAX_ATTEMPTS {
+        let result = solve_attempt(model, query, shift);
+        if result.verdict == Verdict::Candidate {
+            return result;
+        }
+        failures.push(result);
+    }
+    // No attempt found a route. A verdict is only as definite as its least
+    // definite attempt: any search limit makes it `search_limit`, any unknown
+    // state `unknown`; otherwise every attempt was blocked by determined causes.
+    for verdict in [Verdict::SearchLimit, Verdict::Unknown] {
+        if let Some(index) = failures.iter().position(|r| r.verdict == verdict) {
+            return failures.swap_remove(index);
+        }
+    }
+    failures.swap_remove(0)
 }
 
 fn solve_attempt(model: &Model, query: &Query, shift: usize) -> QueryResult {
@@ -792,10 +824,10 @@ fn summarize_route(model: &Model, result: &QueryResult) -> CandidateRoute {
 /// The solver is deterministic, so enumeration rotates the order in which OR
 /// alternatives (producers, restorers, capability providers, alternative
 /// supports) are tried across attempts and deduplicates the resulting routes.
-/// The search is deliberately bounded (64 attempts): it returns the routes it
-/// found, possibly fewer than `limit`, and does not claim exhaustiveness.
+/// The search is deliberately bounded ([`MAX_ATTEMPTS`] attempts, the same as
+/// [`solve`]'s fallback): it returns the routes it found, possibly fewer than
+/// `limit`, and does not claim exhaustiveness.
 pub fn enumerate(model: &Model, query: &Query, limit: usize) -> Vec<CandidateRoute> {
-    const MAX_ATTEMPTS: usize = 64;
     let mut routes: Vec<CandidateRoute> = Vec::new();
     let mut seen: BTreeSet<String> = BTreeSet::new();
     if limit == 0 {
@@ -1617,5 +1649,79 @@ verification = "verified"
         );
         assert_eq!(r.verdict, Verdict::Blocked, "{r:?}");
         assert!(r.root_causes().any(|b| b.kind == BlockerKind::MassUnchecked && b.subject == "conjure-bar"), "{r:?}");
+    }
+
+    /// C-01 counterexample 1 (issue #106): A uses 2 kg x, B uses 1 kg x + 1 kg y,
+    /// stock x = 4 kg, y = 2 kg, goal obtain(r, 3). The declared-order greedy
+    /// top-up (A, A) exhausts x; B, B, A is a valid route.
+    const GREEDY_TRAP: &str = r#"
+[[resource]]
+id = "x"
+unit = "kg"
+
+[[resource]]
+id = "y"
+unit = "kg"
+
+[[resource]]
+id = "r"
+unit = "item"
+mass_per_unit = "2 kg"
+
+[[lot]]
+id = "lot-x"
+resource = "x"
+quantity = "4 kg"
+quality = "accepted"
+
+[[lot]]
+id = "lot-y"
+resource = "y"
+quantity = "2 kg"
+quality = "accepted"
+
+[[process]]
+id = "make-r-a"
+inputs = [{ resource = "x", quantity = "2 kg" }]
+outputs = [{ resource = "r", quantity = "1 item" }]
+verification = "demonstrated"
+
+[[process]]
+id = "make-r-b"
+inputs = [{ resource = "x", quantity = "1 kg" }, { resource = "y", quantity = "1 kg" }]
+outputs = [{ resource = "r", quantity = "1 item" }]
+verification = "demonstrated"
+"#;
+
+    #[test]
+    fn po6_3_solve_agrees_with_enumerate_on_the_greedy_multi_source_trap() {
+        let m = model_from_toml(GREEDY_TRAP);
+        let q = obtain_query("r", "3 item");
+        let routes = enumerate(&m, &q, 10);
+        assert!(!routes.is_empty(), "enumeration should find the B, B, A route");
+        let r = solve(&m, &q);
+        assert_eq!(
+            r.verdict,
+            Verdict::Candidate,
+            "solve must not report blocked when enumerate finds a candidate: {}",
+            render(&m, &r)
+        );
+    }
+
+    #[test]
+    fn po6_3_solve_blocked_implies_enumerate_finds_no_route() {
+        let m = model_from_toml(GREEDY_TRAP);
+        for quantity in ["1 item", "2 item", "3 item", "4 item"] {
+            let q = obtain_query("r", quantity);
+            let r = solve(&m, &q);
+            let routes = enumerate(&m, &q, 10);
+            assert_eq!(
+                r.verdict == Verdict::Candidate,
+                !routes.is_empty(),
+                "obtain(r, {quantity}): solve {} but enumerate found {} route(s)",
+                r.verdict.as_str(),
+                routes.len()
+            );
+        }
     }
 }

@@ -64,6 +64,7 @@ fn action(id: &str, key: &str, from_ms: i64, until_ms: i64) -> Action {
             scope: "dispatch".to_string(),
             valid_until: Timestamp(until_ms + 60_000),
         }),
+        redispatch_of: None,
     }
 }
 
