@@ -180,6 +180,16 @@ impl MachineReport {
             if !run.budget_used_s.is_finite() || run.budget_used_s < 0.0 {
                 errors.push(ReportError::Invalid("budget used must be finite and non-negative".into()));
             }
+            // VEC §3.2/§3.3 (issue #106): only the `certificate` method can support
+            // "infeasible in the model"; a structural `blocked` alone never can.
+            if matches!(run.verdict, Verdict::InfeasibleInModel { .. })
+                && (self.method != Method::Certificate || run.method != Method::Certificate)
+            {
+                errors.push(ReportError::Invalid(format!(
+                    "infeasible_in_model for {} needs the certificate method, not {}",
+                    run.scenario_id, run.method
+                )));
+            }
             if let Verdict::HeldOnTested { tested_scenarios, .. } = &run.verdict {
                 if *tested_scenarios > self.runs.len() {
                     errors.push(ReportError::Invalid("held_on_tested claims more scenarios than were run".into()));

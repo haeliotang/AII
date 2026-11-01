@@ -33,7 +33,9 @@ use poie_viability::report::{
 use poie_viability::verdict::Verdict;
 
 const CONTRACT_VERSION: &str = "viability-expansion/0.2";
-const CHECKABLE_CERTIFICATE: &str = "cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/cases.toml";
+const REPLAY_STRUCTURAL: &str = "cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml";
+/// Constraint name for a recovery goal the tested policy could not route (VEC §3.3).
+const STRUCTURAL_ROUTE: &str = "structural_route";
 const PROCESS_CONFIG: &str = "experiments/vec-base01/process.toml";
 const MINIMUM_SERVICE_LEVEL: f64 = 0.8;
 
@@ -124,9 +126,19 @@ fn map_verdict(case: &CaseDoc, outcome: &TimedOutcome) -> Verdict {
                 state: outcome.detail.clone(),
             }
         }
-        TimedVerdict::Blocked => Verdict::InfeasibleInModel {
-            certificate: format!("capability-graph blocked: {}", outcome.detail),
-            checkable: CHECKABLE_CERTIFICATE.to_string(),
+        // VEC §3.3 (issue #106): `blocked` only says the structural solver found
+        // no route on the start snapshot; it ignores supplies arriving within the
+        // horizon and the solver is incomplete. Under the enumerated method it is
+        // a counterexample for the tested one-shot policy, not a certificate.
+        TimedVerdict::Blocked => Verdict::Counterexample {
+            scenario_id: case.id.clone(),
+            first_violation_s: parse_seconds(&case.start),
+            constraint: STRUCTURAL_ROUTE.to_string(),
+            state: format!(
+                "capability-graph blocked: {}; the tested policy found no structural route on the start \
+                 snapshot (replay: {REPLAY_STRUCTURAL}); not a proof of infeasibility in the model",
+                outcome.detail
+            ),
         },
         TimedVerdict::SearchLimit => {
             Verdict::Timeout { completed_scenarios: 0, budget: "capability-graph max depth".to_string() }
