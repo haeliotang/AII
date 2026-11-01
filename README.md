@@ -86,10 +86,14 @@ pnpm install
 pnpm tauri dev
 ```
 
+![Poieweave frontend — capability overview](apps/desktop/screenshots/en-overview.png)
+
 See [apps/desktop/README.md](apps/desktop/README.md) for the host commands,
 build steps and current boundaries.
 
-### Desktop screens (English UI)
+### Frontend screenshots (English UI)
+
+Full-size PNGs are in [`apps/desktop/screenshots/`](apps/desktop/screenshots).
 
 | Overview | Capabilities |
 | --- | --- |

@@ -6,7 +6,7 @@ owns the app-data directory, SQLite state and a size-limited sandbox; it embeds 
 Base-01 model and runs the real `poie-*` domain crates. The frontend is React 19 +
 TypeScript + Vite.
 
-## Screens (English UI)
+## Frontend screenshots (English UI)
 
 | Overview | Capabilities |
 | --- | --- |
