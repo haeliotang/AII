@@ -2300,14 +2300,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-ontology"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "toml 0.8.2",
+]
+
+[[package]]
+name = "poie-plan"
+version = "0.1.0"
+dependencies = [
+ "poie-ontology",
+ "poie-state",
+]
+
+[[package]]
+name = "poie-state"
+version = "0.1.0"
+dependencies = [
+ "poie-ontology",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "poieweave-desktop"
 version = "0.1.0"
 dependencies = [
+ "poie-ontology",
+ "poie-plan",
  "rusqlite",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
+ "toml 0.8.2",
 ]
 
 [[package]]
