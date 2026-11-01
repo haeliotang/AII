@@ -76,6 +76,32 @@ pub fn restart_decision(state: ActionState) -> RestartDecision {
     }
 }
 
+/// The predecessor's actions on `target`, written by `site`, that are not
+/// settled: `dispatched`, `acknowledged` or `outcome_unknown`. A site taking
+/// over an expired lease reconciles the predecessor's log with this list
+/// before it may dispatch non-idempotent actions (SAP §6.1 rule 4; feeds
+/// [`crate::ownership::Handover::Reconciled`]).
+pub fn unresolved_actions_on(records: &[Record], target: &str, site: &str) -> Result<Vec<String>, RecoveryError> {
+    let states = replay_action_states(records)?;
+    let mut unresolved = Vec::new();
+    for record in records {
+        if !record.envelope.namespace.is_live() || record.envelope.site != site {
+            continue;
+        }
+        if let Payload::Action(action) = &record.payload {
+            if action.target == target
+                && matches!(
+                    states.get(&action.action_id),
+                    Some(ActionState::Dispatched | ActionState::Acknowledged | ActionState::OutcomeUnknown)
+                )
+            {
+                unresolved.push(action.action_id.clone());
+            }
+        }
+    }
+    Ok(unresolved)
+}
+
 pub fn restart_plan(states: &BTreeMap<String, ActionState>) -> BTreeMap<String, RestartDecision> {
     states.iter().map(|(action_id, state)| (action_id.clone(), restart_decision(*state))).collect()
 }
@@ -124,6 +150,7 @@ mod tests {
                 window_ms: 60_000,
             },
             authorization: None,
+            redispatch_of: None,
         }
     }
 
@@ -187,5 +214,21 @@ mod tests {
         for state in [ActionState::Proposed, ActionState::Validated, ActionState::Verified, ActionState::Failed] {
             assert_eq!(restart_decision(state), RestartDecision::Unchanged);
         }
+    }
+
+    #[test]
+    fn unresolved_predecessor_actions_are_listed_for_a_takeover() {
+        let mut records = vec![
+            action_record(1),
+            transition_record(2, ActionState::Proposed, ActionState::Validated),
+            transition_record(3, ActionState::Validated, ActionState::Authorized),
+            transition_record(4, ActionState::Authorized, ActionState::Dispatched),
+            transition_record(5, ActionState::Dispatched, ActionState::OutcomeUnknown),
+        ];
+        assert_eq!(unresolved_actions_on(&records, "pump-p1", "site-a").unwrap(), vec!["a1".to_string()]);
+        assert!(unresolved_actions_on(&records, "pump-p2", "site-a").unwrap().is_empty());
+        assert!(unresolved_actions_on(&records, "pump-p1", "site-b").unwrap().is_empty());
+        records.push(transition_record(6, ActionState::OutcomeUnknown, ActionState::Failed));
+        assert!(unresolved_actions_on(&records, "pump-p1", "site-a").unwrap().is_empty());
     }
 }

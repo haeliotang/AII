@@ -14,7 +14,7 @@ pub mod sim;
 pub mod verify;
 pub mod writable;
 
-pub use gate::{DispatchOutcome, ExecutionGate, GateError};
+pub use gate::{DispatchOutcome, ExecutionGate, GateError, GateLease};
 pub use sim::{AdapterFault, SimulatedWritableAdapter};
 pub use verify::{verify_action, VerificationError, VerificationOutcome, VerificationSignal};
 pub use writable::{Command, ExecError, Receipt, WritableAdapter, WritableDeclaration};

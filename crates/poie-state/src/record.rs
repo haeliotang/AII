@@ -11,7 +11,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::action::{Action, ActionState};
+use crate::action::{Action, ActionState, ReceiptKind};
 
 /// Version string carried by every record envelope (SAP §2.1).
 pub const RECORD_SCHEMA_VERSION: &str = "poie.record/0.2";
@@ -197,15 +197,57 @@ pub enum ObservationValue {
 /// envelope's `kind`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Payload {
-    Observation { value: ObservationValue, quality: Quality },
-    Estimate { value: Quantity, uncertainty: f64, model_version: String, inputs: Vec<RecordId> },
-    Prediction { value: Quantity, horizon_ms: u64, model_version: String, scenario: String },
-    DesiredState { target: Quantity, requester: String, valid_until: Timestamp },
+    Observation {
+        value: ObservationValue,
+        quality: Quality,
+    },
+    Estimate {
+        value: Quantity,
+        uncertainty: f64,
+        model_version: String,
+        inputs: Vec<RecordId>,
+    },
+    Prediction {
+        value: Quantity,
+        horizon_ms: u64,
+        model_version: String,
+        scenario: String,
+    },
+    DesiredState {
+        target: Quantity,
+        requester: String,
+        valid_until: Timestamp,
+    },
     Action(Box<Action>),
-    Transition { action_id: String, from: ActionState, to: ActionState, reason: String, actor: String },
-    Receipt { action_id: String, recipient: String, ack: bool, reason: Option<String> },
-    Verification { action_id: String, evidence: Vec<RecordId>, outcome: VerificationOutcome, self_reported: bool },
-    Correction { corrected: RecordId, reason: String },
+    Transition {
+        action_id: String,
+        from: ActionState,
+        to: ActionState,
+        reason: String,
+        actor: String,
+    },
+    /// Executor receipt (SAP §2.2): ACK (`ack`, no `duplicate_of`), NACK
+    /// (`!ack`: the executor declares it did not execute) or DUPLICATE (`ack`
+    /// with `duplicate_of`: the key was already accepted for that action;
+    /// nothing new was executed). See [`Payload::receipt_kind`].
+    Receipt {
+        action_id: String,
+        recipient: String,
+        ack: bool,
+        reason: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        duplicate_of: Option<String>,
+    },
+    Verification {
+        action_id: String,
+        evidence: Vec<RecordId>,
+        outcome: VerificationOutcome,
+        self_reported: bool,
+    },
+    Correction {
+        corrected: RecordId,
+        reason: String,
+    },
 }
 
 /// Whether verification confirmed the intended effect (SAP §2.2, §3.3).
@@ -221,6 +263,17 @@ impl Payload {
     pub fn verification_is_independent(&self) -> Option<bool> {
         match self {
             Payload::Verification { self_reported, .. } => Some(!self_reported),
+            _ => None,
+        }
+    }
+
+    /// For receipt records, the receipt kind (SAP §3.3). `None` for other
+    /// payloads.
+    pub fn receipt_kind(&self) -> Option<ReceiptKind> {
+        match self {
+            Payload::Receipt { ack: false, .. } => Some(ReceiptKind::Nack),
+            Payload::Receipt { duplicate_of: Some(_), .. } => Some(ReceiptKind::Duplicate),
+            Payload::Receipt { .. } => Some(ReceiptKind::Ack),
             _ => None,
         }
     }
@@ -314,6 +367,9 @@ impl Record {
         if envelope.source.identifier().is_empty() {
             return Err(RecordError::EmptyField("source"));
         }
+        if let Payload::Receipt { ack: false, duplicate_of: Some(_), .. } = &payload {
+            return Err(RecordError::NackWithDuplicate);
+        }
         Ok(Record { envelope, payload })
     }
 
@@ -326,10 +382,15 @@ impl Record {
 pub enum RecordError {
     EmptyField(&'static str),
     UnknownSchemaVersion(String),
-    KindMismatch { envelope: RecordKind, payload: RecordKind },
+    KindMismatch {
+        envelope: RecordKind,
+        payload: RecordKind,
+    },
     InvalidRecordId(String),
     InvalidQuantity(&'static str),
     MissingQuality,
+    /// A NACK means "not executed"; it cannot also name an earlier delivery.
+    NackWithDuplicate,
 }
 
 impl fmt::Display for RecordError {
@@ -345,6 +406,7 @@ impl fmt::Display for RecordError {
             RecordError::InvalidRecordId(value) => write!(f, "record id {value:?} must be <site>/<seq>"),
             RecordError::InvalidQuantity(field) => write!(f, "field {field:?} must be a finite non-negative number"),
             RecordError::MissingQuality => f.write_str("observation needs an uncertainty or a quality grade"),
+            RecordError::NackWithDuplicate => f.write_str("a NACK receipt must not carry duplicate_of"),
         }
     }
 }
@@ -429,5 +491,33 @@ mod tests {
         let sim = Namespace::simulation("branch-1").unwrap();
         assert!(!sim.is_live());
         assert!(Namespace::simulation("").is_err());
+    }
+
+    #[test]
+    fn receipts_distinguish_ack_nack_and_duplicate() {
+        let receipt = |ack: bool, duplicate_of: Option<&str>| {
+            let mut env = envelope();
+            env.kind = RecordKind::Receipt;
+            Record::new(
+                env,
+                Payload::Receipt {
+                    action_id: "a2".into(),
+                    recipient: "exec-1".into(),
+                    ack,
+                    reason: None,
+                    duplicate_of: duplicate_of.map(str::to_string),
+                },
+            )
+        };
+        assert_eq!(receipt(true, None).unwrap().payload.receipt_kind(), Some(ReceiptKind::Ack));
+        assert_eq!(receipt(false, None).unwrap().payload.receipt_kind(), Some(ReceiptKind::Nack));
+        let duplicate = receipt(true, Some("a1")).unwrap();
+        assert_eq!(duplicate.payload.receipt_kind(), Some(ReceiptKind::Duplicate));
+        assert!(matches!(receipt(false, Some("a1")), Err(RecordError::NackWithDuplicate)));
+        // An ACK without duplicate_of serializes exactly as before.
+        let json = serde_json::to_string(&receipt(true, None).unwrap()).unwrap();
+        assert!(!json.contains("duplicate_of"));
+        let back: Record = serde_json::from_str(&serde_json::to_string(&duplicate).unwrap()).unwrap();
+        assert_eq!(back, duplicate);
     }
 }

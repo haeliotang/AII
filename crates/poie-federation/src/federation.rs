@@ -176,24 +176,29 @@ impl Federation {
             ..ReconciliationReport::default()
         };
 
-        // 1. One idempotency key must not be used by two actions.
-        let mut by_key: BTreeMap<String, Vec<(&str, RecordId)>> = BTreeMap::new();
+        // 1. One idempotency key must not be used by actions of two sites
+        //    (SAP §6.4 rule 3). Within one site, several actions may share a
+        //    key as a re-dispatch chain (SAP §3.2 rule 2); the site's own
+        //    ledger enforces that chain, so it is not a conflict here.
+        let mut by_key: BTreeMap<String, Vec<(&str, &str, RecordId)>> = BTreeMap::new();
         for record in &records {
             if let Payload::Action(action) = &record.payload {
-                by_key
-                    .entry(action.idempotency_key.clone())
-                    .or_default()
-                    .push((&action.action_id, record.envelope.record_id.clone()));
+                by_key.entry(action.idempotency_key.clone()).or_default().push((
+                    &action.action_id,
+                    &record.envelope.site,
+                    record.envelope.record_id.clone(),
+                ));
             }
         }
         for (key, actions) in &by_key {
-            let distinct_actions: BTreeSet<&str> = actions.iter().map(|(action_id, _)| *action_id).collect();
-            if distinct_actions.len() > 1 {
+            let distinct_actions: BTreeSet<&str> = actions.iter().map(|(action_id, _, _)| *action_id).collect();
+            let sites: BTreeSet<&str> = actions.iter().map(|(_, site, _)| *site).collect();
+            if sites.len() > 1 {
                 report.duplicate_actions += 1;
                 report.conflicts.push(Conflict {
                     kind: ConflictKind::DuplicateIdempotencyKey,
                     detail: format!("idempotency key {key:?} used by {} actions", distinct_actions.len()),
-                    records: actions.iter().map(|(_, record)| record.clone()).collect(),
+                    records: actions.iter().map(|(_, _, record)| record.clone()).collect(),
                 });
             }
         }
@@ -316,6 +321,7 @@ mod tests {
                 scope: "dispatch".to_string(),
                 valid_until: Timestamp(hlc.physical_ms + 120_000),
             }),
+            redispatch_of: None,
         };
         Record::new(envelope(site, seq, hlc), Payload::Action(Box::new(action))).unwrap()
     }
@@ -443,5 +449,29 @@ mod tests {
         });
         let report = sequential.reconcile(&BTreeMap::new(), 2_000);
         assert!(report.conflicts.is_empty());
+    }
+
+    /// Review B-04 counterexample 3 (issue #107): a legitimate same-site
+    /// re-dispatch that reuses its original key (SAP §3.2 rule 2) is not a
+    /// cross-site key conflict.
+    #[test]
+    fn sap6_4_same_site_redispatch_chain_is_not_a_key_conflict() {
+        let mut federation = Federation::new();
+        federation.add_site("site-a", 1_000).unwrap();
+        federation.add_site("site-b", 1_000).unwrap();
+        federation.append("site-a", action_record("site-a", 1, Hlc::new(1_100, 0), "a1", "k")).unwrap();
+        let mut retry = action_record("site-a", 2, Hlc::new(1_200, 0), "a2", "k");
+        if let Payload::Action(action) = &mut retry.payload {
+            action.redispatch_of = Some("a1".to_string());
+        }
+        federation.append("site-a", retry).unwrap();
+        federation.exchange("site-a", "site-b").unwrap();
+        let report = federation.reconcile(&BTreeMap::new(), 2_000);
+        assert!(
+            !report.conflicts.iter().any(|conflict| conflict.kind == ConflictKind::DuplicateIdempotencyKey),
+            "{:?}",
+            report.conflicts
+        );
+        assert_eq!(report.duplicate_actions, 0);
     }
 }
