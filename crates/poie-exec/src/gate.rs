@@ -23,6 +23,11 @@ pub enum DispatchOutcome {
     Rejected {
         reason: String,
     },
+    /// DUPLICATE receipt: the executor had already accepted this key (for
+    /// `original`); nothing new was executed (SAP §3.3).
+    Duplicate {
+        original: String,
+    },
 }
 
 impl DispatchOutcome {
@@ -57,6 +62,7 @@ pub struct ExecutionGate {
     takeover: bool,
     degraded: bool,
     dispatched_keys: BTreeSet<String>,
+    lease_epoch: Option<u64>,
 }
 
 impl ExecutionGate {
@@ -85,6 +91,23 @@ impl ExecutionGate {
 
     pub fn is_degraded(&self) -> bool {
         self.degraded
+    }
+
+    /// Site policy for re-dispatching an `idempotent` action while the previous
+    /// attempt is `outcome_unknown` (SAP §3.2 rule 2). Off by default.
+    pub fn set_unchecked_idempotent_redispatch(&mut self, allowed: bool) {
+        self.ledger.set_unchecked_idempotent_redispatch(allowed);
+    }
+
+    /// The lease epoch commands must carry while this site holds a lease
+    /// (SAP §6.1 rule 5); `None` for local ownership.
+    pub fn set_lease_epoch(&mut self, epoch: Option<u64>) {
+        self.lease_epoch = epoch;
+    }
+
+    /// Records a verifier's conclusion for an action (SAP §3.3).
+    pub fn record_outcome(&mut self, action_id: &str, to: ActionState) -> Result<(), GateError> {
+        self.ledger.apply(action_id, to).map(|_| ()).map_err(|error| GateError::NotAuthorized(error.to_string()))
     }
 
     pub fn ledger(&self) -> &ActionLedger {
@@ -150,6 +173,7 @@ impl ExecutionGate {
             command: action.command.clone(),
             valid_from_ms: action.valid_from.0,
             valid_until_ms: action.valid_until.0,
+            lease_epoch: self.lease_epoch,
         };
         match adapter.dispatch(&command) {
             Ok(receipt) => {
@@ -230,6 +254,7 @@ mod tests {
                 scope: "dispatch".to_string(),
                 valid_until: Timestamp(until_ms + 60_000),
             }),
+            redispatch_of: None,
         }
     }
 
@@ -298,5 +323,43 @@ mod tests {
         let mut adapter = SimulatedWritableAdapter::new(SimulatedWritableAdapter::declaration(true));
         let error = gate.dispatch(&action, &mut adapter, 1_000).unwrap_err();
         assert!(matches!(error, GateError::UnknownAction(_)));
+    }
+
+    /// Review A-04 / B-05 (issue #107): a policy-allowed re-dispatch after a
+    /// lost ACK reaches an executor that already accepted the key; the DUPLICATE
+    /// receipt must not be recorded as a NACK / `failed`.
+    #[test]
+    fn sap3_3_gate_redispatch_after_a_lost_ack_gets_a_duplicate_receipt_not_failed() {
+        let first = action("a1", "key-1", 0, 10_000);
+        let mut retry = action("a2", "key-1", 0, 10_000);
+        retry.redispatch_of = Some("a1".to_string());
+        let mut gate = ExecutionGate::new();
+        gate.set_unchecked_idempotent_redispatch(true);
+        gate.register_authorized(&first).unwrap();
+        gate.register_authorized(&retry).unwrap();
+        let mut adapter = SimulatedWritableAdapter::new(SimulatedWritableAdapter::declaration(true));
+        adapter.fault = crate::sim::AdapterFault::DropAck;
+        gate.dispatch(&first, &mut adapter, 1_000).unwrap();
+        assert_eq!(gate.ledger().state("a1"), Some(ActionState::OutcomeUnknown));
+
+        adapter.fault = crate::sim::AdapterFault::None;
+        let outcome = gate.dispatch(&retry, &mut adapter, 1_500).unwrap();
+        assert!(matches!(&outcome, DispatchOutcome::Duplicate { original } if original == "a1"), "{outcome:?}");
+        assert_eq!(gate.ledger().state("a2"), Some(ActionState::Acknowledged));
+        assert_eq!(adapter.physical_executions(), 1);
+    }
+
+    /// Review B-03 (issue #107): the gate refuses a command whose remaining
+    /// validity plus the skew bound exceeds the executor's dedup window.
+    #[test]
+    fn sap4_7_gate_refuses_validity_beyond_the_executor_dedup_window() {
+        let (mut gate, action) = gate_with_action();
+        let mut declaration = SimulatedWritableAdapter::declaration(true);
+        declaration.dedup_window_ms = 5_000;
+        let mut adapter = SimulatedWritableAdapter::new(declaration);
+        let outcome = gate.dispatch(&action, &mut adapter, 1_000).unwrap();
+        assert!(matches!(outcome, DispatchOutcome::Rejected { .. }), "{outcome:?}");
+        assert_eq!(adapter.physical_executions(), 0);
+        assert_eq!(gate.ledger().state("a1"), Some(ActionState::Authorized));
     }
 }

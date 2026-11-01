@@ -89,6 +89,7 @@ fn action_record(site: &str, key: &str) -> Record {
             scope: "dispatch".to_string(),
             valid_until: Timestamp(120_000),
         }),
+        redispatch_of: None,
     };
     let envelope = Envelope::new(
         RecordId::new(site, 1),

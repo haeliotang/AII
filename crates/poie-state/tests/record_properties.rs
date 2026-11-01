@@ -67,6 +67,7 @@ fn action_sample() -> Action {
             scope: "dispatch".to_string(),
             valid_until: Timestamp(120_000),
         }),
+        redispatch_of: None,
     }
 }
 

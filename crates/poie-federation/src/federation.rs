@@ -316,6 +316,7 @@ mod tests {
                 scope: "dispatch".to_string(),
                 valid_until: Timestamp(hlc.physical_ms + 120_000),
             }),
+            redispatch_of: None,
         };
         Record::new(envelope(site, seq, hlc), Payload::Action(Box::new(action))).unwrap()
     }
@@ -443,5 +444,29 @@ mod tests {
         });
         let report = sequential.reconcile(&BTreeMap::new(), 2_000);
         assert!(report.conflicts.is_empty());
+    }
+
+    /// Review B-04 counterexample 3 (issue #107): a legitimate same-site
+    /// re-dispatch that reuses its original key (SAP §3.2 rule 2) is not a
+    /// cross-site key conflict.
+    #[test]
+    fn sap6_4_same_site_redispatch_chain_is_not_a_key_conflict() {
+        let mut federation = Federation::new();
+        federation.add_site("site-a", 1_000).unwrap();
+        federation.add_site("site-b", 1_000).unwrap();
+        federation.append("site-a", action_record("site-a", 1, Hlc::new(1_100, 0), "a1", "k")).unwrap();
+        let mut retry = action_record("site-a", 2, Hlc::new(1_200, 0), "a2", "k");
+        if let Payload::Action(action) = &mut retry.payload {
+            action.redispatch_of = Some("a1".to_string());
+        }
+        federation.append("site-a", retry).unwrap();
+        federation.exchange("site-a", "site-b").unwrap();
+        let report = federation.reconcile(&BTreeMap::new(), 2_000);
+        assert!(
+            !report.conflicts.iter().any(|conflict| conflict.kind == ConflictKind::DuplicateIdempotencyKey),
+            "{:?}",
+            report.conflicts
+        );
+        assert_eq!(report.duplicate_actions, 0);
     }
 }

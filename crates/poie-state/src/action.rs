@@ -142,6 +142,25 @@ pub fn trigger_for(from: ActionState, to: ActionState) -> Option<Trigger> {
     TRANSITIONS.iter().find(|&&(f, t, _)| f == from && t == to).map(|&(_, _, trigger)| trigger)
 }
 
+/// What an executor's receipt says about a command (SAP §2.2, §3.3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReceiptKind {
+    /// The executor accepted the command.
+    Ack,
+    /// The executor declares it did not execute the command.
+    Nack,
+    /// The executor had already accepted this idempotency key earlier.
+    Duplicate,
+}
+
+/// The lifecycle state a `dispatched` action moves to on a receipt (SAP §3.3).
+pub fn receipt_transition(kind: ReceiptKind) -> ActionState {
+    match kind {
+        ReceiptKind::Ack => ActionState::Acknowledged,
+        ReceiptKind::Nack | ReceiptKind::Duplicate => ActionState::Failed,
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Reversibility {
     Idempotent,
@@ -210,6 +229,11 @@ pub struct Action {
     pub reversibility: Reversibility,
     pub verification_spec: VerificationSpec,
     pub authorization: Option<Authorization>,
+    /// The earlier action this one re-dispatches under SAP §3.2 supplementary
+    /// rule 2 (same physical intent, same `idempotency_key`). `None` for a
+    /// first dispatch of an intent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub redispatch_of: Option<String>,
 }
 
 impl Action {
@@ -291,11 +315,19 @@ pub struct ActionLedger {
     states: BTreeMap<String, ActionState>,
     keys: BTreeMap<String, String>,
     dispatched_keys: BTreeMap<String, String>,
+    allow_unchecked_idempotent_redispatch: bool,
 }
 
 impl ActionLedger {
     pub fn new() -> ActionLedger {
         ActionLedger::default()
+    }
+
+    /// Site policy (SAP §3.2 supplementary rule 2): whether an `idempotent`
+    /// action may be re-dispatched with its original key while the previous
+    /// attempt is still `outcome_unknown`. Off by default.
+    pub fn set_unchecked_idempotent_redispatch(&mut self, allowed: bool) {
+        self.allow_unchecked_idempotent_redispatch = allowed;
     }
 
     /// Adds a proposed action.
@@ -465,6 +497,7 @@ mod tests {
                 window_ms: 600_000,
             },
             authorization: None,
+            redispatch_of: None,
         }
     }
 

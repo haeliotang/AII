@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::action::Action;
+use crate::action::{Action, ReceiptKind};
 
 /// What the dispatcher sends to the executor.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -18,6 +18,8 @@ pub struct Command {
     pub idempotency_key: String,
     pub valid_until_ms: i64,
     pub payload: String,
+    /// Lease epoch (fencing token) of the dispatching owner (SAP §6.1).
+    pub lease_epoch: Option<u64>,
 }
 
 impl Command {
@@ -27,7 +29,14 @@ impl Command {
             idempotency_key: action.idempotency_key.clone(),
             valid_until_ms: action.valid_until.0,
             payload: action.command.clone(),
+            lease_epoch: None,
         }
+    }
+
+    /// Attaches the dispatching owner's lease epoch (SAP §6.1).
+    pub fn with_lease_epoch(mut self, epoch: u64) -> Command {
+        self.lease_epoch = Some(epoch);
+        self
     }
 }
 
@@ -38,6 +47,16 @@ pub enum DeliveryOutcome {
     DuplicateRejected,
     Expired,
     Nack,
+}
+
+impl DeliveryOutcome {
+    /// The receipt the executor reports for this outcome (SAP §4).
+    pub fn receipt_kind(self) -> ReceiptKind {
+        match self {
+            DeliveryOutcome::Executed => ReceiptKind::Ack,
+            _ => ReceiptKind::Nack,
+        }
+    }
 }
 
 /// Result of one delivery, including whether the receipt reached the dispatcher.
@@ -128,6 +147,7 @@ mod tests {
             idempotency_key: key.to_string(),
             valid_until_ms: 10_000,
             payload: "replace-sleeve".to_string(),
+            lease_epoch: None,
         }
     }
 

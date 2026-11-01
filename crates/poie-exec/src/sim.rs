@@ -44,6 +44,8 @@ impl SimulatedWritableAdapter {
             source: "simulated-testbed".to_string(),
             supports_idempotency,
             max_command_validity_ms: 60_000,
+            dedup_window_ms: 3_600_000,
+            supports_lease_epoch: true,
             verification_sources: vec!["sim-sensor-pump-status".to_string(), "sim-pressure-sensor".to_string()],
             compatibility: Some("none; simulated".to_string()),
         }
@@ -118,6 +120,7 @@ mod tests {
             command: "replace-sleeve-p1".into(),
             valid_from_ms: 0,
             valid_until_ms: 10_000,
+            lease_epoch: None,
         }
     }
 
@@ -148,6 +151,22 @@ mod tests {
         let mut adapter = SimulatedWritableAdapter::new(SimulatedWritableAdapter::declaration(true));
         adapter.fault = AdapterFault::CrashAfterExecute;
         assert!(matches!(adapter.dispatch(&command()), Err(ExecError::Crashed(_))));
+        assert_eq!(adapter.physical_executions(), 1);
+    }
+
+    /// Review B-01 (issue #108): the executor remembers the highest lease epoch
+    /// and refuses a command from a superseded owner.
+    #[test]
+    fn sap6_1_adapter_fences_a_superseded_lease_epoch() {
+        let mut adapter = SimulatedWritableAdapter::new(SimulatedWritableAdapter::declaration(true));
+        let mut newer = command();
+        newer.action_id = "b1".into();
+        newer.idempotency_key = "key-b".into();
+        newer.lease_epoch = Some(2);
+        adapter.dispatch(&newer).unwrap();
+        let mut stale = command();
+        stale.lease_epoch = Some(1);
+        assert!(matches!(adapter.dispatch(&stale), Err(ExecError::Rejected(_))));
         assert_eq!(adapter.physical_executions(), 1);
     }
 }

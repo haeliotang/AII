@@ -44,6 +44,7 @@ fn action_record(site: &str, seq: u64, hlc: Hlc, action_id: &str, key: &str) -> 
             scope: "dispatch".to_string(),
             valid_until: Timestamp(hlc.physical_ms + 120_000),
         }),
+        redispatch_of: None,
     };
     let envelope = Envelope::new(
         RecordId::new(site, seq),

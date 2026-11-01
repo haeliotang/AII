@@ -80,6 +80,7 @@ fn to_action(plan: &Plan, planned: &PlannedAction, state_version: &BTreeMap<Stri
             scope: "dispatch".to_string(),
             valid_until: Timestamp(end_ms + 3_600_000),
         }),
+        redispatch_of: None,
     }
 }
 
@@ -132,6 +133,8 @@ pub fn validate_plan_through_sap(
             reservations_held: true,
             predicates_holding: action.precondition.predicates.iter().cloned().collect::<BTreeSet<String>>(),
             authorization_revoked: false,
+            ownership_dispatch_deadline_ms: None,
+            executor_dedup_window_ms: None,
         };
         review_dispatch(&action, &ledger, &context)
             .map_err(|rejections| PlanValidationError::Review(format!("{rejections:?}")))?;

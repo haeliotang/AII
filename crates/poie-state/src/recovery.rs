@@ -124,6 +124,7 @@ mod tests {
                 window_ms: 60_000,
             },
             authorization: None,
+            redispatch_of: None,
         }
     }
 

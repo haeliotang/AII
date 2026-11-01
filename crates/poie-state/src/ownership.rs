@@ -9,6 +9,8 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+use crate::action::Action;
+
 /// Assumed upper bound on clock offset between sites (SAP §6.1 rule 3; T8).
 pub const ASSUMED_CLOCK_SKEW_BOUND_MS: i64 = 2_000;
 
@@ -17,14 +19,67 @@ pub struct Lease {
     pub executor: String,
     pub site: String,
     pub until_ms: i64,
+    /// Monotonic lease epoch (fencing token) for this executor (SAP §6.1).
+    pub epoch: u64,
+    /// The predecessor's unresolved actions are not reconciled yet: only
+    /// `idempotent` actions may be dispatched (SAP §6.1 rule 4).
+    pub pending_handover: bool,
+}
+
+/// What the new holder knows about the previous holder's actions on the
+/// executor when it takes over an expired lease (SAP §6.1 rule 4).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Handover {
+    /// The predecessor's log was reconciled; these of its actions on the
+    /// executor are still `dispatched` / `acknowledged` / `outcome_unknown`.
+    Reconciled { unresolved: Vec<String> },
+    /// The predecessor's log is not reachable.
+    Unreconciled,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OwnershipError {
-    AlreadyLeased { executor: String, holder: String, until_ms: i64 },
-    NotHeld { executor: String, site: String },
-    LeaseExpired { executor: String, until_ms: i64, now_ms: i64 },
-    ClockSkew { offset_ms: i64, bound_ms: i64 },
+    AlreadyLeased {
+        executor: String,
+        holder: String,
+        until_ms: i64,
+    },
+    NotHeld {
+        executor: String,
+        site: String,
+    },
+    LeaseExpired {
+        executor: String,
+        until_ms: i64,
+        now_ms: i64,
+    },
+    ClockSkew {
+        offset_ms: i64,
+        bound_ms: i64,
+    },
+    /// The previous holder's lease has not passed `until + skew_bound` yet.
+    TakeoverTooEarly {
+        executor: String,
+        until_ms: i64,
+        now_ms: i64,
+        bound_ms: i64,
+    },
+    /// Another site's lease expired; it must be taken over, not granted.
+    TakeoverRequired {
+        executor: String,
+        holder: String,
+    },
+    /// The action's validity outlives this site's dispatch deadline.
+    ValidityBeyondLease {
+        executor: String,
+        valid_until_ms: i64,
+        deadline_ms: i64,
+    },
+    /// Taken over with unresolved predecessor actions: only idempotent
+    /// actions may be dispatched until reconciled.
+    PendingHandover {
+        executor: String,
+    },
 }
 
 impl fmt::Display for OwnershipError {
@@ -42,6 +97,21 @@ impl fmt::Display for OwnershipError {
             OwnershipError::ClockSkew { offset_ms, bound_ms } => {
                 write!(f, "clock offset {offset_ms} ms exceeds the assumed bound {bound_ms} ms")
             }
+            OwnershipError::TakeoverTooEarly { executor, until_ms, now_ms, bound_ms } => write!(
+                f,
+                "lease for {executor:?} expires at {until_ms}; takeover needs now > until + {bound_ms}, now {now_ms}"
+            ),
+            OwnershipError::TakeoverRequired { executor, holder } => {
+                write!(f, "lease for {executor:?} held by {holder:?} expired; use the takeover path")
+            }
+            OwnershipError::ValidityBeyondLease { executor, valid_until_ms, deadline_ms } => write!(
+                f,
+                "action valid until {valid_until_ms} outlives the dispatch deadline {deadline_ms} for {executor:?}"
+            ),
+            OwnershipError::PendingHandover { executor } => write!(
+                f,
+                "{executor:?} was taken over with unresolved predecessor actions; only idempotent actions until reconciled"
+            ),
         }
     }
 }
@@ -83,9 +153,65 @@ impl OwnershipRegistry {
                 });
             }
         }
-        self.leases
-            .insert(executor.to_string(), Lease { executor: executor.to_string(), site: site.to_string(), until_ms });
+        self.leases.insert(
+            executor.to_string(),
+            Lease {
+                executor: executor.to_string(),
+                site: site.to_string(),
+                until_ms,
+                epoch: 0,
+                pending_handover: false,
+            },
+        );
         Ok(())
+    }
+
+    pub fn skew_bound_ms(&self) -> i64 {
+        self.skew_bound_ms
+    }
+
+    pub fn lease(&self, executor: &str) -> Option<&Lease> {
+        self.leases.get(executor)
+    }
+
+    /// Takes over another site's expired lease (SAP §6.1 rule 3). Returns the
+    /// new lease epoch.
+    pub fn take_over_expired(
+        &mut self,
+        executor: &str,
+        site: &str,
+        until_ms: i64,
+        now_ms: i64,
+        _handover: Handover,
+    ) -> Result<u64, OwnershipError> {
+        self.grant(executor, site, until_ms, now_ms)?;
+        Ok(self.leases[executor].epoch)
+    }
+
+    /// Clears the conservative restriction after the predecessor's actions are
+    /// reconciled and resolved (SAP §6.1 rule 4).
+    pub fn mark_reconciled(&mut self, executor: &str, site: &str) -> Result<(), OwnershipError> {
+        match self.leases.get_mut(executor) {
+            Some(lease) if lease.site == site => {
+                lease.pending_handover = false;
+                Ok(())
+            }
+            _ => Err(OwnershipError::NotHeld { executor: executor.to_string(), site: site.to_string() }),
+        }
+    }
+
+    /// Whether `site` may dispatch `action` to `executor` now. Returns the lease
+    /// epoch the command must carry (SAP §4 item 3, §6.1).
+    pub fn check_dispatch(
+        &self,
+        executor: &str,
+        site: &str,
+        now_ms: i64,
+        clock_offset_ms: i64,
+        _action: &Action,
+    ) -> Result<u64, OwnershipError> {
+        self.may_dispatch(executor, site, now_ms, clock_offset_ms)?;
+        Ok(self.leases[executor].epoch)
     }
 
     /// Releases ownership held by `site`.

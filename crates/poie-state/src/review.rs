@@ -25,6 +25,14 @@ pub struct DispatchContext {
     pub predicates_holding: BTreeSet<String>,
     /// The authorization's policy version has been revoked.
     pub authorization_revoked: bool,
+    /// When ownership is a lease: the last instant this site may dispatch,
+    /// `lease.until - skew_bound` (SAP §4 item 3, §6.1). `None` for local
+    /// ownership without a lease.
+    pub ownership_dispatch_deadline_ms: Option<i64>,
+    /// The executor's declared dedup-record retention (SAP §4 item 7). `None`
+    /// when the executor itself refuses commands whose remaining validity
+    /// exceeds its window.
+    pub executor_dedup_window_ms: Option<i64>,
 }
 
 /// Which of the six checks failed.
@@ -203,6 +211,7 @@ mod tests {
                 scope: "pump-p1".to_string(),
                 valid_until: Timestamp(9_000),
             }),
+            redispatch_of: None,
         }
     }
 
@@ -214,6 +223,8 @@ mod tests {
             reservations_held: true,
             predicates_holding: BTreeSet::from(["pump-p1.status == degraded".to_string()]),
             authorization_revoked: false,
+            ownership_dispatch_deadline_ms: None,
+            executor_dedup_window_ms: None,
         }
     }
 

@@ -12,6 +12,13 @@ pub struct WritableDeclaration {
     pub supports_idempotency: bool,
     /// Maximum command validity the executor honours.
     pub max_command_validity_ms: u64,
+    /// How long the executor keeps a dedup record after first accepting a key.
+    /// A command's remaining validity plus the skew bound must fit inside it
+    /// (SAP §4 item 7).
+    pub dedup_window_ms: u64,
+    /// The executor remembers the highest lease epoch it has seen and refuses
+    /// commands from a lower one (SAP §6.1 rule 5).
+    pub supports_lease_epoch: bool,
     /// Sources that can independently confirm an action's effect.
     pub verification_sources: Vec<String>,
     pub compatibility: Option<String>,
@@ -41,6 +48,8 @@ pub struct Command {
     pub command: String,
     pub valid_from_ms: i64,
     pub valid_until_ms: i64,
+    /// Lease epoch (fencing token) of the dispatching owner, if leased.
+    pub lease_epoch: Option<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -58,6 +67,9 @@ pub enum ExecError {
     Disconnected(String),
     Crashed(String),
     Rejected(String),
+    /// DUPLICATE receipt: the key was already accepted earlier (by the named
+    /// action); nothing new was executed. Not a NACK (SAP §3.3).
+    Duplicate(String),
 }
 
 impl fmt::Display for ExecError {
@@ -68,6 +80,7 @@ impl fmt::Display for ExecError {
             ExecError::Disconnected(detail) => write!(f, "executor disconnected: {detail}"),
             ExecError::Crashed(detail) => write!(f, "executor crashed: {detail}"),
             ExecError::Rejected(detail) => write!(f, "executor rejected the command: {detail}"),
+            ExecError::Duplicate(original) => write!(f, "idempotency key already accepted for {original}"),
         }
     }
 }

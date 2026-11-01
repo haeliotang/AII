@@ -56,6 +56,7 @@ fn action() -> Action {
             scope: "pump-p1".to_string(),
             valid_until: timestamp(8_000),
         }),
+        redispatch_of: None,
     }
 }
 
@@ -185,6 +186,8 @@ fn sap_t4_a_changed_precondition_rejects_before_dispatch() {
         reservations_held: true,
         predicates_holding: BTreeSet::new(),
         authorization_revoked: false,
+        ownership_dispatch_deadline_ms: None,
+        executor_dedup_window_ms: None,
     };
     let rejections = review_dispatch(&a, &ledger, &context).unwrap_err();
     assert!(rejections.iter().any(|rejection| rejection.reason == "stale_precondition"), "{rejections:?}");
@@ -339,6 +342,8 @@ fn sap_t5_an_action_that_expires_during_a_partition_stays_expired_after_reconnec
         reservations_held: true,
         predicates_holding: BTreeSet::from(["pump-p1.status == degraded".to_string()]),
         authorization_revoked: false,
+        ownership_dispatch_deadline_ms: None,
+        executor_dedup_window_ms: None,
     };
     let rejections = review_dispatch(&a, &ledger, &context).unwrap_err();
     assert!(rejections.iter().any(|rejection| rejection.reason == "expired"), "{rejections:?}");
@@ -383,6 +388,8 @@ fn sap_t6_a_remote_reservation_has_no_effect_until_the_holding_site_applies_it()
         reservations_held: false,
         predicates_holding: BTreeSet::from(["pump-p1.status == degraded".to_string()]),
         authorization_revoked: false,
+        ownership_dispatch_deadline_ms: None,
+        executor_dedup_window_ms: None,
     };
     let rejections = review_dispatch(&action(), &ledger_at(&action(), ActionState::Authorized), &context).unwrap_err();
     assert!(rejections.iter().any(|rejection| rejection.reason == "reservations_not_held"));
@@ -419,4 +426,342 @@ fn sap_t8_excessive_clock_skew_is_detected_and_never_treated_as_a_valid_lease() 
     registry.grant("robot-m1", "site-a", 10_000, 1_000).unwrap();
     assert_eq!(registry.may_dispatch("robot-m1", "site-a", 5_000, 500), Ok(()));
     assert!(matches!(registry.may_dispatch("robot-m1", "site-a", 5_000, 5_000), Err(OwnershipError::ClockSkew { .. })));
+}
+
+// ---------------------------------------------------------------------------
+// Issue #107 / #108 counterexamples (AI-preview review A-03, A-04, A-11, B-01,
+// B-02, B-03, B-04, B-05, B-07, C-12), pre-registered before the fix.
+// ---------------------------------------------------------------------------
+
+use poie_state::action::{receipt_transition, ReceiptKind};
+use poie_state::ownership::Handover;
+
+const TO_DISPATCHED: [ActionState; 3] = [ActionState::Validated, ActionState::Authorized, ActionState::Dispatched];
+const TO_AUTHORIZED: [ActionState; 2] = [ActionState::Validated, ActionState::Authorized];
+
+fn variant(id: &str, reversibility: Reversibility, redispatch_of: Option<&str>) -> Action {
+    let mut a = action();
+    a.action_id = id.to_string();
+    a.reversibility = reversibility;
+    a.redispatch_of = redispatch_of.map(str::to_string);
+    a
+}
+
+fn drive(ledger: &mut ActionLedger, id: &str, path: &[ActionState]) {
+    for state in path {
+        ledger.apply(id, *state).unwrap_or_else(|error| panic!("{id} -> {state}: {error}"));
+    }
+}
+
+fn dispatch_context() -> DispatchContext {
+    DispatchContext {
+        now_ms: 5_000,
+        current_state_version: BTreeMap::from([("site-a".to_string(), 40)]),
+        holds_command_ownership: true,
+        reservations_held: true,
+        predicates_holding: BTreeSet::from(["pump-p1.status == degraded".to_string()]),
+        authorization_revoked: false,
+        ownership_dispatch_deadline_ms: None,
+        executor_dedup_window_ms: None,
+    }
+}
+
+fn key_rejected(action: &Action, ledger: &ActionLedger) -> bool {
+    match review_dispatch(action, ledger, &dispatch_context()) {
+        Ok(()) => false,
+        Err(rejections) => rejections.iter().any(|r| r.check == poie_state::review::ReviewCheck::IdempotencyKey),
+    }
+}
+
+/// A-03 / C-12: an irreversible re-dispatch is refused while the original is
+/// `outcome_unknown`, and allowed with the original key once the outcome was
+/// checked (the original left `outcome_unknown`).
+#[test]
+fn sap3_2_irreversible_redispatch_waits_for_the_outcome_check_then_reuses_the_key() {
+    let a1 = variant("a1", Reversibility::Irreversible, None);
+    let a2 = variant("a2", Reversibility::Irreversible, Some("a1"));
+    let mut ledger = ActionLedger::new();
+    ledger.set_unchecked_idempotent_redispatch(true);
+    ledger.add(&a1).unwrap();
+    ledger.add(&a2).unwrap();
+    drive(&mut ledger, "a1", &TO_DISPATCHED);
+    drive(&mut ledger, "a1", &[ActionState::OutcomeUnknown]);
+    drive(&mut ledger, "a2", &TO_AUTHORIZED);
+
+    assert!(key_rejected(&a2, &ledger), "irreversible re-dispatch before the outcome check must be refused");
+    assert!(ledger.apply("a2", ActionState::Dispatched).is_err());
+
+    // The verifier checks the site: the relief valve did not open.
+    drive(&mut ledger, "a1", &[ActionState::Failed]);
+    assert_eq!(review_dispatch(&a2, &ledger, &dispatch_context()), Ok(()));
+    ledger.apply("a2", ActionState::Dispatched).expect("checked re-dispatch with the original key");
+    assert_eq!(ledger.dispatched_by("k1"), Some("a2"));
+}
+
+/// B-04 counterexample 1: with the site policy on, an idempotent action may be
+/// re-dispatched with its original key while the original is
+/// `outcome_unknown`; without the policy (or for a non-idempotent action) not.
+#[test]
+fn sap3_2_policy_allowed_idempotent_redispatch_reuses_the_key_while_outcome_unknown() {
+    for (policy, reversibility, allowed) in [
+        (true, Reversibility::Idempotent, true),
+        (false, Reversibility::Idempotent, false),
+        (true, Reversibility::Irreversible, false),
+        (true, Reversibility::Reversible, false),
+    ] {
+        let a1 = variant("a1", reversibility, None);
+        let a2 = variant("a2", reversibility, Some("a1"));
+        let mut ledger = ActionLedger::new();
+        ledger.set_unchecked_idempotent_redispatch(policy);
+        ledger.add(&a1).unwrap();
+        ledger.add(&a2).unwrap();
+        drive(&mut ledger, "a1", &TO_DISPATCHED);
+        drive(&mut ledger, "a1", &[ActionState::OutcomeUnknown]);
+        drive(&mut ledger, "a2", &TO_AUTHORIZED);
+        assert_eq!(!key_rejected(&a2, &ledger), allowed, "review: policy {policy}, {reversibility:?}");
+        assert_eq!(ledger.apply("a2", ActionState::Dispatched).is_ok(), allowed, "ledger: {policy}, {reversibility:?}");
+    }
+}
+
+/// B-04 counterexample 2: a NACK (executor declares it did not execute) ends in
+/// `failed`; the same intent can then be retried with its original key.
+#[test]
+fn sap4_5_a_nacked_intent_can_be_retried_with_its_original_key() {
+    let a1 = variant("a1", Reversibility::Irreversible, None);
+    let a2 = variant("a2", Reversibility::Irreversible, Some("a1"));
+    let mut ledger = ActionLedger::new();
+    ledger.add(&a1).unwrap();
+    ledger.add(&a2).unwrap();
+    drive(&mut ledger, "a1", &TO_DISPATCHED);
+    drive(&mut ledger, "a1", &[receipt_transition(ReceiptKind::Nack)]);
+    assert_eq!(ledger.state("a1"), Some(ActionState::Failed));
+    drive(&mut ledger, "a2", &TO_AUTHORIZED);
+    assert!(!key_rejected(&a2, &ledger));
+    ledger.apply("a2", ActionState::Dispatched).expect("retry of a NACKed intent");
+}
+
+/// Guard (A-03): a second action that does not reference the key's current
+/// holder never dispatches the key, in every state that occupies it, before
+/// and after a restart; and a referencing action is refused while the holder is
+/// still dispatched / acknowledged or already verified.
+#[test]
+fn sap4_5_an_occupied_key_is_reused_only_by_a_referencing_redispatch() {
+    let paths: [(ActionState, &[ActionState]); 5] = [
+        (ActionState::Dispatched, &[]),
+        (ActionState::Acknowledged, &[ActionState::Acknowledged]),
+        (ActionState::OutcomeUnknown, &[ActionState::OutcomeUnknown]),
+        (ActionState::Verified, &[ActionState::Acknowledged, ActionState::Verified]),
+        (ActionState::Failed, &[ActionState::Failed]),
+    ];
+    for (state, tail) in paths {
+        let a1 = variant("a1", Reversibility::Idempotent, None);
+        let stranger = variant("a2", Reversibility::Idempotent, None);
+        let mut ledger = ActionLedger::new();
+        ledger.set_unchecked_idempotent_redispatch(true);
+        ledger.add(&a1).unwrap();
+        ledger.add(&stranger).unwrap();
+        drive(&mut ledger, "a1", &TO_DISPATCHED);
+        drive(&mut ledger, "a1", tail);
+        drive(&mut ledger, "a2", &TO_AUTHORIZED);
+        assert!(key_rejected(&stranger, &ledger), "{state}: unreferenced reuse must be refused");
+        assert!(ledger.apply("a2", ActionState::Dispatched).is_err(), "{state}");
+
+        let states = BTreeMap::from([("a1".to_string(), state), ("a2".to_string(), ActionState::Authorized)]);
+        let mut restored = ActionLedger::restore(&[a1.clone(), stranger.clone()], &states).unwrap();
+        assert!(restored.apply("a2", ActionState::Dispatched).is_err(), "{state} after restore");
+
+        if matches!(state, ActionState::Dispatched | ActionState::Acknowledged | ActionState::Verified) {
+            let referencing = variant("a3", Reversibility::Idempotent, Some("a1"));
+            ledger.add(&referencing).unwrap();
+            drive(&mut ledger, "a3", &TO_AUTHORIZED);
+            assert!(key_rejected(&referencing, &ledger), "{state}: holder is not outcome_unknown / failed");
+            assert!(ledger.apply("a3", ActionState::Dispatched).is_err(), "{state}");
+        }
+    }
+}
+
+/// A-04 / B-05: a DUPLICATE receipt is not a NACK; it must not turn an action
+/// into `failed` (which means "not executed").
+#[test]
+fn sap3_3_a_duplicate_receipt_is_not_a_nack() {
+    let a1 = variant("a1", Reversibility::Idempotent, None);
+    let a2 = variant("a2", Reversibility::Idempotent, Some("a1"));
+    let mut executor = SimExecutor::new(60_000);
+    executor.set_faults(ExecutorFaults { drop_receipt: true, nack_next: false });
+    let first = executor.deliver(&Command::from_action(&a1), 1_500);
+    assert_eq!(first.outcome, DeliveryOutcome::Executed);
+    executor.set_faults(ExecutorFaults::default());
+
+    let mut ledger = ActionLedger::new();
+    ledger.set_unchecked_idempotent_redispatch(true);
+    ledger.add(&a1).unwrap();
+    ledger.add(&a2).unwrap();
+    drive(&mut ledger, "a1", &TO_DISPATCHED);
+    drive(&mut ledger, "a1", &[ActionState::OutcomeUnknown]);
+    drive(&mut ledger, "a2", &TO_AUTHORIZED);
+    ledger.apply("a2", ActionState::Dispatched).expect("policy-allowed idempotent re-dispatch");
+
+    let second = executor.deliver(&Command::from_action(&a2), 1_600);
+    assert_eq!(second.outcome.receipt_kind(), ReceiptKind::Duplicate);
+    assert_eq!(receipt_transition(second.outcome.receipt_kind()), ActionState::Acknowledged);
+    ledger.apply("a2", receipt_transition(second.outcome.receipt_kind())).unwrap();
+    assert_eq!(ledger.state("a2"), Some(ActionState::Acknowledged));
+    assert_eq!(executor.execution_count("k1"), 1);
+    assert_eq!(receipt_transition(ReceiptKind::Nack), ActionState::Failed);
+    assert_eq!(receipt_transition(ReceiptKind::Ack), ActionState::Acknowledged);
+}
+
+/// B-03: a command still valid for an hour, redelivered after five minutes to
+/// an executor that keeps dedup records for one minute, must not execute twice.
+#[test]
+fn sap4_7_redelivery_inside_validity_but_outside_a_short_dedup_window_never_executes_twice() {
+    let mut executor = SimExecutor::new(60_000);
+    let mut command = Command::from_action(&action());
+    command.valid_until_ms = 3_600_000;
+    executor.deliver(&command, 0);
+    executor.deliver(&command, 300_000);
+    assert!(executor.execution_count("k1") <= 1, "executed {} times", executor.execution_count("k1"));
+}
+
+/// B-03: the dispatcher refuses a command whose remaining validity (plus the
+/// skew bound) exceeds the executor's declared dedup window.
+#[test]
+fn sap4_7_review_rejects_validity_beyond_the_executor_dedup_window() {
+    let a = action();
+    let ledger = ledger_at(&a, ActionState::Authorized);
+    let mut context = dispatch_context();
+    context.executor_dedup_window_ms = Some(1_000);
+    let rejections = review_dispatch(&a, &ledger, &context).unwrap_err();
+    assert!(rejections.iter().any(|r| r.reason == "validity_exceeds_dedup_window"), "{rejections:?}");
+    context.executor_dedup_window_ms = Some(60_000);
+    assert_eq!(review_dispatch(&a, &ledger, &context), Ok(()));
+}
+
+/// B-01: the dispatcher refuses a command whose validity outlives its lease's
+/// dispatch deadline (`lease.until - skew_bound`).
+#[test]
+fn sap4_3_review_rejects_validity_beyond_the_lease_dispatch_deadline() {
+    let a = action();
+    let ledger = ledger_at(&a, ActionState::Authorized);
+    let mut context = dispatch_context();
+    context.ownership_dispatch_deadline_ms = Some(8_000);
+    let rejections = review_dispatch(&a, &ledger, &context).unwrap_err();
+    assert!(rejections.iter().any(|r| r.reason == "validity_exceeds_lease"), "{rejections:?}");
+    context.ownership_dispatch_deadline_ms = Some(9_000);
+    assert_eq!(review_dispatch(&a, &ledger, &context), Ok(()));
+}
+
+fn on_target(id: &str, key: &str, target: &str, valid_until: i64, reversibility: Reversibility) -> Action {
+    let mut a = action();
+    a.action_id = id.to_string();
+    a.idempotency_key = key.to_string();
+    a.target = target.to_string();
+    a.valid_until = timestamp(valid_until);
+    a.reversibility = reversibility;
+    a
+}
+
+/// B-01: site A's command, still in flight when site B takes over, reaches the
+/// executor after B's command. The executor must fence it by lease epoch even
+/// when the time-based bound fails (here: the executor clock lags).
+#[test]
+fn sap6_1_a_superseded_lease_epoch_is_fenced_at_the_executor() {
+    let mut registry = OwnershipRegistry::new();
+    registry.grant("valve-v3", "site-a", 10_000, 0).unwrap();
+    let a1 = on_target("a1", "ka", "valve-v3", 8_000, Reversibility::Idempotent);
+    let epoch_a = registry.check_dispatch("valve-v3", "site-a", 7_000, 0, &a1).unwrap();
+
+    let epoch_b = registry.take_over_expired("valve-v3", "site-b", 40_000, 12_001, Handover::Unreconciled).unwrap();
+    let b1 = on_target("b1", "kb", "valve-v3", 30_000, Reversibility::Idempotent);
+    assert_eq!(registry.check_dispatch("valve-v3", "site-b", 12_500, 0, &b1), Ok(epoch_b));
+
+    // The executor clock is ~4.5 s slow (outside the assumed bound): a1 still
+    // looks valid when it finally arrives after b1.
+    let mut executor = SimExecutor::new(60_000);
+    let b_report = executor.deliver(&Command::from_action(&b1).with_lease_epoch(epoch_b), 7_800);
+    assert_eq!(b_report.outcome, DeliveryOutcome::Executed);
+    let a_report = executor.deliver(&Command::from_action(&a1).with_lease_epoch(epoch_a), 7_900);
+    assert_ne!(a_report.outcome, DeliveryOutcome::Executed, "stale epoch executed after takeover");
+    assert_eq!(a_report.outcome.receipt_kind(), ReceiptKind::Nack);
+    assert_eq!(executor.physical_actions(), ["b1".to_string()]);
+    assert!(epoch_b > epoch_a, "a takeover must advance the lease epoch");
+}
+
+/// B-01: a command's validity must not outlive `lease.until - skew_bound`.
+#[test]
+fn sap6_1_command_validity_must_not_outlive_the_lease() {
+    let mut registry = OwnershipRegistry::new();
+    registry.grant("valve-v3", "site-a", 10_000, 0).unwrap();
+    let long = on_target("a1", "k", "valve-v3", 30_000, Reversibility::Idempotent);
+    assert!(matches!(
+        registry.check_dispatch("valve-v3", "site-a", 5_000, 0, &long),
+        Err(OwnershipError::ValidityBeyondLease { .. })
+    ));
+    let bounded = on_target("a2", "k2", "valve-v3", 8_000, Reversibility::Idempotent);
+    assert!(registry.check_dispatch("valve-v3", "site-a", 5_000, 0, &bounded).is_ok());
+}
+
+/// A-11 / B-07: the taker waits until `until + skew_bound`; an expired lease is
+/// taken over, not silently re-granted (rule 2 vs rule 3).
+#[test]
+fn sap6_1_taker_waits_until_expiry_plus_skew_bound() {
+    let mut registry = OwnershipRegistry::new();
+    registry.grant("robot-m1", "site-a", 10_000, 0).unwrap();
+    for now in [10_001, 11_000, 12_000] {
+        assert!(
+            matches!(
+                registry.take_over_expired("robot-m1", "site-b", 30_000, now, Handover::Unreconciled),
+                Err(OwnershipError::TakeoverTooEarly { .. })
+            ),
+            "takeover at {now}"
+        );
+    }
+    assert!(matches!(
+        registry.grant("robot-m1", "site-b", 30_000, 12_001),
+        Err(OwnershipError::TakeoverRequired { .. })
+    ));
+    assert!(registry.take_over_expired("robot-m1", "site-b", 30_000, 12_001, Handover::Unreconciled).is_ok());
+}
+
+/// B-02 (SAP-T12): an expiry takeover while the predecessor may hold an
+/// `outcome_unknown` irreversible action stays conservative until reconciled.
+#[test]
+fn sap6_1_expiry_takeover_with_unresolved_predecessor_actions_is_conservative() {
+    for handover in [Handover::Unreconciled, Handover::Reconciled { unresolved: vec!["a-dose".to_string()] }] {
+        let mut registry = OwnershipRegistry::new();
+        registry.grant("pump-p", "site-a", 10_000, 0).unwrap();
+        registry.take_over_expired("pump-p", "site-b", 40_000, 12_001, handover.clone()).unwrap();
+        let dose = on_target("b-dose", "kb", "pump-p", 30_000, Reversibility::Irreversible);
+        let close = on_target("b-close", "kc", "pump-p", 30_000, Reversibility::Idempotent);
+        assert!(
+            matches!(
+                registry.check_dispatch("pump-p", "site-b", 13_000, 0, &dose),
+                Err(OwnershipError::PendingHandover { .. })
+            ),
+            "{handover:?}"
+        );
+        assert!(registry.check_dispatch("pump-p", "site-b", 13_000, 0, &close).is_ok());
+        registry.mark_reconciled("pump-p", "site-b").unwrap();
+        assert!(registry.check_dispatch("pump-p", "site-b", 13_000, 0, &dose).is_ok());
+    }
+
+    let mut registry = OwnershipRegistry::new();
+    registry.grant("pump-p", "site-a", 10_000, 0).unwrap();
+    registry
+        .take_over_expired("pump-p", "site-b", 40_000, 12_001, Handover::Reconciled { unresolved: Vec::new() })
+        .unwrap();
+    let dose = on_target("b-dose", "kb", "pump-p", 30_000, Reversibility::Irreversible);
+    assert!(registry.check_dispatch("pump-p", "site-b", 13_000, 0, &dose).is_ok());
+}
+
+/// SAP §6.1 rule 2: a negotiated release + grant needs no expiry wait but still
+/// advances the lease epoch.
+#[test]
+fn sap6_1_negotiated_release_then_grant_advances_the_epoch() {
+    let mut registry = OwnershipRegistry::new();
+    registry.grant("robot-m1", "site-a", 10_000, 0).unwrap();
+    let epoch_a = registry.lease("robot-m1").unwrap().epoch;
+    registry.release("robot-m1", "site-a").unwrap();
+    registry.grant("robot-m1", "site-b", 20_000, 5_000).unwrap();
+    assert!(registry.lease("robot-m1").unwrap().epoch > epoch_a);
 }

@@ -66,6 +66,7 @@ fn action_from_plan(plan: &poie_plan::plan::Plan) -> Action {
             scope: "dispatch".to_string(),
             valid_until: Timestamp(end_ms + 3_600_000),
         }),
+        redispatch_of: None,
     }
 }
 
