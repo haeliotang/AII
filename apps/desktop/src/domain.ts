@@ -79,22 +79,69 @@ export interface ExperimentEntry {
   replay: "ci" | "manual" | "live";
 }
 
-export interface ConflictEntry {
-  kind: string;
-  subject: string;
-  detail: string;
-  sites: string[];
+export interface ExecutionActionView {
+  id: string;
+  process: string;
+  target: string;
+  state: string;
+  idempotencyKey: string;
+  verification: string;
+  validFromMs: number;
+  validUntilMs: number;
 }
 
-export interface SiteEntry {
+export interface CheckView {
+  check: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface ExecutionSnapshot {
+  state: string;
+  actions: ExecutionActionView[];
+  checks: CheckView[];
+  reviewStatus: string;
+  rejections: number;
+}
+
+export interface FederationSiteView {
   id: string;
-  label: string;
-  status: "online" | "partitioned";
+  status: string;
   hlc: string;
   records: number;
   reservations: number;
   leases: number;
 }
+
+export interface FederationConflictView {
+  kind: string;
+  subject: string;
+  detail: string;
+  sites: string[];
+  records: string[];
+}
+
+export interface FederationSnapshot {
+  sites: FederationSiteView[];
+  conflicts: FederationConflictView[];
+  mergedRecords: number;
+  duplicateActions: number;
+  reservations: number;
+  leases: number;
+  transferredAb: number;
+  transferredBa: number;
+  duplicatesSkipped: number;
+}
+
+const CHECK_NAMES = [
+  "time_window",
+  "preconditions",
+  "command_ownership",
+  "reservations",
+  "idempotency_key",
+  "authorization",
+  "dedup_window",
+];
 
 export const fallbackOverview: DomainOverview = {
   scenario: "Base-01 · pump degraded",
@@ -179,28 +226,66 @@ export const experiments: ExperimentEntry[] = [
   { id: "BaSyx", title: "AAS read-only adapter preview", milestone: "M9.2", result: "9/9 (AI preview)", replay: "live" },
 ];
 
-export const sites: SiteEntry[] = [
-  { id: "site-a", label: "site-a", status: "online", hlc: "0000012a.0003", records: 2, reservations: 2, leases: 1 },
-  { id: "site-b", label: "site-b", status: "partitioned", hlc: "0000012a.0004", records: 2, reservations: 2, leases: 1 },
-];
 
-export const conflicts: ConflictEntry[] = [
-  {
-    kind: "over_reservation",
-    subject: "lot-bronze",
-    detail: "4 kg + 3 kg > 5 kg available",
-    sites: ["site-a", "site-b"],
-  },
-  {
-    kind: "double_ownership",
-    subject: "robot-m1",
-    detail: "overlapping leases after reconnect",
-    sites: ["site-a", "site-b"],
-  },
-  {
-    kind: "duplicate_idempotency_key",
-    subject: "shared-key",
-    detail: "two sites dispatched the same key",
-    sites: ["site-a", "site-b"],
-  },
-];
+export const fallbackExecution: ExecutionSnapshot = {
+  state: "ready",
+  actions: [
+    {
+      id: "potable-water-1-replace-sleeve-p1",
+      process: "replace-sleeve-p1",
+      target: "pump-p1",
+      state: "authorized",
+      idempotencyKey: "idem:potable-water-1-replace-sleeve-p1",
+      verification: "demonstrated",
+      validFromMs: 0,
+      validUntilMs: 3600000,
+    },
+  ],
+  checks: CHECK_NAMES.map((check) => ({ check, passed: true, detail: "ok" })),
+  reviewStatus: "ready",
+  rejections: 0,
+};
+
+export const fallbackFederation: FederationSnapshot = {
+  sites: [
+    { id: "site-a", status: "online", hlc: "0000044c.0004", records: 4, reservations: 1, leases: 1 },
+    { id: "site-b", status: "online", hlc: "0000044e.0004", records: 4, reservations: 1, leases: 1 },
+  ],
+  conflicts: [
+    {
+      kind: "double_dispatch",
+      subject: "site-a/2",
+      detail: "action \"potable-water-replace-sleeve-p1\" dispatched by sites [\"site-a\", \"site-b\"]",
+      sites: ["site-a", "site-b"],
+      records: ["site-a/2", "site-b/2"],
+    },
+    {
+      kind: "double_ownership",
+      subject: "robot-m1",
+      detail: "executor \"robot-m1\" leased by site-a until 10000 and by site-b until 20000 within the skew bound",
+      sites: ["site-a", "site-b"],
+      records: [],
+    },
+    {
+      kind: "duplicate_idempotency_key",
+      subject: "site-a/1",
+      detail: "idempotency key \"shared-idempotency-key\" used by 1 actions",
+      sites: ["site-a", "site-b"],
+      records: ["site-a/1", "site-b/1"],
+    },
+    {
+      kind: "over_reservation",
+      subject: "lot-bronze",
+      detail: "batch \"lot-bronze\": reserved 7, available 5",
+      sites: ["site-a", "site-b"],
+      records: [],
+    },
+  ],
+  mergedRecords: 8,
+  duplicateActions: 1,
+  reservations: 2,
+  leases: 2,
+  transferredAb: 4,
+  transferredBa: 4,
+  duplicatesSkipped: 0,
+};

@@ -2,14 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { HostInfo } from "./types";
 import {
-  conflicts,
   experiments,
+  fallbackExecution,
+  fallbackFederation,
   fallbackOverview,
   scenarios,
-  sites,
   type DomainOverview,
   type EntityView,
+  type ExecutionSnapshot,
   type ExperimentEntry,
+  type FederationSnapshot,
   type NavKey,
 } from "./domain";
 import { detectLang, messagesFor, type Lang } from "./i18n";
@@ -112,6 +114,10 @@ function initialLang(): Lang {
   return detectLang();
 }
 
+function initialFocusMode(): boolean {
+  return new URLSearchParams(window.location.search).get("focus") === "1";
+}
+
 function formatHours(seconds: number): string {
   if (!Number.isFinite(seconds)) return "—";
   return `${(seconds / 3600).toFixed(seconds % 3600 === 0 ? 0 : 1)} h`;
@@ -148,7 +154,9 @@ function defaultSelection(nav: NavKey, overview: DomainOverview): Selection | nu
     return action ? { kind: "action", id: action.id } : null;
   }
   if (nav === "federation") {
-    return conflicts[0] ? { kind: "conflict", id: conflicts[0].kind } : null;
+    return fallbackFederation.conflicts[0]
+      ? { kind: "conflict", id: fallbackFederation.conflicts[0].kind }
+      : null;
   }
   return experiments[0] ? { kind: "experiment", id: experiments[0].id } : null;
 }
@@ -216,6 +224,7 @@ function Sidebar({
   selection,
   onSelect,
   host,
+  federation,
 }: {
   lang: Lang;
   nav: NavKey;
@@ -225,6 +234,7 @@ function Sidebar({
   selection: Selection | null;
   onSelect: (selection: Selection) => void;
   host: HostInfo | null;
+  federation: FederationSnapshot;
 }) {
   const t = (key: string) => messagesFor(lang)[key] ?? key;
   const needle = query.trim().toLowerCase();
@@ -236,7 +246,7 @@ function Sidebar({
   const processItems = overview.processes.filter((process) => matches(process.id));
   const dependencyItems = overview.externalDependencies.filter((dependency) => matches(dependency.resource));
   const actionItems = overview.plan.actions.filter((action) => matches(action.id, action.process, action.target));
-  const conflictItems = conflicts.filter((conflict) => matches(conflict.kind, conflict.subject));
+  const conflictItems = federation.conflicts.filter((conflict) => matches(conflict.kind, conflict.subject));
   const experimentItems = experiments.filter((entry) => matches(entry.id, entry.title, entry.result));
 
   const row = (selected: boolean, key: string, onClick: () => void, content: React.ReactNode) => (
@@ -329,14 +339,14 @@ function Sidebar({
           <>
             <div className="side-section">
               <h3>{t("federation.sites")}</h3>
-              {sites.map((site) =>
+              {federation.sites.map((site) =>
                 row(
                   selection?.kind === "site" && selection.id === site.id,
                   site.id,
                   () => onSelect({ kind: "site", id: site.id }),
                   <>
                     <span className={`dot dot--${site.status === "online" ? "ok" : "warn"}`} />
-                    <span className="side-row__label">{site.label}</span>
+                    <span className="side-row__label">{site.id}</span>
                     <span className="side-row__meta">{t(`federation.${site.status}`)}</span>
                   </>,
                 ),
@@ -763,7 +773,7 @@ function Plan({ lang, overview, selection, onSelect }: { lang: Lang; overview: D
   );
 }
 
-function Execution({ lang, overview, selection, onSelect, gate, onGate }: { lang: Lang; overview: DomainOverview; selection: Selection | null; onSelect: (selection: Selection) => void; gate: { takeover: boolean; degraded: boolean }; onGate: (gate: { takeover: boolean; degraded: boolean }) => void }) {
+function Execution({ lang, execution, selection, onSelect, gate, onGate }: { lang: Lang; execution: ExecutionSnapshot; selection: Selection | null; onSelect: (selection: Selection) => void; gate: { takeover: boolean; degraded: boolean }; onGate: (gate: { takeover: boolean; degraded: boolean }) => void }) {
   const t = (key: string) => messagesFor(lang)[key] ?? key;
   const stateFor = (): string => {
     if (gate.takeover) return t("execution.recorded");
@@ -797,12 +807,27 @@ function Execution({ lang, overview, selection, onSelect, gate, onGate }: { lang
         </div>
       </section>
       <section className="card">
-        <div className="card__head"><h2>{t("execution.ledger")}</h2></div>
+        <div className="card__head">
+          <div><h2>{t("execution.checks")}</h2><p>{t("execution.ledgerFromSap")}</p></div>
+          <span className={`pill pill--${execution.reviewStatus === "ready" ? "ok" : "bad"}`}>{execution.reviewStatus === "ready" ? t("execution.reviewReady") : t("execution.reviewBlocked")}</span>
+        </div>
+        <div className="check-grid">
+          {execution.checks.map((check) => (
+            <div key={check.check} className={`check-item${check.passed ? "" : " check-item--bad"}`}>
+              <span className={`dot dot--${check.passed ? "ok" : "bad"}`} />
+              <span>{t(`check.${check.check}`)}</span>
+              <span className="muted">{check.detail}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="card">
+        <div className="card__head"><h2>{t("execution.ledger")}</h2><span className="digest">{execution.actions.length}</span></div>
         <div className="action-table action-table--exec">
           <div className="action-table__head">
             <span>{t("common.action")}</span><span>{t("common.process")}</span><span>{t("execution.state")}</span><span>{t("execution.verification")}</span><span>{t("execution.dispatch")}</span>
           </div>
-          {overview.plan.actions.map((action) => (
+          {execution.actions.map((action) => (
             <button
               key={action.id}
               type="button"
@@ -812,7 +837,7 @@ function Execution({ lang, overview, selection, onSelect, gate, onGate }: { lang
               <span className="mono">{action.id}</span>
               <span>{action.process}</span>
               <span><span className={`pill pill--${gate.takeover || gate.degraded ? "warn" : "ok"}`}>{stateFor()}</span></span>
-              <span className="muted">—</span>
+              <span className="muted">{action.verification}</span>
               <span className="muted">—</span>
             </button>
           ))}
@@ -822,7 +847,7 @@ function Execution({ lang, overview, selection, onSelect, gate, onGate }: { lang
   );
 }
 
-function Federation({ lang, selection, onSelect }: { lang: Lang; selection: Selection | null; onSelect: (selection: Selection) => void }) {
+function Federation({ lang, federation, selection, onSelect }: { lang: Lang; federation: FederationSnapshot; selection: Selection | null; onSelect: (selection: Selection) => void }) {
   const t = (key: string) => messagesFor(lang)[key] ?? key;
   return (
     <div className="view">
@@ -831,7 +856,7 @@ function Federation({ lang, selection, onSelect }: { lang: Lang; selection: Sele
         <p>{t("federation.subtitle")}</p>
       </header>
       <div className="grid-2">
-        {sites.map((site) => (
+        {federation.sites.map((site) => (
           <button
             key={site.id}
             type="button"
@@ -839,7 +864,7 @@ function Federation({ lang, selection, onSelect }: { lang: Lang; selection: Sele
             onClick={() => onSelect({ kind: "site", id: site.id })}
           >
             <div className="card__head">
-              <h2>{site.label}</h2>
+              <h2>{site.id}</h2>
               <span className={`pill pill--${site.status === "online" ? "ok" : "warn"}`}>{t(`federation.${site.status}`)}</span>
             </div>
             <div className="site-stats">
@@ -852,10 +877,10 @@ function Federation({ lang, selection, onSelect }: { lang: Lang; selection: Sele
         ))}
       </div>
       <section className="card">
-        <div className="card__head"><h2>{t("federation.conflicts")}</h2><span className="digest">{conflicts.length}</span></div>
-        <p className="card-note">{t("federation.conflictNote")}</p>
+        <div className="card__head"><h2>{t("federation.conflicts")}</h2><span className="digest">{federation.conflicts.length}</span></div>
+        <p className="card-note">{t("federation.conflictNote")} · {t("federation.merged")} {federation.mergedRecords} · {t("federation.exchange")} {federation.transferredAb + federation.transferredBa}</p>
         <div className="conflict-list">
-          {conflicts.map((conflict) => (
+          {federation.conflicts.map((conflict) => (
             <button
               key={conflict.kind}
               type="button"
@@ -922,6 +947,8 @@ function Inspector({
   selection,
   onNavigate,
   gate,
+  execution,
+  federation,
 }: {
   lang: Lang;
   nav: NavKey;
@@ -929,6 +956,8 @@ function Inspector({
   selection: Selection | null;
   onNavigate: (nav: NavKey, selection: Selection) => void;
   gate: { takeover: boolean; degraded: boolean };
+  execution: ExecutionSnapshot;
+  federation: FederationSnapshot;
 }) {
   const t = (key: string) => messagesFor(lang)[key] ?? key;
   let title = t("inspector.noSelection");
@@ -991,7 +1020,7 @@ function Inspector({
           <Row label={t("inspector.runs")} value={String(action.runs)} />
           <Row label={t("plan.preconditions")} value={action.preconditions.join(" · ")} />
           <Row label={t("plan.allocations")} value={action.allocations.map(([resource, amount]) => `${resource} ${amount}`).join(" · ")} />
-          <Row label={t("execution.state")} value={gate.takeover ? t("execution.recorded") : gate.degraded ? t("execution.fallback") : t("execution.authorized")} />
+          <Row label={t("execution.state")} value={gate.takeover ? t("execution.recorded") : gate.degraded ? t("execution.fallback") : (execution.actions.find((entry) => entry.id === action.id)?.state ?? t("execution.authorized"))} />
           <button className="primary" type="button" onClick={() => onNavigate("execution", { kind: "action", id: action.id })}>
             {t("inspector.openExecution")} <ArrowRightIcon size={14} />
           </button>
@@ -999,7 +1028,7 @@ function Inspector({
       );
     }
   } else if (selection?.kind === "conflict") {
-    const conflict = conflicts.find((entry) => entry.kind === selection.id);
+    const conflict = federation.conflicts.find((entry) => entry.kind === selection.id);
     if (conflict) {
       title = conflict.kind;
       kind = t("federation.conflict");
@@ -1027,9 +1056,9 @@ function Inspector({
       );
     }
   } else if (selection?.kind === "site") {
-    const site = sites.find((entry) => entry.id === selection.id);
+    const site = federation.sites.find((entry) => entry.id === selection.id);
     if (site) {
-      title = site.label;
+      title = site.id;
       kind = t("federation.sites");
       body = (
         <>
@@ -1157,12 +1186,15 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [lang, setLang] = useState<Lang>(initialLang);
   const [overview, setOverview] = useState<DomainOverview>(fallbackOverview);
+  const [execution, setExecution] = useState<ExecutionSnapshot>(fallbackExecution);
+  const [federation, setFederation] = useState<FederationSnapshot>(fallbackFederation);
   const [host, setHost] = useState<HostInfo | null>(null);
   const [selection, setSelection] = useState<Selection | null>(() => defaultSelection(initialNav(), fallbackOverview));
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<Mode>("model");
   const [gate, setGate] = useState({ takeover: false, degraded: false });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [focusMode] = useState(initialFocusMode);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -1181,6 +1213,8 @@ export default function App() {
       setSelection((current) => current ?? defaultSelection(nav, loaded));
     }).catch(() => undefined);
     void invoke<HostInfo>("host_info").then(setHost).catch(() => undefined);
+    void invoke<ExecutionSnapshot>("execution_snapshot").then(setExecution).catch(() => undefined);
+    void invoke<FederationSnapshot>("federation_snapshot").then(setFederation).catch(() => undefined);
   }, []);
 
   const navigate = (next: NavKey) => {
@@ -1206,24 +1240,37 @@ export default function App() {
     if (nav === "overview") return <Overview lang={lang} overview={overview} selection={selection} onSelect={select} />;
     if (nav === "capabilities") return <Capabilities lang={lang} overview={overview} selection={selection} onSelect={select} />;
     if (nav === "plan") return <Plan lang={lang} overview={overview} selection={selection} onSelect={select} />;
-    if (nav === "execution") return <Execution lang={lang} overview={overview} selection={selection} onSelect={select} gate={gate} onGate={setGate} />;
-    if (nav === "federation") return <Federation lang={lang} selection={selection} onSelect={select} />;
+    if (nav === "execution") return <Execution lang={lang} execution={execution} selection={selection} onSelect={select} gate={gate} onGate={setGate} />;
+    if (nav === "federation") return <Federation lang={lang} federation={federation} selection={selection} onSelect={select} />;
     return <Evidence lang={lang} selection={selection} onSelect={select} />;
-  }, [nav, lang, overview, selection, gate]);
+  }, [nav, lang, overview, execution, federation, selection, gate]);
 
   return (
-    <div className="cockpit">
-      <Rail lang={lang} nav={nav} theme={theme} onNav={navigate} onTheme={toggleTheme} onLang={toggleLang} onSettings={() => setSettingsOpen(true)} />
-      <Sidebar
-        lang={lang}
-        nav={nav}
-        overview={overview}
-        query={query}
-        onQuery={setQuery}
-        selection={selection}
-        onSelect={select}
-        host={host}
-      />
+    <div className={`cockpit${focusMode ? " cockpit--focus" : ""}`}>
+      {!focusMode ? (
+        <Rail
+          lang={lang}
+          nav={nav}
+          theme={theme}
+          onNav={navigate}
+          onTheme={toggleTheme}
+          onLang={toggleLang}
+          onSettings={() => setSettingsOpen(true)}
+        />
+      ) : null}
+      {!focusMode ? (
+        <Sidebar
+          lang={lang}
+          nav={nav}
+          overview={overview}
+          query={query}
+          onQuery={setQuery}
+          selection={selection}
+          onSelect={select}
+          host={host}
+          federation={federation}
+        />
+      ) : null}
       <main className="workspace">
         <Topbar
           lang={lang}
@@ -1241,17 +1288,21 @@ export default function App() {
           <div className="workspace__inner">{view}</div>
         </div>
       </main>
-      <Inspector
-        lang={lang}
-        nav={nav}
-        overview={overview}
-        selection={selection}
-        gate={gate}
-        onNavigate={(nextNav, nextSelection) => {
-          setNav(nextNav);
-          setSelection(nextSelection);
-        }}
-      />
+      {!focusMode ? (
+        <Inspector
+          lang={lang}
+          nav={nav}
+          overview={overview}
+          selection={selection}
+          gate={gate}
+          execution={execution}
+          federation={federation}
+          onNavigate={(nextNav, nextSelection) => {
+            setNav(nextNav);
+            setSelection(nextSelection);
+          }}
+        />
+      ) : null}
       <Statusbar lang={lang} overview={overview} host={host} />
       {settingsOpen ? (
         <SettingsDialog
