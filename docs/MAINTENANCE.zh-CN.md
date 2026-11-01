@@ -65,7 +65,7 @@ scripts/check-fresh-clone.sh   # 干净克隆内再跑一遍（约 1 分钟，�
 ## 5. 新增测试
 
 1. 单元/集成测试放在 crate 内；随机性质测试用固定种子并写明 trials。
-2. 新增测试后运行 `python3 scripts/check-test-matrix.py`，同步更新矩阵中的 crate 计数、合计**以及 `docs/status/status-snapshot.zh-CN.md` 的测试计数**（检查器会同时校验三处）。
+2. 新增测试后运行 `python3 scripts/check-test-matrix.py`，同步更新矩阵中的 crate 计数、合计**以及 `docs/status/status-snapshot.zh-CN.md` 的测试计数**（检查器会同时校验三处，并自动发现矩阵未列出的 workspace 包）。
 3. 涉及契约行为的测试应引用契约条款；发现实现缺陷时先修实现，再保留回归测试。
 
 ## 6. 文档变更
