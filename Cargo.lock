@@ -37,6 +37,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
+name = "poie-basyx-shadow"
+version = "0.1.0"
+dependencies = [
+ "poie-ontology",
+ "poie-plan",
+ "poie-runtime",
+ "poie-state",
+ "serde_json",
+]
+
+[[package]]
 name = "poie-e2e"
 version = "0.1.0"
 dependencies = [
@@ -72,6 +83,16 @@ version = "0.1.0"
 dependencies = [
  "poie-state",
  "serde",
+]
+
+[[package]]
+name = "poie-federation-docker"
+version = "0.1.0"
+dependencies = [
+ "poie-federation",
+ "poie-state",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

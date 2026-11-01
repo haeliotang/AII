@@ -1,0 +1,92 @@
+Loaded property file: file:application.properties
+Loaded property file: jar:nested:/application/basyxExecutable.jar/!BOOT-INF/classes/!/application.properties
+  ____           _____              
+ |  _ \         / ____|             
+ | |_) |  __ _ | (___   _   _ __  __
+ |  _ <  / _` | \___ \ | | | |\ \/ /
+ | |_) || (_| | ____) || |_| | >  < 
+ |____/  \__,_||_____/  \__, |/_/\_\
+======================== __/ |======      
+AAS Environment         |___/                  
+2.0.0-PREVIEW
+
+2026-11-01T08:58:33.517Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasEnvironmentComponent      : Starting AasEnvironmentComponent v2.0.0-milestone-15 using Java 17.0.19 with PID 1 (/application/basyxExecutable.jar started by nobody in /application)
+2026-11-01T08:58:33.522Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasEnvironmentComponent      : No active profile set, falling back to 1 default profile: "default"
+2026-11-01T08:58:34.834Z  INFO 1 --- [AAS Environment] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data MongoDB repositories in DEFAULT mode.
+2026-11-01T08:58:34.868Z  INFO 1 --- [AAS Environment] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 27 ms. Found 0 MongoDB repository interfaces.
+2026-11-01T08:58:35.440Z  INFO 1 --- [AAS Environment] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8081 (http)
+2026-11-01T08:58:35.451Z  INFO 1 --- [AAS Environment] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-01T08:58:35.452Z  INFO 1 --- [AAS Environment] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.22]
+2026-11-01T08:58:35.480Z  INFO 1 --- [AAS Environment] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1895 ms
+2026-11-01T08:58:35.689Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasEnvironmentFeaturePrinter : -------------------- Aas Environment Features: --------------------
+2026-11-01T08:58:35.690Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasEnvironmentFeaturePrinter : ----------------------------------------------------------------- 
+2026-11-01T08:58:37.060Z  INFO 1 --- [AAS Environment] [           main] a.p.AasEnvironmentPreconfigurationLoader : Scanning for preconfigured AAS Environments
+2026-11-01T08:58:37.060Z  INFO 1 --- [AAS Environment] [           main] a.p.AasEnvironmentPreconfigurationLoader : Found 0 preconfigured AAS environments
+2026-11-01T08:58:37.063Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasRepositoryFeaturePrinter  : -------------------- Aas Repository Features: --------------------
+2026-11-01T08:58:37.063Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasRepositoryFeaturePrinter  : ----------------------------------------------------------------- 
+2026-11-01T08:58:37.064Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasServiceFeaturePrinter     : ------------------ Aas Service Found Features: ------------------ 
+2026-11-01T08:58:37.064Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasServiceFeaturePrinter     : ----------------------------------------------------------------- 
+2026-11-01T08:58:37.065Z  INFO 1 --- [AAS Environment] [           main] d.b.s.c.SubmodelRepositoryFeaturePrinter : -------------------- Submodel Repository Features: --------------------
+2026-11-01T08:58:37.065Z  INFO 1 --- [AAS Environment] [           main] d.b.s.c.SubmodelRepositoryFeaturePrinter : BaSyxFeature SubmodelRepository Operation Delegation is enabled: true
+2026-11-01T08:58:37.065Z  INFO 1 --- [AAS Environment] [           main] d.b.s.c.SubmodelRepositoryFeaturePrinter : ----------------------------------------------------------------- 
+2026-11-01T08:58:37.066Z  INFO 1 --- [AAS Environment] [           main] .e.d.b.s.c.SubmodelServiceFeaturePrinter : ------------------ Submodel Service Found Features: ------------------ 
+2026-11-01T08:58:37.066Z  INFO 1 --- [AAS Environment] [           main] .e.d.b.s.c.SubmodelServiceFeaturePrinter : ----------------------------------------------------------------- 
+2026-11-01T08:58:37.067Z  INFO 1 --- [AAS Environment] [           main] nceptDescriptionRepositoryFeaturePrinter : -------------------- Concept Description Repository Features: --------------------
+2026-11-01T08:58:37.067Z  INFO 1 --- [AAS Environment] [           main] nceptDescriptionRepositoryFeaturePrinter : ----------------------------------------------------------------- 
+2026-11-01T08:58:37.887Z  INFO 1 --- [AAS Environment] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-11-01T08:58:37.960Z  INFO 1 --- [AAS Environment] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8081 (http) with context path '/'
+2026-11-01T08:58:37.972Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasEnvironmentComponent      : Started AasEnvironmentComponent in 4.896 seconds (process running for 5.425)
+2026-11-01T08:58:38.012Z  WARN 1 --- [AAS Environment] [           main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /v3/api-docs endpoint is enabled by default. To disable it in production, set the property 'springdoc.api-docs.enabled=false'
+2026-11-01T08:58:38.012Z  WARN 1 --- [AAS Environment] [           main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /swagger-ui.html endpoint is enabled by default. To disable it in production, set the property 'springdoc.swagger-ui.enabled=false'
+2026-11-01T08:58:38.791Z  INFO 1 --- [AAS Environment] [nio-8081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-01T08:58:38.791Z  INFO 1 --- [AAS Environment] [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-01T08:58:38.792Z  INFO 1 --- [AAS Environment] [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-01T08:58:38.911Z  WARN 1 --- [AAS Environment] [nio-8081-exec-1] o.h.v.i.m.a.CascadingMetaDataBuilder     : HV000271: Using `@Valid` on a container (java.util.List) is deprecated. You should apply the annotation on the type argument(s). Affected element: AasRepositoryHTTPApi#getAllAssetAdministrationShells(List, String, Integer, Base64UrlEncodedCursor)
+2026-11-01T08:58:39.117Z  WARN 1 --- [AAS Environment] [nio-8081-exec-3] o.h.v.i.m.a.CascadingMetaDataBuilder     : HV000271: Using `@Valid` on a container (java.util.List) is deprecated. You should apply the annotation on the type argument(s). Affected element: SubmodelRepositoryHTTPApi#patchSubmodelByIdValueOnly(Base64UrlEncodedIdentifier, List, String)
+2026-11-01T08:58:39.919Z  INFO 1 --- [AAS Environment] [ionShutdownHook] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-11-01T08:58:39.924Z  INFO 1 --- [AAS Environment] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+Loaded property file: file:application.properties
+Loaded property file: jar:nested:/application/basyxExecutable.jar/!BOOT-INF/classes/!/application.properties
+  ____           _____              
+ |  _ \         / ____|             
+ | |_) |  __ _ | (___   _   _ __  __
+ |  _ <  / _` | \___ \ | | | |\ \/ /
+ | |_) || (_| | ____) || |_| | >  < 
+ |____/  \__,_||_____/  \__, |/_/\_\
+======================== __/ |======      
+AAS Environment         |___/                  
+2.0.0-PREVIEW
+
+2026-11-01T08:58:41.528Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasEnvironmentComponent      : Starting AasEnvironmentComponent v2.0.0-milestone-15 using Java 17.0.19 with PID 1 (/application/basyxExecutable.jar started by nobody in /application)
+2026-11-01T08:58:41.532Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasEnvironmentComponent      : No active profile set, falling back to 1 default profile: "default"
+2026-11-01T08:58:43.147Z  INFO 1 --- [AAS Environment] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data MongoDB repositories in DEFAULT mode.
+2026-11-01T08:58:43.178Z  INFO 1 --- [AAS Environment] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 24 ms. Found 0 MongoDB repository interfaces.
+2026-11-01T08:58:44.190Z  INFO 1 --- [AAS Environment] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8081 (http)
+2026-11-01T08:58:44.216Z  INFO 1 --- [AAS Environment] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-11-01T08:58:44.216Z  INFO 1 --- [AAS Environment] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.22]
+2026-11-01T08:58:44.283Z  INFO 1 --- [AAS Environment] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2650 ms
+2026-11-01T08:58:44.672Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasEnvironmentFeaturePrinter : -------------------- Aas Environment Features: --------------------
+2026-11-01T08:58:44.673Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasEnvironmentFeaturePrinter : ----------------------------------------------------------------- 
+2026-11-01T08:58:45.966Z  INFO 1 --- [AAS Environment] [           main] a.p.AasEnvironmentPreconfigurationLoader : Scanning for preconfigured AAS Environments
+2026-11-01T08:58:45.966Z  INFO 1 --- [AAS Environment] [           main] a.p.AasEnvironmentPreconfigurationLoader : Found 0 preconfigured AAS environments
+2026-11-01T08:58:45.967Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasRepositoryFeaturePrinter  : -------------------- Aas Repository Features: --------------------
+2026-11-01T08:58:45.968Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasRepositoryFeaturePrinter  : ----------------------------------------------------------------- 
+2026-11-01T08:58:45.969Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasServiceFeaturePrinter     : ------------------ Aas Service Found Features: ------------------ 
+2026-11-01T08:58:45.969Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasServiceFeaturePrinter     : ----------------------------------------------------------------- 
+2026-11-01T08:58:45.970Z  INFO 1 --- [AAS Environment] [           main] d.b.s.c.SubmodelRepositoryFeaturePrinter : -------------------- Submodel Repository Features: --------------------
+2026-11-01T08:58:45.970Z  INFO 1 --- [AAS Environment] [           main] d.b.s.c.SubmodelRepositoryFeaturePrinter : BaSyxFeature SubmodelRepository Operation Delegation is enabled: true
+2026-11-01T08:58:45.970Z  INFO 1 --- [AAS Environment] [           main] d.b.s.c.SubmodelRepositoryFeaturePrinter : ----------------------------------------------------------------- 
+2026-11-01T08:58:45.971Z  INFO 1 --- [AAS Environment] [           main] .e.d.b.s.c.SubmodelServiceFeaturePrinter : ------------------ Submodel Service Found Features: ------------------ 
+2026-11-01T08:58:45.971Z  INFO 1 --- [AAS Environment] [           main] .e.d.b.s.c.SubmodelServiceFeaturePrinter : ----------------------------------------------------------------- 
+2026-11-01T08:58:45.972Z  INFO 1 --- [AAS Environment] [           main] nceptDescriptionRepositoryFeaturePrinter : -------------------- Concept Description Repository Features: --------------------
+2026-11-01T08:58:45.972Z  INFO 1 --- [AAS Environment] [           main] nceptDescriptionRepositoryFeaturePrinter : ----------------------------------------------------------------- 
+2026-11-01T08:58:46.651Z  INFO 1 --- [AAS Environment] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-11-01T08:58:46.710Z  INFO 1 --- [AAS Environment] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8081 (http) with context path '/'
+2026-11-01T08:58:46.723Z  INFO 1 --- [AAS Environment] [           main] o.e.d.b.a.c.AasEnvironmentComponent      : Started AasEnvironmentComponent in 5.767 seconds (process running for 6.454)
+2026-11-01T08:58:46.748Z  WARN 1 --- [AAS Environment] [           main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /v3/api-docs endpoint is enabled by default. To disable it in production, set the property 'springdoc.api-docs.enabled=false'
+2026-11-01T08:58:46.748Z  WARN 1 --- [AAS Environment] [           main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /swagger-ui.html endpoint is enabled by default. To disable it in production, set the property 'springdoc.swagger-ui.enabled=false'
+2026-11-01T08:58:48.540Z  INFO 1 --- [AAS Environment] [nio-8081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-01T08:58:48.541Z  INFO 1 --- [AAS Environment] [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-11-01T08:58:48.542Z  INFO 1 --- [AAS Environment] [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-11-01T08:58:48.655Z  WARN 1 --- [AAS Environment] [nio-8081-exec-1] o.h.v.i.m.a.CascadingMetaDataBuilder     : HV000271: Using `@Valid` on a container (java.util.List) is deprecated. You should apply the annotation on the type argument(s). Affected element: AasRepositoryHTTPApi#getAllAssetAdministrationShells(List, String, Integer, Base64UrlEncodedCursor)
+2026-11-01T08:58:48.793Z  WARN 1 --- [AAS Environment] [nio-8081-exec-3] o.h.v.i.m.a.CascadingMetaDataBuilder     : HV000271: Using `@Valid` on a container (java.util.List) is deprecated. You should apply the annotation on the type argument(s). Affected element: SubmodelRepositoryHTTPApi#patchSubmodelByIdValueOnly(Base64UrlEncodedIdentifier, List, String)

@@ -6,7 +6,12 @@ Rules:
 - every generated report (REPORT.md, REPORT.sim.md, *-report.md, report.toml)
   must be referenced by CI, except reports listed in MANUAL_REPORTS below, which
   are hand-written analyses rather than generated outputs;
-- every experiments/... path mentioned in CI must exist on disk.
+- every experiments/... path mentioned in CI must exist on disk;
+- raw/ files of experiments listed in LIVE_RAW_EXPERIMENTS are captured from a
+  live external environment (Docker) and cannot be regenerated in CI; they are
+  exempt, but their REPORT.md must still be replayed from the committed raw/;
+- reports in LIVE_REPORTS are judged against a live container and have no
+  offline replay path; they are exempt and labelled as AI previews.
 
 Usage: python3 scripts/check-experiment-replays.py [repo-root]
 """
@@ -22,6 +27,13 @@ MANUAL_REPORTS = {
     "experiments/h2-joint-planning/REPORT.md",
     "experiments/vec-base01/report.md",
 }
+LIVE_RAW_EXPERIMENTS = {
+    "experiments/basyx-shadow",
+    "experiments/federation-docker",
+}
+LIVE_REPORTS = {
+    "experiments/basyx-shadow/REPORT.md",
+}
 PATH = re.compile(r"(experiments/[A-Za-z0-9_./-]+\.(?:md|txt|toml))")
 
 
@@ -31,7 +43,11 @@ def main():
     cited = set(PATH.findall(ci))
 
     stale = sorted(path for path in cited if not (root / path).exists())
-    raw = sorted(str(path.relative_to(root)) for path in (root / "experiments").glob("*/raw/*"))
+    raw = sorted(
+        str(path.relative_to(root))
+        for path in (root / "experiments").glob("*/raw/*")
+        if str(path.parent.parent.relative_to(root)) not in LIVE_RAW_EXPERIMENTS
+    )
     generated = set(raw)
     report = re.compile(r"^(REPORT\.md|REPORT\.sim\.md|.*-report\.md|report\.toml)$")
     for directory in (root / "experiments").iterdir():
@@ -42,7 +58,7 @@ def main():
             # otherwise report a pattern-cased name that does not exist as such.
             if report.match(path.name):
                 generated.add(str(path.relative_to(root)))
-    unreplayed = sorted(path for path in generated if path not in cited and path not in MANUAL_REPORTS)
+    unreplayed = sorted(path for path in generated if path not in cited and path not in MANUAL_REPORTS | LIVE_REPORTS)
 
     for path in stale:
         print(f"STALE: CI references a missing path: {path}")

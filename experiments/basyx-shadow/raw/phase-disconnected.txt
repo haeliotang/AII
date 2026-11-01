@@ -1,0 +1,12 @@
+phase=disconnected
+now_ms=1793523520114
+http_status=None
+adapter_error=Disconnected(127.0.0.1:58386: Connection refused (os error 61) (ConnectionRefused))
+observations=[]
+reading=None
+accepted_observations=0
+disconnected_adapters=["basyx-aas-readonly"]
+projected_pump-p1=Some(Unknown)
+health=HealthReport { adapters: {"basyx-aas-readonly": AdapterHealth { connected: false, last_observation_ms: None }}, expired_evidence: 0, healthy: false }
+--- body ---
+

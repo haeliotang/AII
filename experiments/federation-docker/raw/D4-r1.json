@@ -1,0 +1,2 @@
+[{"site":"site-a","attempts":38,"successes":7,"failures":31,"written":true,"records":2,"reservations":2,"leases":2,"conflicts":["double_ownership","duplicate_idempotency_key","over_reservation"],"conflict_count":3},
+{"site":"site-b","attempts":39,"successes":9,"failures":30,"written":true,"records":2,"reservations":2,"leases":2,"conflicts":["double_ownership","duplicate_idempotency_key","over_reservation"],"conflict_count":3}]

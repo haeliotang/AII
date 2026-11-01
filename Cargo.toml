@@ -19,8 +19,10 @@ members = [
     "experiments/federation-partition/runner",
     "experiments/e2e-pipeline/runner",
     "experiments/federation-tcp/runner",
+    "experiments/federation-docker/runner",
     "experiments/two-site-shadow/runner",
     "experiments/shadow-run/runner",
+    "experiments/basyx-shadow/runner",
     "experiments/vec-base01/runner",
 ]
 

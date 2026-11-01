@@ -1,0 +1,191 @@
+# AI 预演用例：由 AI 子代理在不读已有用例的条件下独立编写，source = ai-preview，不计入 M3.3 外部配额。预期在首次运行前固定。
+#
+# Autonomous Base-01 — AI-preview structural cases
+# Each case patches the base model, runs one capability-graph query, and
+# states the expected verdict and root causes BEFORE the run (pre-registered).
+# Run: cargo run -p poie-ontology --bin poie-graph -- scenarios/base-01/ai-preview-cases.toml
+
+schema = "poie.scenario-cases/0.3"
+model = "model.toml"
+
+[[case]]
+id = "AP01"
+title = "现场制套筒路线的累计电能 2.6 kWh 超过电池余量 2.5 kWh"
+description = """
+合格库存套筒 lot-sleeve-01 被隔离，lot-sleeve-02 本来就隔离（PO §3.3：只有 accepted 批次可分配），
+因此恢复 pump-p1 必须走 turn-sleeve-p1 (2 kWh) → inspect-sleeve-p1 (0.1 kWh) → replace-sleeve-p1 (0.5 kWh)。
+每一步单独看电量都够，但 PO §6.3 规则 1 要求单一账本、消耗不重复，路线累计 2.6 kWh > 2.5 kWh。
+electric-energy 在模型中没有任何生产工艺（PV 充电未建模为工艺），缺口无法补足 → blocked，根因 missing_resource electric-energy。
+刁钻点：逐步检查会误判为可行，只有累计账本才能发现。"""
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+tags = ["stock-contention"]
+[case.patch]
+lot_quality = { "lot-sleeve-01" = "quarantined" }
+lot_quantity = { "lot-energy" = "2.5 kWh" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "electric-energy" }]
+
+[[case]]
+id = "AP02"
+title = "电池余量恰好等于路线累计电耗 2.6 kWh 时仍是候选"
+description = """
+与 AP01 相同，但 lot-energy = 2.6 kWh，恰好等于 2 + 0.1 + 0.5 kWh。
+PO §2.3 规定比较使用相对 1e-9 + 绝对 1e-12 的容差以消除浮点舍入（0.1 kWh 等在二进制下不精确），
+因此"需要量 = 可用量"必须判为满足，不得因舍入误差判为缺电。
+其余条件同 AP01：turn-sleeve-p1 (demonstrated，machine-tending demonstrated)、inspect-sleeve-p1 (verified)、
+replace-sleeve-p1 (verified) 均不低于 demonstrated（PO §3.5、§6.3 规则 13）→ candidate。
+刁钻点：边界相等 + 浮点累加。"""
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+tags = ["stock-contention"]
+[case.patch]
+lot_quality = { "lot-sleeve-01" = "quarantined" }
+lot_quantity = { "lot-energy" = "2.6 kWh" }
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-sleeve-p1", "inspect-sleeve-p1", "replace-sleeve-p1"]
+
+[[case]]
+id = "AP03"
+title = "要 2 个合格套筒：1 个取库存，1 个现场车削并检验，隔离批次不得动用"
+description = """
+库存中 sleeve-p1 有 2 个，但 lot-sleeve-02 为 quarantined，按 PO §3.3 不得计入可用量，只有 1 个可分配。
+PO §6.2 obtain：不足部分由产出该资源的工艺补齐；唯一产出 sleeve-p1 的是 inspect-sleeve-p1（质量门，PO §3.2），
+其输入 sleeve-p1-raw 由 turn-sleeve-p1 产出。lathe-1、gauge-1、robot-m1 均可用，铜棒 1.2 ≤ 3 kg、刀片 1 ≤ 4、电量充足。
+所有工艺与能力等级 ≥ demonstrated → candidate，路线必须包含车削与检验。"""
+goal = { obtain = { resource = "sleeve-p1", quantity = "2 item" } }
+min_verification = "demonstrated"
+tags = ["quality-gate"]
+[case.expect]
+verdict = "candidate"
+route_includes = ["turn-sleeve-p1", "inspect-sleeve-p1"]
+
+[[case]]
+id = "AP04"
+title = "要 4 个合格套筒：需现场造 3 个，铜棒 3.6 kg > 3 kg，隔离批次不能补位"
+description = """
+可分配库存只有 lot-sleeve-01 的 1 个（lot-sleeve-02 隔离，PO §3.3），缺口 3 个。
+每个套筒需 1.2 kg 铜棒，3 个需 3.6 kg，而 lot-bronze 只有 3 kg；bronze-bar 没有本地生产工艺（swarf 无回收工艺），
+PO §6.3 规则 10：单条工艺重复运行与逐批组合都只能补足 2 个，不得把部分补足报告为 candidate → blocked，
+根因 missing_resource bronze-bar（外部依赖，PO §6.5）。
+刁钻点：若实现错误地把隔离批次计入可用量，缺口只有 2 个，会误报 candidate。"""
+goal = { obtain = { resource = "sleeve-p1", quantity = "4 item" } }
+min_verification = "demonstrated"
+tags = ["stock-contention", "quality-gate"]
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "missing_resource", subject = "bronze-bar" }]
+
+[[case]]
+id = "AP05"
+title = "车床故障且无备用螺母：在 demonstrated 下先被验证等级过滤，而不是报循环"
+description = """
+lathe-1 failed，恢复它只能走 replace-lathe-nut，需要 lathe-nut，库存为 0。
+唯一产出 lathe-nut 的 turn-lathe-nut 占用 lathe-1 自身（本应构成 PO §6.3 规则 5 的循环），
+但该工艺等级为 modeled，低于查询的 demonstrated。PO §6.3 规则 7：低于 min_verification 的工艺不参与求解，
+但必须作为阻断原因记录，因此根因应为 below_verification turn-lathe-nut；该工艺根本不进入搜索，
+循环不会被展开。结论 blocked。
+刁钻点：直觉会预期 cycle，但验证等级过滤在循环检测之前生效。"""
+goal = { restore = "lathe-1" }
+min_verification = "demonstrated"
+tags = ["cycle", "verification"]
+[case.patch]
+asset_status = { "lathe-1" = "failed" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "below_verification", subject = "turn-lathe-nut" }]
+
+[[case]]
+id = "AP06"
+title = "车床故障但有一个备用螺母：备件打破自修循环"
+description = """
+同 AP05，但新增一个 accepted 的 lathe-nut 批次。replace-lathe-nut 可直接从库存分配螺母（PO §6.2 obtain），
+无需 turn-lathe-nut，也就不会占用 lathe-1 自身，不触发 PO §6.3 规则 5 的循环。
+replace-lathe-nut 等级 demonstrated，robot-m1 的 lathe-repair 能力 demonstrated（PO §6.3 规则 13），
+lathe-1 的支撑 bus-1 可用 → candidate，且路线不得包含 turn-lathe-nut。"""
+goal = { restore = "lathe-1" }
+min_verification = "demonstrated"
+tags = ["cycle"]
+[case.patch]
+asset_status = { "lathe-1" = "failed" }
+add_lot = [{ id = "lot-lathe-nut", resource = "lathe-nut", quantity = "1 item", quality = "accepted", location = "store-a" }]
+[case.expect]
+verdict = "candidate"
+route_includes = ["replace-lathe-nut"]
+route_excludes = ["turn-lathe-nut"]
+
+[[case]]
+id = "AP07"
+title = "母线断路器故障：唯一能换断路器的机器人自己靠这条母线充电"
+description = """
+bus-1 failed，有合格断路器备件 lot-breaker。恢复 bus-1 只能走 replace-bus-breaker，需要 electrical-repair，
+唯一提供者 robot-m1 requires charger-1，而 charger-1 requires bus-1。
+求解 restore(bus-1) 的过程中再次出现 restore(bus-1)，PO §6.3 规则 5：必须判为阻断，原因 cycle，不得假定"先修好再用"。
+备件齐全也无用 → blocked，根因 cycle（循环目标为 bus-1）。
+刁钻点：库存与验证等级都满足，阻断完全来自机器人供电与被修对象的共因（PO §6.4 末段的共同根因）。"""
+goal = { restore = "bus-1" }
+min_verification = "demonstrated"
+tags = ["common-cause", "cycle"]
+[case.patch]
+asset_status = { "bus-1" = "failed" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "cycle", subject = "bus-1" }]
+
+[[case]]
+id = "AP08"
+title = "母线故障但机器人改为自带电池、不依赖充电桩：供水可恢复"
+description = """
+与 AP07 同样 bus-1 failed，但把 robot-m1 的 requires 替换为空（机器人有独立电量，PO §3.1 允许资产无支撑）。
+此时 replace-bus-breaker（demonstrated，electrical-repair demonstrated）可恢复 bus-1，
+再由 replace-sleeve-p1（verified，sleeve-replacement verified）恢复 pump-p1，filter-1 可用。
+potable-water 的全部 requires 满足（PO §6.2 service）→ candidate，路线须包含两步恢复。
+charger-1 仍依赖 bus-1，但路线不再需要它。"""
+goal = { service = "potable-water" }
+min_verification = "demonstrated"
+tags = ["common-cause"]
+[case.patch]
+asset_status = { "bus-1" = "failed" }
+asset_requires = { "robot-m1" = [] }
+[case.expect]
+verdict = "candidate"
+route_includes = ["replace-bus-breaker", "replace-sleeve-p1"]
+
+[[case]]
+id = "AP09"
+title = "量具状态未知：唯一质量门不可用时结论应为 unknown 而非 blocked"
+description = """
+lot-sleeve-01 隔离，可分配 sleeve-p1 为 0，只能 turn-sleeve-p1 → inspect-sleeve-p1。
+inspect-sleeve-p1 占用 gauge-1，gauge-1 状态为 unknown；PO §3.1：unknown 不得解释为 available；
+gauge-1 没有任何恢复工艺。没有其他替代路线。PO §6.4：没有候选路线且至少一个阻断原因来自未知状态 → unknown，
+根因 unknown_state gauge-1（补齐证据后结论可能改变）。"""
+goal = { obtain = { resource = "sleeve-p1", quantity = "1 item" } }
+min_verification = "demonstrated"
+tags = ["unknown", "quality-gate"]
+[case.patch]
+asset_status = { "gauge-1" = "unknown" }
+lot_quality = { "lot-sleeve-01" = "quarantined" }
+[case.expect]
+verdict = "unknown"
+root_causes = [{ kind = "unknown_state", subject = "gauge-1" }]
+
+[[case]]
+id = "AP10"
+title = "给降级水泵加上可占用策略，不能让它直接充当服务支撑"
+description = """
+pump-p1 degraded，并声明 degraded 策略 occupiable = true。PO §3.1 与 §8 第 4 条：降级策略只覆盖"占用"，
+服务支撑仍要求资产恢复为 available。因此 potable-water 仍需 restore(pump-p1)。
+lot-sleeve-01 隔离后，唯一套筒来源 turn-sleeve-p1 等级 demonstrated，低于查询的 verified，
+按 PO §6.3 规则 7 被过滤并报告 → 恢复失败 → blocked，根因包含 below_verification turn-sleeve-p1。
+刁钻点：若实现把降级策略误用于服务支撑，会错误地报告 candidate（无需任何步骤）。"""
+goal = { service = "potable-water" }
+min_verification = "verified"
+tags = ["other", "verification"]
+[case.patch]
+asset_degraded = { "pump-p1" = { occupiable = true } }
+lot_quality = { "lot-sleeve-01" = "quarantined" }
+[case.expect]
+verdict = "blocked"
+root_causes = [{ kind = "below_verification", subject = "turn-sleeve-p1" }]

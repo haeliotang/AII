@@ -1,0 +1,10 @@
+C1	PASS	HTTP Some(200)；错误 = none；状态 = Some(Degraded)；FlowRate 原值 = Some("12.5")
+C2a	PASS	unit = Some("m3/h")；SI = Some(0.003472222222222222)
+C2b	PASS	unit = Some("bbl/d")；结果 = Some(Err("unit \"bbl/d\" is not in the adapter's unit table"))；轮询错误 = none
+C3a	PASS	ObservedAt = Some("2026-11-01T08:58:39Z")；observed_at_ms = Some(1793523519000)（期望 Some(1793523519000)）；ingested_at_ms = Some(1793523519682)；quality = Some(Good)
+C3b	PASS	Property 键集合 = {"embeddedDataSpecifications", "idShort", "modelType", "value", "valueType"}；时间戳类键 = []
+C4	PASS	投影 pump-p1 = Degraded；计划动作 0 个；dispatched = false
+C5	PASS	错误 = Disconnected(127.0.0.1:58386: Connection refused (os error 61) (ConnectionRefused))；pump-p1 = Some(Unknown)；healthy = false；接受观测 0
+C6	PASS	HTTP Some(404)；错误 = Protocol(HTTP 404 for GET /submodels/dXJuOnBvaWV3ZWF2ZTpiYXNlLTAxOnB1bXAtcDE6b3BlcmF0aW9uYWwtZGF0YQ)；pump-p1 = Some(Unknown)；healthy = false
+C7	PASS	错误 = none；pump-p1 = Some(Degraded)；healthy = true；observed_at_ms = Some(1793523529000)（期望 Some(1793523529000)）
+failures=0

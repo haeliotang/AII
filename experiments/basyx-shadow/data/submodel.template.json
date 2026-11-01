@@ -1,0 +1,61 @@
+{
+  "modelType": "Submodel",
+  "id": "urn:poieweave:base-01:pump-p1:operational-data",
+  "idShort": "OperationalData",
+  "kind": "Instance",
+  "description": [{ "language": "en", "text": "Base-01 pump-p1 operational data (synthetic, AI rehearsal)." }],
+  "submodelElements": [
+    {
+      "modelType": "Property",
+      "idShort": "OperatingState",
+      "valueType": "xs:string",
+      "value": "degraded"
+    },
+    {
+      "modelType": "Property",
+      "idShort": "FlowRate",
+      "valueType": "xs:double",
+      "value": "12.5",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [{ "type": "GlobalReference", "value": "https://admin-shell.io/DataSpecificationTemplates/DataSpecificationIec61360/3/0" }]
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [{ "language": "en", "text": "Flow rate" }],
+            "unit": "m3/h",
+            "dataType": "REAL_MEASURE"
+          }
+        }
+      ]
+    },
+    {
+      "modelType": "Property",
+      "idShort": "FlowRateExport",
+      "valueType": "xs:double",
+      "value": "100",
+      "embeddedDataSpecifications": [
+        {
+          "dataSpecification": {
+            "type": "ExternalReference",
+            "keys": [{ "type": "GlobalReference", "value": "https://admin-shell.io/DataSpecificationTemplates/DataSpecificationIec61360/3/0" }]
+          },
+          "dataSpecificationContent": {
+            "modelType": "DataSpecificationIec61360",
+            "preferredName": [{ "language": "en", "text": "Flow rate (export unit)" }],
+            "unit": "bbl/d",
+            "dataType": "REAL_MEASURE"
+          }
+        }
+      ]
+    },
+    {
+      "modelType": "Property",
+      "idShort": "ObservedAt",
+      "valueType": "xs:dateTime",
+      "value": "__OBSERVED_AT__"
+    }
+  ]
+}

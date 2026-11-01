@@ -40,6 +40,10 @@ echo "== localhost TCP federation demo =="
 cargo run --locked -q -p poie-federation-tcp -- --write "$tmp/fed-tcp"
 diff "$tmp/fed-tcp/REPORT.md" experiments/federation-tcp/REPORT.md
 diff "$tmp/fed-tcp/raw/exchange.txt" experiments/federation-tcp/raw/exchange.txt
+echo "== two-container partition preview (judgment replay) =="
+mkdir -p "$tmp/fed-docker"
+cargo run --locked -q -p poie-federation-docker -- report --raw experiments/federation-docker/raw --write "$tmp/fed-docker" > /dev/null
+diff "$tmp/fed-docker/REPORT.md" experiments/federation-docker/REPORT.md
 echo "== two-site shadow integration =="
 cargo run --locked -q -p poie-two-site-shadow -- --write "$tmp/two-site"
 diff "$tmp/two-site/REPORT.md" experiments/two-site-shadow/REPORT.md

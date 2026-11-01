@@ -1,0 +1,12 @@
+phase=restarted
+now_ms=1793523528768
+http_status=Some(404)
+adapter_error=Protocol(HTTP 404 for GET /submodels/dXJuOnBvaWV3ZWF2ZTpiYXNlLTAxOnB1bXAtcDE6b3BlcmF0aW9uYWwtZGF0YQ)
+observations=[]
+reading=None
+accepted_observations=0
+disconnected_adapters=["basyx-aas-readonly"]
+projected_pump-p1=Some(Unknown)
+health=HealthReport { adapters: {"basyx-aas-readonly": AdapterHealth { connected: false, last_observation_ms: None }}, expired_evidence: 0, healthy: false }
+--- body ---
+[{"code":404,"messageType":"Error","correlationId":"ElementDoesNotExistException-404","text":"Element with Id urn:poieweave:base-01:pump-p1:operational-data does not exist","timestamp":"2026-11-01T08:58:48.806704469Z"}]
