@@ -96,6 +96,28 @@ python3 scripts/check-experiment-replays.py
 - [ ] 所有新增实验均有重放，或已在检查器白名单说明原因
 - [ ] 外部阻塞项清单未过期（`external-actions`）
 
+## 10. 桌面外壳
+
+`apps/desktop` 是 Tauri 2 + React 19/TypeScript 的桌面外壳，**不在根 Cargo workspace 内**（根 `Cargo.toml` 用 `exclude` 隔开），因此现有 Rust CI 和 `verify-all.sh` 不构建它，也不需要 Linux WebKit 依赖。
+
+本地验证：
+
+```bash
+cd apps/desktop
+pnpm install
+pnpm exec tsc --noEmit -p tsconfig.json
+pnpm build
+(cd src-tauri && cargo test --offline)
+pnpm tauri build --no-bundle
+```
+
+注意：
+
+- 首次 `pnpm install` 允许 `esbuild` 构建脚本（`pnpm.onlyBuiltDependencies`）；
+- Tauri 原生窗口需要 macOS 的 WebKit，Linux CI 需另装 WebKitGTK，故未纳入现有 CI；
+- 外壳目前使用 `apps/desktop/src/data/notes.json` 的种子数据，尚未接入 `poie-*` 领域 crate；
+- 设计令牌来自 Inceptless 浅色主题（见 `apps/desktop/src/styles.css`），没有深色主题。
+
 ## 9. 故障处理
 
 - **CI 红**：先看是否为工具链/依赖漂移，再本地复跑最小命令；修复用独立 PR（fix-forward）。

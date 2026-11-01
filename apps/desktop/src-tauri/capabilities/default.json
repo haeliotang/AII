@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Minimal capability set for the Poieweave workspace shell.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
+exclude = ["apps/desktop/src-tauri"]
 members = [
     "crates/poie-ontology",
     "crates/poie-plan",
