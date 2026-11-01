@@ -7,9 +7,12 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use poie_ontology::model::{Model, Verification};
+use poie_ontology::model::{Model, Patch, Verification};
+use poie_viability::audit::DecisionRecord;
 use poie_viability::method::Method;
-use poie_viability::metrics::{independence, summarize_viability, RunTrace, TimeSample};
+use poie_viability::metrics::{
+    independence, resilience, summarize_runs, summarize_viability, viability, RunTrace, TimeSample, UndecidedRun,
+};
 use poie_viability::report::{
     ConfidenceInterval, InputHashes, MachineReport, MetricGroup, MetricRecord, RunRecord, ScenarioPartition,
     METRIC_DEFINITION_VERSION, REPORT_SCHEMA,
@@ -96,17 +99,41 @@ fn report(method: Method, runs: Vec<RunRecord>, intervals: Vec<ConfidenceInterva
         solver_settings: "default".into(),
         actual_cost_s: 1.0,
         metric_definition_version: METRIC_DEFINITION_VERSION.into(),
+        // Fields added by the fix (VEC §2.1, §7); the pre-registered
+        // assertions below are unchanged.
+        registered_in: "PREREG.md".into(),
+        seed_sets_drawn: usize::from(method == Method::Sampled),
+        terminal_condition: "none: no storage in scope".into(),
         confidence_intervals: intervals,
         model_provenance: Vec::new(),
+        decisions: runs
+            .iter()
+            .map(|run| DecisionRecord {
+                scenario_id: run.scenario_id.clone(),
+                decided_at_s: 0.0,
+                observed_up_to_s: 0.0,
+                policy_instance: "policy@v1".into(),
+            })
+            .collect(),
         runs,
-        metrics: vec![MetricRecord {
-            group: MetricGroup::Viability,
-            name: "censored_count".into(),
-            service: Some("water".into()),
-            value: 0.0,
-            unit: "count".into(),
-            censored: false,
-        }],
+        metrics: vec![
+            MetricRecord {
+                group: MetricGroup::Viability,
+                name: "censored_count".into(),
+                service: Some("water".into()),
+                value: 0.0,
+                unit: "count".into(),
+                censored: false,
+            },
+            MetricRecord {
+                group: MetricGroup::Terminal,
+                name: "gap_at_horizon".into(),
+                service: Some("water".into()),
+                value: 0.0,
+                unit: "1".into(),
+                censored: false,
+            },
+        ],
     }
 }
 
@@ -192,4 +219,80 @@ fn vec4_2_coverage_denominator_is_derived_from_the_route_resources() {
     let metrics = independence(&model, &["potable-water".to_string()], Verification::Demonstrated);
     assert_eq!(metrics.local_coverage.1, 3, "{metrics:?}");
     assert_eq!(metrics.local_coverage.0, 1, "sleeve-p1 has a closed local route: {metrics:?}");
+}
+
+// ---------------------------------------------------------------------------
+// Added with the fix: these use interfaces introduced by it.
+// ---------------------------------------------------------------------------
+
+// VEC §4 (review C-02, counterexample 2): runs that stop undecided are not
+// dropped. Five hard scenarios time out at 2 h; fifteen easy ones hold to H.
+// Dropping the timeouts would report "0 failures"; instead they are censored
+// at 2 h, counted, and the worst-case sensitivity treats them as failures.
+#[test]
+fn vec4_undecided_runs_stay_in_the_distribution() {
+    let traces: Vec<RunTrace> = (0..15).map(|index| survival_trace(index, 72.0, None)).collect();
+    let undecided: Vec<UndecidedRun> = (15..20)
+        .map(|index| UndecidedRun {
+            scenario_id: format!("s{index}"),
+            stopped_at_s: 2.0 * HOUR,
+            class: "timeout".into(),
+            services: Vec::new(),
+        })
+        .collect();
+    let summary = &summarize_runs(&traces, &undecided)[0];
+    assert_eq!(summary.scenarios, 20);
+    assert_eq!(summary.undecided, 5);
+    assert_eq!(summary.censored, 20);
+    assert_eq!(summary.mean_maintained_s, None);
+    assert_eq!(summary.min_maintained_s, None);
+    assert_eq!(summary.worst_case_min_maintained_s, Some(2.0 * HOUR));
+    assert_eq!(summary.worst_case_median_maintained_s, None, "5/20 failures do not reach the median");
+}
+
+// VEC §4 (review C-02, counterexample 3): a missing reading censors the run at
+// that time instead of extending survival to the horizon.
+#[test]
+fn vec4_missing_reading_censors_instead_of_counting_as_full_service() {
+    let mut trace = survival_trace(0, 10.0, None);
+    let mut gap = trace.samples[0].clone();
+    gap.at_s = 3.0 * HOUR;
+    gap.service_levels.clear();
+    trace.samples.push(gap);
+    let entry = &viability(&trace)[0];
+    assert!(entry.censored);
+    assert_eq!(entry.censored_at_s, Some(3.0 * HOUR));
+    let summary = &summarize_viability(std::slice::from_ref(&trace))[0];
+    assert_eq!(summary.follow_up_s, 3.0 * HOUR);
+    let metrics = resilience(&trace);
+    assert_eq!(metrics.unobserved_s["water"], 7.0 * HOUR);
+    assert_eq!(metrics.gap_at_horizon["water"], None, "the state at H is unknown");
+}
+
+// VEC §4.3 / §2.1 (review C-03, counterexample 2): "fail late and never
+// recover" must be visible next to the loss integral as an open gap at H.
+#[test]
+fn vec4_3_open_gap_at_the_horizon_is_reported() {
+    let late = survival_trace(0, 100.0, Some(95.0));
+    let metrics = resilience(&late);
+    assert_eq!(metrics.gap_at_horizon["water"], Some(1.0));
+    assert_eq!(metrics.not_recovered, vec!["water"]);
+}
+
+// VEC §4.2 (review C-10, counterexample 1): a local route that needs a cutting
+// insert which is out of stock does not cover sleeve-p1.
+#[test]
+fn vec4_2_a_route_that_cannot_close_does_not_cover() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../scenarios/base-01/model.toml");
+    let model = Model::load(&path).unwrap();
+    let covered = independence(&model, &["potable-water".to_string()], Verification::Demonstrated);
+    assert_eq!(covered.covered_resources, vec!["sleeve-p1".to_string()]);
+    assert!(covered.coverage_external_inputs["sleeve-p1"].contains(&"cutting-insert".to_string()));
+
+    let mut patch = Patch::default();
+    patch.lot_quantity.insert("lot-insert".into(), "0 item".into());
+    let no_inserts = model.patched(&patch).unwrap();
+    let metrics = independence(&no_inserts, &["potable-water".to_string()], Verification::Demonstrated);
+    assert!(metrics.covered_resources.is_empty(), "{metrics:?}");
+    assert_eq!(metrics.local_coverage, (0, 3));
 }

@@ -59,6 +59,18 @@ pub struct PolicyClass {
     pub rules: String,
     pub replanning_frequency_s: f64,
     pub observations: String,
+    /// One policy instance (parameters and configuration) runs on every
+    /// scenario; it is not re-optimized per scenario (VEC §2.1).
+    pub instance: String,
+}
+
+/// Terminal condition `x_H ∈ K_T` (VEC §2.1). Either constraints are given by
+/// human policy, or "none" is declared explicitly with a reason; the report
+/// shows the terminal state in both cases.
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct TerminalCondition {
+    pub constraints: Vec<String>,
+    pub none_reason: String,
 }
 
 /// A model identifier, version and scope.
@@ -84,6 +96,7 @@ pub struct Query {
     pub services: Vec<ServiceLevel>,
     pub hard_constraints: Vec<String>,
     pub disturbances: DisturbanceSet,
+    pub terminal: TerminalCondition,
     pub policy_class: PolicyClass,
     pub models: Vec<ModelRef>,
     pub min_verification: Verification,
@@ -138,6 +151,16 @@ impl Query {
             if !rate.failure_rate_per_hour.is_finite() || rate.failure_rate_per_hour <= 0.0 {
                 errors.push(QueryError::Invalid("state-related failure rate must be finite and positive"));
             }
+        }
+        let terminal_constraints_valid = self.terminal.constraints.iter().all(|item| !item.trim().is_empty());
+        if !terminal_constraints_valid {
+            errors.push(QueryError::Invalid("terminal constraints must not be empty strings"));
+        }
+        if self.terminal.constraints.is_empty() && self.terminal.none_reason.trim().is_empty() {
+            errors.push(QueryError::Missing("terminal (constraints, or an explicit reason for none)"));
+        }
+        if self.policy_class.instance.trim().is_empty() {
+            errors.push(QueryError::Missing("policy_class.instance"));
         }
         if self.policy_class.rules.trim().is_empty() {
             errors.push(QueryError::Missing("policy_class.rules"));
@@ -233,6 +256,11 @@ mod tests {
                 rules: "restore-first".into(),
                 replanning_frequency_s: 900.0,
                 observations: "asset status, stock and service level".into(),
+                instance: "restore-first@v1".into(),
+            },
+            terminal: TerminalCondition {
+                constraints: vec!["battery >= 2 kWh at H".into()],
+                none_reason: String::new(),
             },
             models: vec![ModelRef { id: "base-01".into(), version: "0.3".into(), scope: "synthetic plant".into() }],
             min_verification: Verification::Modeled,
@@ -270,6 +298,26 @@ mod tests {
         let mut query = base_query();
         query.seeds = vec![7, 7];
         assert!(query.validate().unwrap_err().iter().any(|error| matches!(error, QueryError::Duplicate(_))));
+    }
+
+    #[test]
+    fn vec2_1_a_terminal_condition_or_an_explicit_none_is_required() {
+        let mut query = base_query();
+        query.terminal = TerminalCondition::default();
+        assert!(query
+            .validate()
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, QueryError::Missing(field) if field.contains("terminal"))));
+        query.terminal.none_reason = "no storage in scope".into();
+        assert!(query.validate().is_ok());
+    }
+
+    #[test]
+    fn vec2_1_the_policy_instance_is_named() {
+        let mut query = base_query();
+        query.policy_class.instance.clear();
+        assert!(query.validate().is_err());
     }
 
     #[test]

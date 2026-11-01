@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use poie_expansion::proposal::ExpansionProposal;
+use poie_expansion::proposal::{ExpansionProposal, Stage};
 use poie_expansion::structural::structural_gain;
 use poie_expansion::temporal::temporal_gain;
 use poie_ontology::graph::Goal;
@@ -216,4 +216,43 @@ fn vec4_1_missing_reading_during_construction_is_not_a_pass() {
     let window = TimeWindow::new(0.0, 2_000.0).unwrap();
     let gain = temporal_gain(std::slice::from_ref(&trace), std::slice::from_ref(&trace), &levels, window);
     assert!(!gain.construction.within_window, "missing reading treated as full service: {gain:?}");
+}
+
+// ---------------------------------------------------------------------------
+// Added with the fix: these use interfaces introduced by it.
+// ---------------------------------------------------------------------------
+
+// VEC §6.2.1: the search_limit change is not silently dropped either; it is
+// listed as undetermined.
+#[test]
+fn vec6_2_search_limit_change_is_listed_as_undetermined() {
+    let model_path = temp_file("tiny-yield-2", TINY_YIELD_MODEL);
+    let base = Model::load(&model_path).expect("tiny-yield model loads");
+    let _ = std::fs::remove_file(&model_path);
+    let proposal = load_text("stock-2", STOCK_PROPOSAL).expect("stock proposal loads");
+    let gain = structural_gain(&base, &proposal, &[obtain("dust", "100 kg")], Verification::Verified).unwrap();
+    assert!(gain.undetermined.iter().any(|outcome| outcome.label == "obtain:dust"), "{gain:?}");
+}
+
+// VEC §6.2.1 (review C-04): the contract's example appears at the stages
+// before commissioning and disappears only once remelted bar exists.
+#[test]
+fn vec6_2_losses_are_tagged_with_their_stage() {
+    let mut patch = Patch::default();
+    patch.lot_quantity.insert("lot-bronze".into(), "1.2 kg".into());
+    let base = base01().patched(&patch).unwrap();
+    let gain = structural_gain(&base, &proposal(), &[obtain("sleeve-p1", "2 item")], OPERATING_THRESHOLD).unwrap();
+    let stages: Vec<Stage> = gain.lost.iter().map(|outcome| outcome.stage).collect();
+    assert_eq!(stages, vec![Stage::DuringConstruction, Stage::Built], "{gain:?}");
+}
+
+// VEC §2.3 / §6.2 (review C-08): the Base-01 proposal declares the furnace's
+// own failure mechanism, with its parameter source and synthetic flag.
+#[test]
+fn vec6_2_the_furnace_failure_mechanism_is_declared() {
+    let proposal = proposal();
+    assert_eq!(proposal.failure_modes.len(), 1);
+    assert_eq!(proposal.failure_modes[0].asset, "furnace-1");
+    assert_eq!(proposal.failure_modes[0].mtbf_s, 500.0 * 3600.0);
+    assert!(proposal.failure_modes[0].synthetic);
 }

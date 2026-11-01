@@ -5,6 +5,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 use crate::query::FixedEvent;
+use crate::verdict::VerdictKind;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -32,6 +33,22 @@ impl Method {
             Method::Enumerated => "holds on the finite disturbance set W / a counterexample was found",
             Method::SetBased => "holds in the model and W (state the conservative direction)",
             Method::Certificate => "infeasible or holds in the model, with an independently checkable certificate",
+        }
+    }
+}
+
+impl Method {
+    /// Method × verdict compatibility (VEC §3.2). `sampled` and `enumerated`
+    /// test finitely many scenarios and can never prove infeasibility in the
+    /// model; only `set_based` and `certificate` may issue `infeasible_in_model`.
+    pub fn allows(self, verdict: VerdictKind) -> bool {
+        match verdict {
+            VerdictKind::InfeasibleInModel => matches!(self, Method::SetBased | Method::Certificate),
+            VerdictKind::HeldOnTested
+            | VerdictKind::Counterexample
+            | VerdictKind::Timeout
+            | VerdictKind::NumericalFailure
+            | VerdictKind::UnknownInput => true,
         }
     }
 }
@@ -254,6 +271,15 @@ mod tests {
         assert_eq!(single.scenario_ids(), vec!["baseline", "fixed-0"]);
         assert!(matches!(enumerated_plan(&[event(200.0)], 100.0), Err(MethodError::InvalidEvent(0))));
         assert_eq!(enumerated_plan(&[], 100.0), Err(MethodError::NoScenarios));
+    }
+
+    #[test]
+    fn only_proof_methods_may_issue_infeasible_in_model() {
+        assert!(!Method::Sampled.allows(VerdictKind::InfeasibleInModel));
+        assert!(!Method::Enumerated.allows(VerdictKind::InfeasibleInModel));
+        assert!(Method::SetBased.allows(VerdictKind::InfeasibleInModel));
+        assert!(Method::Certificate.allows(VerdictKind::InfeasibleInModel));
+        assert!(Method::Enumerated.allows(VerdictKind::Counterexample));
     }
 
     #[test]
