@@ -21,10 +21,11 @@ use poie_ontology::model::{Model, Verification};
 use poie_ontology::units::Quantity;
 use poie_process::{BridgeClient, BridgeError, BridgeErrorClass};
 use poie_sim::timed::{CaseDoc, TimedCases, TimedOutcome, TimedRunner, TimedScenario, TimedVerdict};
+use poie_viability::audit::DecisionRecord;
 use poie_viability::bridge::recovery_path_for_goal;
 use poie_viability::method::Method;
 use poie_viability::metrics::{
-    aggregate_external_inputs, independence, resilience, summarize_viability, RunTrace, TimeSample,
+    aggregate_external_inputs, independence, resilience, summarize_runs, RunTrace, TimeSample, UndecidedRun,
 };
 use poie_viability::report::{
     ConfidenceInterval, InputHashes, MachineReport, MetricGroup, MetricRecord, ModelProvenance, RunRecord,
@@ -36,6 +37,8 @@ const CONTRACT_VERSION: &str = "viability-expansion/0.2";
 const REPLAY_STRUCTURAL: &str = "cargo run -p poie-sim --bin poie-timed -- scenarios/base-01-timed/cases.toml";
 /// Constraint name for a recovery goal the tested policy could not route (VEC §3.3).
 const STRUCTURAL_ROUTE: &str = "structural_route";
+const POLICY_INSTANCE: &str = "earliest-start scheduling at case start (poie-sim timed 0.1.0)";
+const TERMINAL_CONDITION: &str = "none declared: the timed Base-01 cases carry no terminal stock or storage requirement; the open service gap at H is reported per case (terminal group)";
 const PROCESS_CONFIG: &str = "experiments/vec-base01/process.toml";
 const MINIMUM_SERVICE_LEVEL: f64 = 0.8;
 
@@ -97,7 +100,7 @@ fn goal_label(goal: &Goal) -> String {
     poie_viability::bridge::goal_label(goal)
 }
 
-fn map_verdict(case: &CaseDoc, outcome: &TimedOutcome) -> Verdict {
+fn map_verdict(case: &CaseDoc, outcome: &TimedOutcome, start_s: f64) -> Verdict {
     match outcome.verdict {
         TimedVerdict::Feasible => Verdict::HeldOnTested {
             tested_scenarios: 1,
@@ -132,7 +135,7 @@ fn map_verdict(case: &CaseDoc, outcome: &TimedOutcome) -> Verdict {
         // a counterexample for the tested one-shot policy, not a certificate.
         TimedVerdict::Blocked => Verdict::Counterexample {
             scenario_id: case.id.clone(),
-            first_violation_s: parse_seconds(&case.start),
+            first_violation_s: start_s,
             constraint: STRUCTURAL_ROUTE.to_string(),
             state: format!(
                 "capability-graph blocked: {}; the tested policy found no structural route on the start \
@@ -246,6 +249,8 @@ fn main() -> ExitCode {
     let mut provenance: Option<ModelProvenance> = None;
     let mut process_calls: usize = 0;
     let mut process_failures: Vec<String> = Vec::new();
+    let mut decisions: Vec<DecisionRecord> = Vec::new();
+    let mut undecided: Vec<UndecidedRun> = Vec::new();
     for case in &cases.cases {
         let outcome = match runner.run(case) {
             Ok(outcome) => outcome,
@@ -303,12 +308,27 @@ fn main() -> ExitCode {
             let path = recovery_path_for_goal(&patched_model, &query.goal, case.min_verification);
             trace.recovery_paths.insert(label.clone(), path);
         }
-        let mut verdict = map_verdict(case, &outcome);
+        let mut verdict = map_verdict(case, &outcome, start_s);
         if let Some(error) = &process_error {
             verdict = process_verdict(error, &process_config.model, process_config.deadline_ms);
             process_failures.push(error.class.as_str().to_string());
         }
         process_calls += 1;
+        decisions.push(DecisionRecord {
+            scenario_id: case.id.clone(),
+            decided_at_s: start_s,
+            observed_up_to_s: start_s,
+            policy_instance: POLICY_INSTANCE.to_string(),
+        });
+        if matches!(verdict, Verdict::Timeout { .. } | Verdict::NumericalFailure { .. } | Verdict::UnknownInput { .. })
+        {
+            undecided.push(UndecidedRun {
+                scenario_id: case.id.clone(),
+                stopped_at_s: start_s,
+                class: verdict.kind().as_str().to_string(),
+                services: vec![label.clone()],
+            });
+        }
         runs.push(RunRecord {
             scenario_id: case.id.clone(),
             method: Method::Enumerated,
@@ -320,16 +340,47 @@ fn main() -> ExitCode {
     }
 
     let mut metrics = Vec::new();
-    for summary in summarize_viability(&traces) {
+    // VEC §4 (2026-11-01): undecided runs stay in the distribution, censored at
+    // their stop time; their traces are not counted as observed failures.
+    let undecided_ids: Vec<&str> = undecided.iter().map(|run| run.scenario_id.as_str()).collect();
+    let decided_traces: Vec<RunTrace> =
+        traces.iter().filter(|trace| !undecided_ids.contains(&trace.scenario_id.as_str())).cloned().collect();
+    for summary in summarize_runs(&decided_traces, &undecided) {
         let service = Some(summary.service.clone());
         if let Some(value) = summary.min_maintained_s {
             metrics.push(metric(MetricGroup::Viability, "min_maintained_s", service.clone(), value, "s", false));
         }
-        if let Some(value) = summary.median_maintained_s {
-            metrics.push(metric(MetricGroup::Viability, "median_maintained_s", service.clone(), value, "s", false));
+        // Product-limit quantiles; a quantile beyond the follow-up is reported
+        // as a censored value "> follow-up" (VEC §4.1).
+        for (name, value) in
+            [("median_maintained_s", summary.median_maintained_s), ("p90_maintained_s", summary.p90_maintained_s)]
+        {
+            match value {
+                Some(value) => metrics.push(metric(MetricGroup::Viability, name, service.clone(), value, "s", false)),
+                None => {
+                    metrics.push(metric(MetricGroup::Viability, name, service.clone(), summary.follow_up_s, "s", true))
+                }
+            }
         }
-        if let Some(value) = summary.p90_maintained_s {
-            metrics.push(metric(MetricGroup::Viability, "p90_maintained_s", service.clone(), value, "s", false));
+        if summary.undecided > 0 {
+            metrics.push(metric(
+                MetricGroup::Viability,
+                "undecided_count",
+                service.clone(),
+                summary.undecided as f64,
+                "count",
+                false,
+            ));
+            if let Some(value) = summary.worst_case_min_maintained_s {
+                metrics.push(metric(
+                    MetricGroup::Viability,
+                    "worst_case_min_maintained_s",
+                    service.clone(),
+                    value,
+                    "s",
+                    false,
+                ));
+            }
         }
         if let Some(value) = summary.mean_maintained_s {
             metrics.push(metric(MetricGroup::Viability, "mean_maintained_s", service.clone(), value, "s", false));
@@ -348,6 +399,21 @@ fn main() -> ExitCode {
     }
     for trace in &traces {
         let result = resilience(trace);
+        for (service, gap) in &result.gap_at_horizon {
+            match gap {
+                Some(value) => metrics.push(metric(
+                    MetricGroup::Terminal,
+                    "gap_at_horizon",
+                    Some(service.clone()),
+                    *value,
+                    "1",
+                    false,
+                )),
+                None => {
+                    metrics.push(metric(MetricGroup::Terminal, "gap_at_horizon", Some(service.clone()), 0.0, "1", true))
+                }
+            }
+        }
         for (service, loss) in &result.service_loss {
             metrics.push(metric(
                 MetricGroup::Resilience,
@@ -400,6 +466,24 @@ fn main() -> ExitCode {
         "count",
         false,
     ));
+    metrics.push(metric(
+        MetricGroup::Independence,
+        "local_coverage_critical_resources",
+        None,
+        independence_metrics.local_coverage.1 as f64,
+        "count",
+        false,
+    ));
+    for resource in &independence_metrics.covered_resources {
+        metrics.push(metric(
+            MetricGroup::Independence,
+            "local_coverage_resource",
+            Some(resource.clone()),
+            1.0,
+            "flag",
+            false,
+        ));
+    }
     let model_service_level = traces
         .iter()
         .filter_map(|trace| trace.samples.first().and_then(|sample| sample.service_levels.values().next().copied()))
@@ -438,10 +522,18 @@ fn main() -> ExitCode {
         solver_settings: "finite fixed-trajectory set (20 pre-registered cases); no random sampling".to_string(),
         actual_cost_s: started.elapsed().as_secs_f64(),
         metric_definition_version: METRIC_DEFINITION_VERSION.to_string(),
+        registered_in: format!(
+            "scenarios/base-01-timed/cases.toml ({} pre-registered cases; fnv1a {})",
+            cases.cases.len(),
+            fnv1a(&file(&cases_path))
+        ),
+        seed_sets_drawn: 0,
+        terminal_condition: TERMINAL_CONDITION.to_string(),
         confidence_intervals: Vec::<ConfidenceInterval>::new(),
         model_provenance: provenance.into_iter().collect(),
         runs,
         metrics,
+        decisions,
     };
     if let Err(errors) = report.validate() {
         for error in errors {
@@ -588,7 +680,7 @@ expect = {{ verdict = "blocked" }}
             violation: None,
             warnings: Vec::new(),
         };
-        let verdict = map_verdict(&case("T13"), &outcome);
+        let verdict = map_verdict(&case("T13"), &outcome, parse_seconds(&case("T13").start));
         assert!(!matches!(verdict, Verdict::InfeasibleInModel { .. }), "{verdict:?}");
         match &verdict {
             Verdict::Counterexample { constraint, state, .. } => {

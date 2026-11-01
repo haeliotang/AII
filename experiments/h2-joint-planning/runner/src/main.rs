@@ -221,6 +221,25 @@ struct ScenarioResult {
     actions: usize,
     unmet: String,
     sap_valid: bool,
+    /// Stored energy left after every executed action (terminal state, VEC
+    /// §2.1, added 2026-11-01). Negative values expose an overdraw.
+    terminal_energy_kwh: f64,
+    /// Planning decisions taken (initial plan + replans); every one used the
+    /// state patched only with events at or before its own time (VEC §2.1).
+    decisions: usize,
+    /// Latest observation time used by any decision minus that decision's
+    /// time; must be <= 0 (non-anticipation check).
+    max_lookahead_s: f64,
+}
+
+fn energy_used_kwh(actions: &[poie_plan::plan::PlannedAction], until_s: f64) -> f64 {
+    actions
+        .iter()
+        .filter(|action| action.end_s <= until_s + 1e-9)
+        .flat_map(|action| action.allocations.iter())
+        .filter(|(resource, _)| resource == "electric-energy")
+        .map(|(_, amount)| *amount / 3.6e6)
+        .sum()
 }
 
 fn service_available(
@@ -245,6 +264,12 @@ fn run_scenario(base: &Model, scenario: &Scenario, method: MethodName) -> Scenar
     let mut now_s = 0.0_f64;
     let mut outcome =
         plan_until(method, &patched_model(base, scenario, now_s, &restored), now_s, Some(SERVICE_DEADLINE_H));
+    // Each decision is planned on `patched_model(.., now_s, ..)`, which only
+    // applies events with time <= now_s: the observation cut-off equals the
+    // decision time. Recorded so that the check is in the report, not implied.
+    let mut decisions = 1usize;
+    let mut max_lookahead_s = observation_cutoff(scenario, now_s) - now_s;
+    let mut energy_used = 0.0;
     let events: Vec<f64> =
         vec![scenario.pump_failure_h * 3600.0, scenario.interruption_h * 3600.0, scenario.bus_failure_h * 3600.0];
     let mut replans = 0usize;
@@ -268,9 +293,12 @@ fn run_scenario(base: &Model, scenario: &Scenario, method: MethodName) -> Scenar
                 }
             }
         }
+        energy_used += energy_used_kwh(&outcome.plan.actions, event);
         now_s = event;
         outcome = plan_until(method, &patched_model(base, scenario, now_s, &restored), now_s, Some(SERVICE_DEADLINE_H));
         replans += 1;
+        decisions += 1;
+        max_lookahead_s = max_lookahead_s.max(observation_cutoff(scenario, now_s) - now_s);
     }
     // Execute everything that finishes by the deadline (before any invalidation).
     let executed_by = deadline_s.min(cutoff);
@@ -284,6 +312,7 @@ fn run_scenario(base: &Model, scenario: &Scenario, method: MethodName) -> Scenar
             }
         }
     }
+    energy_used += energy_used_kwh(&outcome.plan.actions, executed_by);
     let service_met = service_available(base, scenario, &restored, deadline_s);
     let lathe_ok = !restored.contains("lathe-1") && scenario.pump_failure_h >= 0.0;
     let success = service_met && lathe_ok && outcome.sap_valid;
@@ -302,7 +331,19 @@ fn run_scenario(base: &Model, scenario: &Scenario, method: MethodName) -> Scenar
             .collect::<Vec<_>>()
             .join(";"),
         sap_valid: outcome.sap_valid,
+        terminal_energy_kwh: scenario.energy_kwh - energy_used,
+        decisions,
+        max_lookahead_s,
     }
+}
+
+/// Latest event time that `patched_model(.., now_s, ..)` applies.
+fn observation_cutoff(scenario: &Scenario, now_s: f64) -> f64 {
+    [scenario.pump_failure_h, scenario.bus_failure_h, scenario.interruption_h]
+        .iter()
+        .map(|hours| hours * 3600.0)
+        .filter(|time| *time <= now_s)
+        .fold(0.0, f64::max)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -351,17 +392,22 @@ fn main() -> ExitCode {
         }
     }
     let mut lines = String::new();
-    lines.push_str("scenario\tmethod\tsuccess\tcompletion_h\tactions\tunmet\tsap_valid\n");
+    lines.push_str(
+        "scenario\tmethod\tsuccess\tcompletion_h\tactions\tunmet\tsap_valid\tterminal_energy_kwh\tdecisions\tmax_lookahead_s\n",
+    );
     for result in &results {
         lines.push_str(&format!(
-            "{}\t{}\t{}\t{:.3}\t{}\t{}\t{}\n",
+            "{}\t{}\t{}\t{:.3}\t{}\t{}\t{}\t{:.3}\t{}\t{:.0}\n",
             result.scenario,
             result.method,
             result.success,
             result.completion_h,
             result.actions,
             result.unmet,
-            result.sap_valid
+            result.sap_valid,
+            result.terminal_energy_kwh,
+            result.decisions,
+            result.max_lookahead_s
         ));
     }
     println!("{lines}");
@@ -400,7 +446,7 @@ fn summarize(results: &[ScenarioResult], title: &str, mode: RunMode) -> String {
             "本文件由 `poie-h2-joint-planning --holdout --write <dir>` 生成，是留出集的**首次**运行；开发集结果见 [DEV-NOTES.md](DEV-NOTES.md)。预登记见 [PREREG.md](PREREG.md)。\n\n",
         ),
     }
-    out.push_str("| 方法 | 成功 | 场景数 | 成功率 | 平均完成 (h) | 平均动作数 | SAP 通过 |\n| --- | --- | --- | --- | --- | --- | --- |\n");
+    out.push_str("| 方法 | 成功 | 场景数 | 成功率 | 平均完成 (h) | 平均动作数 | SAP 通过 | 最低期末储能 (kWh) | 决策数 | 非预知 |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n");
     for method in METHODS {
         let subset: Vec<&ScenarioResult> = results.iter().filter(|result| result.method == method.as_str()).collect();
         if subset.is_empty() {
@@ -410,8 +456,11 @@ fn summarize(results: &[ScenarioResult], title: &str, mode: RunMode) -> String {
         let completion = subset.iter().map(|result| result.completion_h).sum::<f64>() / subset.len() as f64;
         let actions = subset.iter().map(|result| result.actions as f64).sum::<f64>() / subset.len() as f64;
         let sap = subset.iter().filter(|result| result.sap_valid).count();
+        let terminal = subset.iter().map(|result| result.terminal_energy_kwh).fold(f64::INFINITY, f64::min);
+        let decisions: usize = subset.iter().map(|result| result.decisions).sum();
+        let causal = subset.iter().all(|result| result.max_lookahead_s <= 0.0);
         out.push_str(&format!(
-            "| {} | {} | {} | {:.3} | {:.3} | {:.1} | {}/{} |\n",
+            "| {} | {} | {} | {:.3} | {:.3} | {:.1} | {}/{} | {:.3} | {} | {} |\n",
             method.as_str(),
             success,
             subset.len(),
@@ -419,7 +468,10 @@ fn summarize(results: &[ScenarioResult], title: &str, mode: RunMode) -> String {
             completion,
             actions,
             sap,
-            subset.len()
+            subset.len(),
+            terminal,
+            decisions,
+            if causal { "通过" } else { "违反" }
         ));
     }
     out.push_str("\n## 每场景结果\n\n");
@@ -439,5 +491,6 @@ fn summarize(results: &[ScenarioResult], title: &str, mode: RunMode) -> String {
     }
     out.push_str("- 成功 = 供水目标在 4 h 预测失效前完成、车床目标达成且无未达成目标；所有方法使用相同扰动轨迹、预算与 SAP 校验路径。\n");
     out.push_str("- 规划器是确定性贪心（ADR-0006）；合成场景、未校准；样本小，只作方向性比较。\n");
+    out.push_str("- 2026-11-01 起（VEC §2.1 修订，issue #110）同时报告终端状态与非预知检查：期末储能 = 场景初始储能 − 已执行动作的用电；每次决策只使用不晚于决策时刻的事件（`max_lookahead_s` ≤ 0）；同一方法的同一实例（相同参数）在全部场景上运行。PREREG 没有终端约束，期末储能只作报告，不参与成功判定。\n");
     out
 }

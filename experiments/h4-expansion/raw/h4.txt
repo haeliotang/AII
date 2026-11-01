@@ -1,16 +1,17 @@
-h2-00	true	true	3.000	3.000
-h2-01	true	true	3.000	3.000
-h2-02	true	true	3.000	3.000
-h2-03	true	true	3.000	3.000
-h2-04	true	true	3.000	3.000
-h2-05	true	true	3.000	3.000
-h2-06	true	true	3.000	3.000
-h2-07	true	true	3.000	3.000
-h2-08	true	true	3.000	3.000
-h2-09	true	true	3.000	3.000
-h2-10	true	true	3.000	3.000
-h2-11	true	true	3.000	3.000
-h2-12	true	true	3.000	3.000
-h2-13	true	true	3.000	3.000
-h2-14	true	true	3.000	3.000
-h2-15	true	true	3.000	3.000
+scenario	base_success	base_completion_h	base_terminal_energy_kwh	buildable	expanded_success	expanded_completion_h	furnace_failure_h
+h2-00	true	3.000	0.500	false	-	-	373.310
+h2-01	true	3.000	0.500	false	-	-	179.475
+h2-02	true	3.000	0.000	false	-	-	1379.292
+h2-03	true	3.000	0.500	false	-	-	152.902
+h2-04	true	3.000	0.500	false	-	-	189.853
+h2-05	true	3.000	0.000	false	-	-	898.019
+h2-06	true	3.000	0.000	false	-	-	8.045
+h2-07	true	3.000	1.500	false	-	-	321.949
+h2-08	true	3.000	1.500	false	-	-	153.655
+h2-09	true	3.000	1.500	false	-	-	355.220
+h2-10	true	3.000	0.000	false	-	-	961.464
+h2-11	true	3.000	1.500	false	-	-	254.247
+h2-12	true	3.000	0.500	false	-	-	1043.247
+h2-13	true	3.000	0.500	false	-	-	21.724
+h2-14	true	3.000	0.500	false	-	-	2560.240
+h2-15	true	3.000	0.500	false	-	-	460.671

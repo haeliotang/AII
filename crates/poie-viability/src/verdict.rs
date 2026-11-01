@@ -92,7 +92,7 @@ impl Verdict {
                 method.as_str()
             ),
             Verdict::Counterexample { scenario_id, first_violation_s, constraint, state } => format!(
-                "counterexample in scenario {scenario_id}: constraint {constraint:?} first violated at {first_violation_s:.0}s (state: {state})"
+                "counterexample for the tested policy in scenario {scenario_id}: constraint {constraint:?} first violated at {first_violation_s:.0}s (state: {state}); it refutes this policy, not every policy"
             ),
             Verdict::InfeasibleInModel { certificate, checkable } => {
                 format!("infeasible in the model; certificate {certificate:?}, checked by {checkable:?}")
@@ -108,6 +108,41 @@ impl Verdict {
             }
         }
     }
+}
+
+/// The query-level verdict aggregated from per-scenario verdicts (VEC §3.2).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct QueryVerdict {
+    pub kind: VerdictKind,
+    /// Number of scenarios per verdict class; every class is reported.
+    pub counts: Vec<(VerdictKind, usize)>,
+}
+
+/// Aggregation order (VEC §3.2): any `infeasible_in_model` wins; else any
+/// `counterexample`; else the first undecided class present in the order
+/// `unknown_input`, `numerical_failure`, `timeout`; `held_on_tested` only when
+/// every scenario held. Majority votes and favourable subsets are not allowed.
+pub fn aggregate<'a>(verdicts: impl IntoIterator<Item = &'a Verdict>) -> Option<QueryVerdict> {
+    const ORDER: [VerdictKind; 6] = [
+        VerdictKind::InfeasibleInModel,
+        VerdictKind::Counterexample,
+        VerdictKind::UnknownInput,
+        VerdictKind::NumericalFailure,
+        VerdictKind::Timeout,
+        VerdictKind::HeldOnTested,
+    ];
+    let mut counts = [0usize; 6];
+    let mut any = false;
+    for verdict in verdicts {
+        any = true;
+        let position = ORDER.iter().position(|kind| *kind == verdict.kind()).expect("all kinds are ordered");
+        counts[position] += 1;
+    }
+    if !any {
+        return None;
+    }
+    let kind = ORDER.iter().zip(counts).find(|(_, count)| *count > 0).map(|(kind, _)| *kind)?;
+    Some(QueryVerdict { kind, counts: ORDER.iter().copied().zip(counts).collect() })
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -244,6 +279,25 @@ mod tests {
         assert!(check_summary(&timeout, "不可行").is_err());
         let failure = Verdict::NumericalFailure { solver: "s".into(), settings: "t".into(), message: "m".into() };
         assert!(check_summary(&failure, "the plan is infeasible").is_err());
+    }
+
+    #[test]
+    fn aggregation_follows_the_contract_order() {
+        let counterexample = Verdict::Counterexample {
+            scenario_id: "w".into(),
+            first_violation_s: 1.0,
+            constraint: "c".into(),
+            state: "s".into(),
+        };
+        let timeout = Verdict::Timeout { completed_scenarios: 0, budget: "1 s".into() };
+        let unknown = Verdict::UnknownInput { unknowns: vec!["x".into()] };
+        assert_eq!(aggregate(&[held(), held()]).unwrap().kind, VerdictKind::HeldOnTested);
+        assert_eq!(aggregate(&[held(), timeout.clone()]).unwrap().kind, VerdictKind::Timeout);
+        assert_eq!(aggregate(&[timeout.clone(), unknown.clone()]).unwrap().kind, VerdictKind::UnknownInput);
+        assert_eq!(aggregate(&[held(), unknown, counterexample]).unwrap().kind, VerdictKind::Counterexample);
+        assert!(aggregate(&[]).is_none());
+        let query = aggregate(&[held(), timeout]).unwrap();
+        assert_eq!(query.counts.iter().map(|(_, count)| count).sum::<usize>(), 2);
     }
 
     #[test]

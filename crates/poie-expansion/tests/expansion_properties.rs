@@ -6,7 +6,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use poie_expansion::proposal::ExpansionProposal;
-use poie_expansion::structural::structural_gain;
+use poie_expansion::proposal::Stage;
+use poie_expansion::structural::{classify, structural_gain, Transition};
 use poie_expansion::temporal::temporal_gain;
 use poie_ontology::graph::{self, Goal, Query, Verdict, DEFAULT_MAX_DEPTH};
 use poie_ontology::model::{Model, Verification};
@@ -111,43 +112,45 @@ fn structural_gains_and_losses_partition_the_queried_goals() {
             _ => Verification::Demonstrated,
         };
         let gain = structural_gain(&base, &proposal, &goals, min_verification).expect("gain computes");
+        assert_eq!(gain.stages.len(), Stage::ALL.len(), "trial {trial}: every stage is reported");
 
-        // Independent verdicts on base and expanded model.
-        let mut expected_gained = 0;
-        let mut expected_lost = 0;
-        let mut expected_unchanged_candidate = 0;
-        let mut expected_unchanged_blocked = 0;
-        for goal in &goals {
-            let query = Query { goal: goal.clone(), min_verification, max_depth: DEFAULT_MAX_DEPTH };
-            let before = graph::solve(&base, &query).verdict;
-            let after = graph::solve(&expanded, &query).verdict;
-            match (before, after) {
-                (Verdict::Candidate, Verdict::Candidate) => expected_unchanged_candidate += 1,
-                (Verdict::Candidate, _) => expected_lost += 1,
-                (_, Verdict::Candidate) => expected_gained += 1,
-                _ => expected_unchanged_blocked += 1,
+        // Independent verdicts on the base and on each stage model (VEC §6.2.1).
+        for stage_gain in &gain.stages {
+            let staged = proposal.stage_model(&base, stage_gain.stage).expect("stage model");
+            let (mut gained, mut lost, mut undetermined, mut unchanged) = (0, 0, 0, 0);
+            for goal in &goals {
+                let query = Query { goal: goal.clone(), min_verification, max_depth: DEFAULT_MAX_DEPTH };
+                let before = graph::solve(&base, &query).verdict;
+                let after = graph::solve(&staged, &query).verdict;
+                match classify(before, after) {
+                    Transition::Gained => gained += 1,
+                    Transition::Lost => lost += 1,
+                    Transition::Undetermined => undetermined += 1,
+                    Transition::UnchangedCandidate | Transition::UnchangedNonCandidate => unchanged += 1,
+                }
+                if before == Verdict::SearchLimit {
+                    assert_ne!(classify(before, after), Transition::Gained, "trial {trial}: undecided gain");
+                }
+            }
+            assert_eq!(stage_gain.gained.len(), gained, "trial {trial}: gained count");
+            assert_eq!(stage_gain.lost.len(), lost, "trial {trial}: lost count");
+            assert_eq!(stage_gain.undetermined.len(), undetermined, "trial {trial}: undetermined count");
+            assert_eq!(gained + lost + undetermined + unchanged, goals.len(), "trial {trial}: not a partition");
+            for outcome in stage_gain.gained.iter().chain(stage_gain.lost.iter()) {
+                let goal = goals.iter().find(|goal| label(goal) == outcome.label).expect("outcome has a goal");
+                let query = Query { goal: goal.clone(), min_verification, max_depth: DEFAULT_MAX_DEPTH };
+                assert_eq!(outcome.stage, stage_gain.stage, "trial {trial}: stage tag");
+                assert_eq!(outcome.before, graph::solve(&base, &query).verdict, "trial {trial}: before verdict");
+                assert_eq!(outcome.after, graph::solve(&staged, &query).verdict, "trial {trial}: after verdict");
             }
         }
-        assert_eq!(gain.gained.len(), expected_gained, "trial {trial}: gained count");
-        assert_eq!(gain.lost.len(), expected_lost, "trial {trial}: lost count");
-        assert_eq!(gain.unchanged_candidate, expected_unchanged_candidate, "trial {trial}: unchanged candidate count");
-        assert_eq!(gain.unchanged_blocked, expected_unchanged_blocked, "trial {trial}: unchanged blocked count");
-        assert_eq!(
-            gain.gained.len() + gain.lost.len() + gain.unchanged_candidate + gain.unchanged_blocked,
-            goals.len(),
-            "trial {trial}: outcomes do not partition the goals"
-        );
-
-        // Every reported outcome carries the independently computed verdicts.
-        for outcome in gain.gained.iter().chain(gain.lost.iter()) {
-            let goal = goals.iter().find(|goal| label(goal) == outcome.label).expect("outcome has a goal");
-            let query = Query { goal: goal.clone(), min_verification, max_depth: DEFAULT_MAX_DEPTH };
-            assert_eq!(outcome.before, graph::solve(&base, &query).verdict, "trial {trial}: before verdict");
-            assert_eq!(outcome.after, graph::solve(&expanded, &query).verdict, "trial {trial}: after verdict");
-        }
-        let labels: BTreeSet<String> =
-            gain.gained.iter().chain(gain.lost.iter()).map(|outcome| outcome.label.clone()).collect();
-        assert_eq!(labels.len(), gain.gained.len() + gain.lost.len(), "trial {trial}: duplicate outcome labels");
+        // The headline lists: losses at every stage, gains at the commissioned point.
+        let stage_losses: usize = gain.stages.iter().map(|stage| stage.lost.len()).sum();
+        assert_eq!(gain.lost.len(), stage_losses, "trial {trial}: a stage loss is missing from the headline");
+        let commissioned = gain.stages.iter().find(|stage| stage.stage == Stage::Commissioned).unwrap();
+        assert_eq!(gain.gained, commissioned.gained, "trial {trial}: headline gains");
+        let labels: BTreeSet<String> = gain.gained.iter().map(|outcome| outcome.label.clone()).collect();
+        assert_eq!(labels.len(), gain.gained.len(), "trial {trial}: duplicate outcome labels");
     }
 }
 
