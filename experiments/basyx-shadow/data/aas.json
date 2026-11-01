@@ -1,0 +1,15 @@
+{
+  "modelType": "AssetAdministrationShell",
+  "id": "urn:poieweave:base-01:pump-p1:aas",
+  "idShort": "PumpP1",
+  "assetInformation": {
+    "assetKind": "Instance",
+    "globalAssetId": "urn:poieweave:base-01:asset:pump-p1"
+  },
+  "submodels": [
+    {
+      "type": "ModelReference",
+      "keys": [{ "type": "Submodel", "value": "urn:poieweave:base-01:pump-p1:operational-data" }]
+    }
+  ]
+}

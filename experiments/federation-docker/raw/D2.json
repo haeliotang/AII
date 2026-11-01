@@ -1,0 +1,2 @@
+[{"site":"site-a","attempts":24,"successes":2,"failures":22,"written":true,"records":1,"reservations":1,"leases":1,"conflicts":[],"conflict_count":0},
+{"site":"site-b","attempts":25,"successes":3,"failures":22,"written":true,"records":1,"reservations":1,"leases":1,"conflicts":[],"conflict_count":0}]

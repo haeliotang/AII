@@ -1,0 +1,133 @@
+# poie-graph scenarios/base-01/ai-preview-cases.toml
+# run after prereg commit 815c2f5, 2026-11-01
+model: Autonomous Base-01
+  13 resources, 9 assets, 7 lots, 6 processes, 1 services
+  mass balance: 6 balanced, 0 unchecked []
+  external dependencies (no local producer): breaker-b1, bronze-bar, cutting-insert, electric-energy, grease
+
+[PASS] AP01 — 现场制套筒路线的累计电能 2.6 kWh 超过电池余量 2.5 kWh (min_verification = demonstrated)
+verdict: blocked
+  root causes:
+    - missing_resource electric-energy: need 0.5 kWh, available 0.4 kWh (2.1 kWh already allocated on this route); no local process produces it (external dependency)
+      at service:potable-water > restore:pump-p1 > process:replace-sleeve-p1 > obtain:electric-energy
+  context:
+    - asset_unavailable pump-p1: pump-p1 is degraded; every restoring process is blocked: replace-sleeve-p1
+
+[PASS] AP02 — 电池余量恰好等于路线累计电耗 2.6 kWh 时仍是候选 (min_verification = demonstrated)
+verdict: candidate
+  structural candidate (time, capacity and concurrency NOT checked); weakest verification: demonstrated
+  1. turn-sleeve-p1 [demonstrated]
+       occupies: lathe-1
+       capability machine-tending <- robot-m1 [demonstrated]
+       consumes 1.2 kg bronze-bar (lot lot-bronze)
+       consumes 1 item cutting-insert (lot lot-insert)
+       consumes 2 kWh electric-energy (lot lot-energy)
+       produces 1 item sleeve-p1-raw
+       produces 0.4 kg bronze-swarf
+       produces 1 item worn-insert
+  2. inspect-sleeve-p1 [verified]
+       occupies: gauge-1
+       capability material-handling <- robot-m1 [verified]
+       consumes 1 item sleeve-p1-raw (output of step 1)
+       consumes 0.1 kWh electric-energy (lot lot-energy)
+       produces 1 item sleeve-p1
+  3. replace-sleeve-p1 [verified]
+       capability sleeve-replacement <- robot-m1 [verified]
+       consumes 1 item sleeve-p1 (output of step 2)
+       consumes 0.05 kg grease (lot lot-grease)
+       consumes 0.5 kWh electric-energy (lot lot-energy)
+       produces 1 item worn-sleeve-p1
+       restores: pump-p1
+
+[PASS] AP03 — 要 2 个合格套筒：1 个取库存，1 个现场车削并检验，隔离批次不得动用 (min_verification = demonstrated)
+verdict: candidate
+  structural candidate (time, capacity and concurrency NOT checked); weakest verification: demonstrated
+  1. turn-sleeve-p1 [demonstrated]
+       occupies: lathe-1
+       capability machine-tending <- robot-m1 [demonstrated]
+       consumes 1.2 kg bronze-bar (lot lot-bronze)
+       consumes 1 item cutting-insert (lot lot-insert)
+       consumes 2 kWh electric-energy (lot lot-energy)
+       produces 1 item sleeve-p1-raw
+       produces 0.4 kg bronze-swarf
+       produces 1 item worn-insert
+  2. inspect-sleeve-p1 [verified]
+       occupies: gauge-1
+       capability material-handling <- robot-m1 [verified]
+       consumes 1 item sleeve-p1-raw (output of step 1)
+       consumes 0.1 kWh electric-energy (lot lot-energy)
+       produces 1 item sleeve-p1
+
+[PASS] AP04 — 要 4 个合格套筒：需现场造 3 个，铜棒 3.6 kg > 3 kg，隔离批次不能补位 (min_verification = demonstrated)
+verdict: blocked
+  root causes:
+    - missing_resource bronze-bar: need 3.6 kg, available 3 kg; no local process produces it (external dependency)
+      at obtain:sleeve-p1 > process:inspect-sleeve-p1 > obtain:sleeve-p1-raw > process:turn-sleeve-p1 > obtain:bronze-bar
+  context:
+    - missing_resource sleeve-p1: need 4 item, available 1 item; every local producing process is blocked
+    - missing_resource sleeve-p1-raw: need 3 item, available 0 item; every local producing process is blocked
+
+[PASS] AP05 — 车床故障且无备用螺母：在 demonstrated 下先被验证等级过滤，而不是报循环 (min_verification = demonstrated)
+verdict: blocked
+  root causes:
+    - below_verification turn-lathe-nut: turn-lathe-nut is modeled, query requires at least demonstrated
+      at restore:lathe-1 > process:replace-lathe-nut > obtain:lathe-nut > process:turn-lathe-nut
+  context:
+    - asset_unavailable lathe-1: lathe-1 is failed; every restoring process is blocked: replace-lathe-nut
+    - missing_resource lathe-nut: need 1 item, available 0 item; every local producing process is blocked
+
+[PASS] AP06 — 车床故障但有一个备用螺母：备件打破自修循环 (min_verification = demonstrated)
+verdict: candidate
+  structural candidate (time, capacity and concurrency NOT checked); weakest verification: demonstrated
+  1. replace-lathe-nut [demonstrated]
+       capability lathe-repair <- robot-m1 [demonstrated]
+       consumes 1 item lathe-nut (lot lot-lathe-nut)
+       consumes 0.3 kWh electric-energy (lot lot-energy)
+       produces 1 item broken-lathe-nut
+       restores: lathe-1
+
+[PASS] AP07 — 母线断路器故障：唯一能换断路器的机器人自己靠这条母线充电 (min_verification = demonstrated)
+verdict: blocked
+  root causes:
+    - cycle bus-1: restoring bus-1 (failed) requires bus-1 itself to be usable
+      at restore:bus-1 > process:replace-bus-breaker > capability:electrical-repair > restore:robot-m1 > restore:charger-1 > restore:bus-1
+  context:
+    - asset_unavailable bus-1: bus-1 is failed; every restoring process is blocked: replace-bus-breaker
+    - no_capability_provider electrical-repair: every provider of electrical-repair is unusable: robot-m1
+
+[PASS] AP08 — 母线故障但机器人改为自带电池、不依赖充电桩：供水可恢复 (min_verification = demonstrated)
+verdict: candidate
+  structural candidate (time, capacity and concurrency NOT checked); weakest verification: demonstrated
+  1. replace-bus-breaker [demonstrated]
+       capability electrical-repair <- robot-m1 [demonstrated]
+       consumes 1 item breaker-b1 (lot lot-breaker)
+       consumes 0.2 kWh electric-energy (lot lot-energy)
+       produces 1 item failed-breaker
+       restores: bus-1
+  2. replace-sleeve-p1 [verified]
+       capability sleeve-replacement <- robot-m1 [verified]
+       consumes 1 item sleeve-p1 (lot lot-sleeve-01)
+       consumes 0.05 kg grease (lot lot-grease)
+       consumes 0.5 kWh electric-energy (lot lot-energy)
+       produces 1 item worn-sleeve-p1
+       restores: pump-p1
+
+[PASS] AP09 — 量具状态未知：唯一质量门不可用时结论应为 unknown 而非 blocked (min_verification = demonstrated)
+verdict: unknown
+  root causes:
+    - unknown_state gauge-1: gauge-1 has no valid status evidence; unknown is not available
+      at obtain:sleeve-p1 > process:inspect-sleeve-p1 > restore:gauge-1
+  context:
+    - missing_resource sleeve-p1: need 1 item, available 0 item; every local producing process is blocked
+
+[PASS] AP10 — 给降级水泵加上可占用策略，不能让它直接充当服务支撑 (min_verification = verified)
+verdict: blocked
+  root causes:
+    - below_verification turn-sleeve-p1: turn-sleeve-p1 is demonstrated, query requires at least verified
+      at service:potable-water > restore:pump-p1 > process:replace-sleeve-p1 > obtain:sleeve-p1 > process:inspect-sleeve-p1 > obtain:sleeve-p1-raw > process:turn-sleeve-p1
+  context:
+    - asset_unavailable pump-p1: pump-p1 is degraded; every restoring process is blocked: replace-sleeve-p1
+    - missing_resource sleeve-p1: need 1 item, available 0 item; every local producing process is blocked
+    - missing_resource sleeve-p1-raw: need 1 item, available 0 item; every local producing process is blocked
+
+10 case(s), 10 passed, 0 failed

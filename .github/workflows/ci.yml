@@ -69,6 +69,12 @@ jobs:
           diff /tmp/fed-tcp/REPORT.md experiments/federation-tcp/REPORT.md
           diff /tmp/fed-tcp/raw/exchange.txt experiments/federation-tcp/raw/exchange.txt
 
+      - name: Two-container partition preview (judgment replay from live raw)
+        run: |
+          mkdir -p /tmp/fed-docker
+          cargo run --locked -q -p poie-federation-docker -- report --raw experiments/federation-docker/raw --write /tmp/fed-docker > /dev/null
+          diff /tmp/fed-docker/REPORT.md experiments/federation-docker/REPORT.md
+
       - name: Two-site shadow integration
         run: |
           cargo run --locked -q -p poie-two-site-shadow -- --write /tmp/two-site

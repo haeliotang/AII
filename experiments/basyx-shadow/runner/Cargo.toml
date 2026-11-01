@@ -1,0 +1,15 @@
+[package]
+name = "poie-basyx-shadow"
+version = "0.1.0"
+description = "AI rehearsal (M9.2): read-only BaSyx AAS adapter over hand-written HTTP/1.1 GET, run against a local container."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+poie-ontology = { path = "../../../crates/poie-ontology", version = "0.1.0" }
+poie-plan = { path = "../../../crates/poie-plan", version = "0.1.0" }
+poie-runtime = { path = "../../../crates/poie-runtime", version = "0.1.0" }
+poie-state = { path = "../../../crates/poie-state", version = "0.1.0" }
+serde_json = "1"

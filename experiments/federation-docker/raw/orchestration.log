@@ -1,0 +1,20 @@
+08:49:46 docker 29.8.1
+sha256:78baf2914680dd498791f64159310c72ccfa2273ba15740e4d987a2387b2c831
+08:55:11 containers started
+08:55:11 snapshot D0: [{"site":"site-a","attempts":3,"successes":2,"failures":1,"written":false,"records":0,"reservations":0,"leases":0,"conflicts":[],"conflict_count":0},{"site":"site-b","attempts":3,"successes":3,"failures":0,"written":false,"records":0,"reservations":0,"leases":0,"conflicts":[],"conflict_count":0}]
+08:55:12 partition: site-b disconnected
+08:55:12 snapshot D1-before: [{"site":"site-a","attempts":3,"successes":2,"failures":1,"written":false,"records":0,"reservations":0,"leases":0,"conflicts":[],"conflict_count":0},{"site":"site-b","attempts":4,"successes":3,"failures":1,"written":false,"records":0,"reservations":0,"leases":0,"conflicts":[],"conflict_count":0}]
+08:55:15 snapshot D1-after: [{"site":"site-a","attempts":16,"successes":2,"failures":14,"written":false,"records":0,"reservations":0,"leases":0,"conflicts":[],"conflict_count":0},{"site":"site-b","attempts":16,"successes":3,"failures":13,"written":false,"records":0,"reservations":0,"leases":0,"conflicts":[],"conflict_count":0}]
+08:55:15 go: local writes requested on both sites
+08:55:17 snapshot D2: [{"site":"site-a","attempts":24,"successes":2,"failures":22,"written":true,"records":1,"reservations":1,"leases":1,"conflicts":[],"conflict_count":0},{"site":"site-b","attempts":25,"successes":3,"failures":22,"written":true,"records":1,"reservations":1,"leases":1,"conflicts":[],"conflict_count":0}]
+08:55:17 reconnect: site-b attached
+08:55:18 snapshot D3: [{"site":"site-a","attempts":27,"successes":4,"failures":23,"written":true,"records":2,"reservations":2,"leases":2,"conflicts":["double_ownership","duplicate_idempotency_key","over_reservation"],"conflict_count":3},{"site":"site-b","attempts":28,"successes":6,"failures":22,"written":true,"records":2,"reservations":2,"leases":2,"conflicts":["double_ownership","duplicate_idempotency_key","over_reservation"],"conflict_count":3}]
+08:55:18 round 1: partition
+08:55:20 round 1: reconnect
+08:55:21 snapshot D4-r1: [{"site":"site-a","attempts":38,"successes":7,"failures":31,"written":true,"records":2,"reservations":2,"leases":2,"conflicts":["double_ownership","duplicate_idempotency_key","over_reservation"],"conflict_count":3},{"site":"site-b","attempts":39,"successes":9,"failures":30,"written":true,"records":2,"reservations":2,"leases":2,"conflicts":["double_ownership","duplicate_idempotency_key","over_reservation"],"conflict_count":3}]
+08:55:21 round 2: partition
+08:55:23 round 2: reconnect
+08:55:24 snapshot D4-r2: [{"site":"site-a","attempts":49,"successes":10,"failures":39,"written":true,"records":2,"reservations":2,"leases":2,"conflicts":["double_ownership","duplicate_idempotency_key","over_reservation"],"conflict_count":3},{"site":"site-b","attempts":50,"successes":11,"failures":39,"written":true,"records":2,"reservations":2,"leases":2,"conflicts":["double_ownership","duplicate_idempotency_key","over_reservation"],"conflict_count":3}]
+08:55:24 round 3: partition
+08:55:26 round 3: reconnect
+08:55:26 snapshot D4-r3: [{"site":"site-a","attempts":60,"successes":13,"failures":47,"written":true,"records":2,"reservations":2,"leases":2,"conflicts":["double_ownership","duplicate_idempotency_key","over_reservation"],"conflict_count":3},{"site":"site-b","attempts":61,"successes":14,"failures":47,"written":true,"records":2,"reservations":2,"leases":2,"conflicts":["double_ownership","duplicate_idempotency_key","over_reservation"],"conflict_count":3}]

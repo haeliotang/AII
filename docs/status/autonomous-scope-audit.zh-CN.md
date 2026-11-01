@@ -55,3 +55,17 @@
 ## 5. 结论
 
 **自主范围已完成。** 继续开发剩余里程碑需要外部输入；在此之前，仓库中的实现、实验、证据与验证处于可持续维护状态。外部事项请按 [status-snapshot §4/§5](status-snapshot.zh-CN.md) 与 [external-actions](external-actions.zh-CN.md) 推进。
+
+## 6. 外部依赖项的 AI 预演（2026-11-01）
+
+下面这些产出由 AI 子代理或主线程完成，用来给真实的外部参与者准备起点。**它们都不计入对应里程碑的退出条件**，第 3 节的剩余项和第 5 节的结论保持不变。任务进度见 [ai-preview-tasks](../progress/ai-preview-tasks.md)。
+
+| 事项 | 预演做法 | 结果 | 产物 |
+| --- | --- | --- | --- |
+| M1.8 契约评审 | 3 个互不共享上下文的子代理，分别从工业自动化、分布式系统、运筹与统计视角找反例，都没有读作者的自审 | 36 条，去重后 25 项；其中 13 项为高严重度。P4（守恒可被绕开）和 P5（仿真不查负库存）主线程已核对代码，确认成立 | [评审汇总](ai-preview/contract-review-summary.zh-CN.md) |
+| M3.3 外部用例 | 子代理不读已有用例，独立编写 10 例；预期先提交（815c2f5），之后才运行 | 10/10 符合预期 | `scenarios/base-01/ai-preview-cases.toml`、[运行输出](ai-preview/base01-ai-cases-run.txt) |
+| M1.10 商标检索 | 补查普通法使用、包名和域名，并核实 USPTO 申请 50154930 | 没有发现冲突；50154930 确有其申请（POIE，cl. 9，表情和图像文件）。仍需法务检索 | [补充检索](ai-preview/trademark-supplement.zh-CN.md) |
+| M9.2 真实适配器 | 在本机容器跑 BaSyx AAS `2.0.0-milestone-15`，接入只读适配器，测试断连和重连 | 9/9 PASS。影子计划中动作数为 0，所以「不派发」只是自然满足；预登记没有先于运行单独提交。Ditto 和 ROS 2 未测 | [basyx-shadow](../../experiments/basyx-shadow/REPORT.md) |
+| M12.6 真实多节点 | 两个 Docker 容器，用 `docker network disconnect` 制造分区；预登记先提交（815c2f5） | D0–D4 共 14/14 PASS。未覆盖：时钟偏差、非对称分区、崩溃重启、认证加密 | [federation-docker](../../experiments/federation-docker/REPORT.md) |
+
+没有做预演的事项及原因：M1.9 需要发起方本人确认；M9.0 需要真实的法务或合规意见；M9.6/M10 的物理部分和 M11.6 需要实物试验台和建造资源。
