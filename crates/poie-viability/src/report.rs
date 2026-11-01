@@ -180,6 +180,16 @@ impl MachineReport {
             if !run.budget_used_s.is_finite() || run.budget_used_s < 0.0 {
                 errors.push(ReportError::Invalid("budget used must be finite and non-negative".into()));
             }
+            // VEC §3.2/§3.3 (issue #106): only the `certificate` method can support
+            // "infeasible in the model"; a structural `blocked` alone never can.
+            if matches!(run.verdict, Verdict::InfeasibleInModel { .. })
+                && (self.method != Method::Certificate || run.method != Method::Certificate)
+            {
+                errors.push(ReportError::Invalid(format!(
+                    "infeasible_in_model for {} needs the certificate method, not {}",
+                    run.scenario_id, run.method
+                )));
+            }
             if let Verdict::HeldOnTested { tested_scenarios, .. } = &run.verdict {
                 if *tested_scenarios > self.runs.len() {
                     errors.push(ReportError::Invalid("held_on_tested claims more scenarios than were run".into()));
@@ -453,6 +463,40 @@ mod tests {
         let mut broken = sample_report();
         broken.model_provenance[0].validity.clear();
         assert!(broken.validate().is_err());
+    }
+
+    #[test]
+    fn vec3_2_infeasible_in_model_needs_the_certificate_method() {
+        // VEC §3.2/§3.3 (issue #106): sampled and enumerated methods cannot
+        // support "infeasible in the model"; a structural `blocked` is not a
+        // certificate either.
+        for method in [Method::Sampled, Method::Enumerated, Method::SetBased] {
+            let mut report = sample_report();
+            report.method = method;
+            report.runs[1].method = method;
+            report.runs[1].verdict = Verdict::InfeasibleInModel {
+                certificate: "capability-graph blocked: missing_resource bronze-bar".into(),
+                checkable: "poie-graph cases.toml".into(),
+            };
+            assert!(report.validate().is_err(), "{method} report must not carry infeasible_in_model");
+        }
+        let mut report = sample_report();
+        report.method = Method::Certificate;
+        report.seeds.clear();
+        for run in &mut report.runs {
+            run.method = Method::Certificate;
+            run.seed = None;
+        }
+        report.runs[0].verdict = Verdict::HeldOnTested {
+            tested_scenarios: 3,
+            method: Method::Certificate,
+            uncovered: "nothing outside the certified model".into(),
+        };
+        report.runs[1].verdict = Verdict::InfeasibleInModel {
+            certificate: "unsat core over the horizon-relaxed snapshot".into(),
+            checkable: "poie check cert.cert".into(),
+        };
+        assert!(report.validate().is_ok(), "{:?}", report.validate());
     }
 
     #[test]
