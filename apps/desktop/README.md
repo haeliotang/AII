@@ -25,6 +25,11 @@ keeps the Inceptless light/dark colour tokens, but the information architecture 
 Poieweave's: services → capability entities → plan → SAP execution gate →
 federation → evidence.
 
+The app icon and the rail mark are generated from
+[`src/assets/poieweave-mono.svg`](src/assets/poieweave-mono.svg) (the mono
+capability-graph mark). The Dock icon puts the mark on the neutral Poieweave tile
+for legibility; the in-app rail uses the raw mono mark and inverts it in dark mode.
+
 ## Layout
 
 ```

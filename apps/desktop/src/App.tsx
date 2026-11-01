@@ -20,6 +20,7 @@ import {
   type InferenceStatus,
   type NavKey,
 } from "./domain";
+import brandMark from "./assets/poieweave-mono.svg";
 import { detectLang, messagesFor, type Lang } from "./i18n";
 import {
   AlertIcon,
@@ -188,7 +189,7 @@ function Rail({
   return (
     <aside className="rail">
       <div className="brand" title="Poieweave">
-        <span className="brand__mark">P</span>
+        <img className="brand__img" src={brandMark} alt="" />
       </div>
       <nav className="rail__nav" aria-label={t("top.workspace")}>
         {NAV.map((item) => (

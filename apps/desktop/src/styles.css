@@ -101,15 +101,13 @@ button:disabled { cursor: default; opacity: 0.45; }
   width: 34px;
   height: 34px;
   margin-bottom: 8px;
-  border-radius: 10px;
-  background: var(--text);
-  color: var(--pane);
-  font-weight: 700;
-  font-size: 17px;
-  letter-spacing: -0.03em;
-  box-shadow: var(--shadow-sm);
 }
-.brand__mark { transform: translateY(-0.5px); }
+.brand__img {
+  display: block;
+  width: 32px;
+  height: 32px;
+}
+:root[data-theme="dark"] .brand__img { filter: invert(1); }
 .rail__nav { display: flex; flex-direction: column; gap: 3px; }
 .rail__button {
   width: 34px;
