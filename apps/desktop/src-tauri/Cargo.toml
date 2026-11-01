@@ -25,6 +25,8 @@ serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 poie-ontology = { path = "../../../crates/poie-ontology" }
 poie-plan = { path = "../../../crates/poie-plan" }
+poie-state = { path = "../../../crates/poie-state" }
+poie-federation = { path = "../../../crates/poie-federation" }
 toml = "0.8"
 
 [profile.release]

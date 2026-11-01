@@ -667,3 +667,30 @@ button:disabled { cursor: default; opacity: 0.45; }
 }
 .dep-chip:hover { border-color: color-mix(in srgb, var(--text) 28%, var(--border)); }
 .dep-chip span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* SAP dispatch checks */
+.check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--pane);
+  font-size: 0.7rem;
+}
+.check-item span:nth-child(2) { white-space: nowrap; }
+.check-item span:nth-child(3) { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.check-item--bad { border-color: color-mix(in srgb, var(--error) 40%, var(--border)); }
+@media (max-width: 860px) { .check-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Focused secondary window (federation wall / execution monitor) */
+.cockpit--focus { grid-template-columns: minmax(0, 1fr); }
+.cockpit--focus .rail,
+.cockpit--focus .sidebar,
+.cockpit--focus .inspector { display: none; }
+.cockpit--focus .workspace { grid-column: 1; }
+.cockpit--focus .workspace__inner { max-width: 1180px; padding: 22px 28px 32px; }
+.cockpit--focus .statusbar { grid-column: 1; }

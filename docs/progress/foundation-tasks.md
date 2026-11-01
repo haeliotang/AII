@@ -170,4 +170,5 @@ M12 多站点联邦：**进行中（模拟部分完成）**——M12.1–M12.4 �
 - 2026-11-01：对齐最新进展：README 更新状态/契约修订/新预演与修复（#105–#112），并删除旧名 AII；状态快照记录评审处置（22 接受/3 推迟）、守恒暂停解除、#105–#111 合并；干净克隆复现记录刷新至 `d0d449c`。
 - 2026-11-01：新增桌面外壳 `apps/desktop`（Tauri 2 + React 19/TypeScript）：Rust 宿主提供 SQLite 笔记/事件、应用数据沙箱与打包配置；前端按 Inceptless 浅色主题实现三栏工作线 UI、分段标签、智能体上下文与 composer；本地 `pnpm build`、`cargo test`、`pnpm tauri build --no-bundle` 通过。
 - 2026-11-01：桌面外壳重构为 Poieweave 运营驾驶舱（能力/规划/执行/联邦/证据六视图 + 上下文检查器 + 状态栏），深色主题与中英切换；宿主接入 `poie-ontology`/`poie-plan`，Base-01 泵退化场景生成服务可行性与 24h 规划快照；新增多窗口命令；认证/远程推理保留禁用占位；`pnpm build`、`cargo test`（6 通过）、`tauri build --no-bundle` 通过。
+- 2026-11-01：桌面驾驶舱接入 `poie-state` / `poie-federation`：执行视图显示真实 SAP 账本与七项 dispatch 复核，联邦视图显示真实 exchange/reconcile 冲突；多窗口改为视图专属聚焦窗口；宿主 8 个测试通过。
 - 2026-11-01：issue #106–#111 修复已集成（PR 待开）：H4 结论由「不确定」改为「净增益为负」（VEC 修订后重跑，原结论保留在 H4 REPORT §7 与 PREREG 变更记录）；vec-base01 原 4 个 `infeasible_in_model` 改为 counterexample。测试：库 crate 291→368，总计 306→384。

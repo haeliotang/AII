@@ -2300,6 +2300,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "poie-federation"
+version = "0.1.0"
+dependencies = [
+ "poie-state",
+ "serde",
+]
+
+[[package]]
 name = "poie-ontology"
 version = "0.1.0"
 dependencies = [
@@ -2328,8 +2336,10 @@ dependencies = [
 name = "poieweave-desktop"
 version = "0.1.0"
 dependencies = [
+ "poie-federation",
  "poie-ontology",
  "poie-plan",
+ "poie-state",
  "rusqlite",
  "serde",
  "serde_json",

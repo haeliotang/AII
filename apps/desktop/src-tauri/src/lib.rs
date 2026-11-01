@@ -6,6 +6,8 @@
 
 mod db;
 mod domain;
+mod execution;
+mod federation_view;
 mod sandbox;
 
 use std::path::PathBuf;
@@ -16,12 +18,16 @@ use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 use crate::db::{Db, EventRow};
 use crate::domain::DomainOverview;
+use crate::execution::ExecutionSnapshot;
+use crate::federation_view::FederationSnapshot;
 
 struct AppState {
     db: Mutex<Db>,
     data_dir: PathBuf,
     sandbox_root: PathBuf,
     domain: DomainOverview,
+    execution: ExecutionSnapshot,
+    federation: FederationSnapshot,
 }
 
 #[derive(Serialize)]
@@ -49,9 +55,15 @@ fn open_workspace_window(app: tauri::AppHandle, view: String) -> Result<(), Stri
         window.set_focus().map_err(|error| error.to_string())?;
         return Ok(());
     }
-    WebviewWindowBuilder::new(&app, label, WebviewUrl::App(format!("index.html?view={view}").into()))
-        .title(format!("Poieweave · {view}"))
-        .inner_size(1180.0, 820.0)
+    let (width, height, title) = match view.as_str() {
+        "federation" => (1240.0, 760.0, "Poieweave · federation wall"),
+        "execution" => (1100.0, 760.0, "Poieweave · execution monitor"),
+        "evidence" => (1100.0, 800.0, "Poieweave · evidence"),
+        _ => (1180.0, 820.0, "Poieweave · focused view"),
+    };
+    WebviewWindowBuilder::new(&app, label, WebviewUrl::App(format!("index.html?view={view}&focus=1").into()))
+        .title(title)
+        .inner_size(width, height)
         .min_inner_size(900.0, 620.0)
         .build()
         .map_err(|error| format!("open window: {error}"))?;
@@ -72,6 +84,16 @@ fn host_info(state: State<'_, AppState>) -> HostInfo {
 #[tauri::command]
 fn domain_overview(state: State<'_, AppState>) -> DomainOverview {
     state.domain.clone()
+}
+
+#[tauri::command]
+fn execution_snapshot(state: State<'_, AppState>) -> ExecutionSnapshot {
+    state.execution.clone()
+}
+
+#[tauri::command]
+fn federation_snapshot(state: State<'_, AppState>) -> FederationSnapshot {
+    state.federation.clone()
 }
 
 #[tauri::command]
@@ -117,13 +139,17 @@ pub fn run() {
             let mut db = Db::open(&data_dir.join("poieweave.sqlite3"))?;
             db.seed(include_str!("../../src/data/notes.json"))?;
             let domain = domain::overview().map_err(|error| format!("domain snapshot: {error}"))?;
-            app.manage(AppState { db: Mutex::new(db), data_dir, sandbox_root, domain });
+            let execution = execution::snapshot(&domain).map_err(|error| format!("execution snapshot: {error}"))?;
+            let federation = federation_view::snapshot().map_err(|error| format!("federation snapshot: {error}"))?;
+            app.manage(AppState { db: Mutex::new(db), data_dir, sandbox_root, domain, execution, federation });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             open_workspace_window,
             host_info,
             domain_overview,
+            execution_snapshot,
+            federation_snapshot,
             notes_all,
             events_list,
             event_append,
