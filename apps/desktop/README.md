@@ -1,88 +1,118 @@
-# Poieweave desktop shell
+# Poieweave desktop
 
-Tauri 2 host + React 19 / TypeScript workline UI. This is the first shell: it
-sets up the host boundary (filesystem, SQLite handle, sandbox, packaging) and
-the three-pane workline interface, with seeded demo data. It is not yet wired
-to the `crates/poie-*` domain crates.
+A Tauri 2 desktop **operations cockpit** for Poieweave: capability graph, planning,
+execution gate, federation reconciliation and the evidence chain. The Rust host
+owns the app-data directory, SQLite state, an embedded Base-01 domain snapshot and
+a size-limited sandbox; the frontend is React 19 + TypeScript + Vite.
 
-![Poieweave desktop shell](preview.png)
+![Poieweave cockpit, light](preview.png)
+![Poieweave cockpit, dark](preview-dark.png)
 
-## Stack
+This is deliberately **not** a notes/workline layout copied from Inceptless. It
+keeps the Inceptless light/dark colour tokens, but the information architecture is
+Poieweave's: services → capability entities → plan → SAP execution gate →
+federation → evidence.
 
-- **Host:** `apps/desktop/src-tauri` — Rust, Tauri 2. Owns the app-data
-  directory, a bundled SQLite database, a size-limited sandbox, and the bundle
-  configuration.
-- **Frontend:** `apps/desktop/src` — React 19, TypeScript, Vite 7. No UI
-  framework, no web fonts, no remote assets.
-- The host crate is **outside the root Cargo workspace** (`Cargo.toml` excludes
-  it), so the existing Rust CI and `scripts/verify-all.sh` are unaffected.
+## Layout
 
-## Design
+```
+rail        64px   Poieweave mark + section icons + theme/language/settings/account
+sidebar    288px   scenario, search, contextual entities / actions / conflicts / experiments
+workspace  1fr     topbar (scenario, horizon, run mode) + one of six views
+inspector  360px   context for the selected service, entity, action, conflict or experiment
+statusbar  26px    host, model, plan digest, sandbox, time
+```
 
-The visual system copies the Inceptless light theme exactly:
+Views:
 
-| Token | Value |
+| View | Content |
 | --- | --- |
-| sidebar | `#e8e8ea` |
-| pane | `#f7f7f8` |
-| surface | `#efeff1` |
-| border / hairline | `#d4d4d8` / `#e3e3e5` |
-| ink / muted | `#1a1a1a` / `#666666` |
-| accent | `#0369CC` |
-| selection | ink at 11% over the sidebar (same as `.nav-line--active`) |
+| Overview | KPI strip, capability graph, current plan, service viability, external dependencies, open alerts. |
+| Capabilities | Assets, resources and processes from the projected Base-01 model, plus the structural graph and external dependencies. |
+| Planning | Goal/completion/digest, action timeline and action table; the inspector keeps preconditions, allocations and verification level. |
+| Execution | SAP execution gate (human takeover / safe degradation), action ledger and the deliberate "executor not wired" warning. |
+| Federation | Site cards (HLC, records, reservations, leases) and the preserved conflict list. Current snapshot is the Base-02 federation preview. |
+| Evidence | Pre-registered experiments with replay badges, contract revisions and the 384-test evidence summary. |
 
-Fonts are the system stack; the three-pane layout is rail + workline list +
-document column + agent inspector, with the segmented `总览 / 理解 / 探索 / 实践`
-tabs and the agent-context/composer panel from the reference screenshot.
-Colours and spacing live in `src/styles.css`; there is no dark theme yet.
+## Theme and i18n
+
+- Light and dark tokens are the Inceptless values: light `#e8e8ea / #f7f7f8 /
+  #efeff1 / #d4d4d8 / #1a1a1a / #666 / #0369CC`; dark `#141414 / #1c1c1c /
+  #242424 / #2e2e2e / #f2f2f2 / #9a9a9a / #0369CC`.
+- Theme and language persist in `localStorage`; the language switch covers the
+  shell (Chinese/English), while model ids, process names and evidence labels stay
+  in their source language.
+- No dark-mode colour is invented outside the token block in `src/styles.css`.
+
+## Domain integration
+
+The host embeds the Base-01 model (`scenarios/base-01/model.toml`), patches
+`pump-p1` to `degraded`, and runs the real crates:
+
+- `poie-ontology`: graph solve per service + external dependency report;
+- `poie-plan`: a 24 h plan for `potable-water` with a 4 h deadline.
+
+`domain_overview` returns a serializable snapshot:
+
+```text
+scenario, modelName, counts,
+assets / resources / processes (id, kind, status),
+services (verdict, steps, blockers),
+plan (planId, goal, completion, digest, actions, goals met/unmet),
+externalDependencies
+```
+
+The browser-only `pnpm dev` build uses `src/domain.ts`'s preview snapshot with the
+same shape; the Tauri build replaces it with the host result. There is no SQL or
+solver access from the webview.
 
 ## Host commands
 
 | Command | Purpose |
 | --- | --- |
 | `host_info` | Version, app-data dir, DB path, sandbox root, platform. |
-| `notes_all` | Seeded notes from SQLite (`notes.payload` JSON). |
-| `events_list` / `event_append` | Per-workline events from the composer. |
-| `sandbox_read` / `sandbox_write` | Relative-path, size-limited file access under `<app-data>/sandbox`. |
-| `sandbox_root` | The resolved sandbox root. |
+| `domain_overview` | Base-01 domain snapshot computed by `poie-ontology` + `poie-plan`. |
+| `notes_all` / `events_list` / `event_append` | SQLite-backed workline data kept for the next integration step. |
+| `sandbox_read` / `sandbox_write` / `sandbox_root` | Relative-path, 1 MiB-limited access under `<app-data>/sandbox`; traversal and absolute paths rejected. |
+| `open_workspace_window` | Opens one of the six views in a second Tauri window. |
 
-Every command goes through the Rust host; the webview never receives SQL or the
-sandbox root path except through `host_info`/`sandbox_root`. Path traversal,
-absolute paths and oversized files are rejected in `src/sandbox.rs`.
+## Authentication and remote inference
 
-## Run
+The settings sheet exposes both surfaces, but they are **not wired**:
+
+- authentication shows "local mode" and a disabled sign-in button;
+- remote inference shows disabled endpoint/model fields and states that no data is
+  sent to any remote endpoint.
+
+No fake token, fake login or fake inference call is implemented. The next
+iteration should add a host-side credential store (macOS Keychain / Windows
+Credential Manager via a Tauri plugin), an inference provider interface and an
+audit trail before enabling either surface.
+
+## Run and verify
 
 ```bash
 cd apps/desktop
 pnpm install
-pnpm tauri dev        # native window
-pnpm dev              # browser-only shell with the seeded JSON fallback
-```
+pnpm tauri dev            # native window
+pnpm dev                  # browser-only cockpit with preview data
 
-## Build
-
-```bash
-cd apps/desktop
-pnpm build            # tsc + vite build
-pnpm tauri build      # .app / .dmg (macOS)
-```
-
-## Verify
-
-```bash
-cd apps/desktop
 pnpm exec tsc --noEmit -p tsconfig.json
 pnpm build
-cd src-tauri && cargo test --offline   # sandbox and DB unit tests
-pnpm tauri build --no-bundle           # host + frontend integration build
+cd src-tauri && cargo test --offline    # 6 tests: DB, sandbox, domain snapshot
+cd .. && pnpm tauri build --no-bundle
 ```
 
-## Current boundaries
+The desktop crate is excluded from the root Cargo workspace, so the existing
+Rust CI and `scripts/verify-all.sh` do not require WebKit.
 
-- Demo worklines are seeded from `src/data/notes.json` (shared by the Rust seed
-  and the browser fallback). No domain-crate integration yet.
-- No theme switching, i18n, authentication, remote inference, or multi-window
-  support in this shell.
-- The sandbox covers app-data files only; it does not grant arbitrary host file
-  access.
-- Icons are generated for this app; no Inceptless brand assets are copied.
+## Next
+
+1. Add `poie-state` command(s) so the execution ledger is driven by a real action
+   ledger and SAP review instead of plan actions.
+2. Add `poie-federation` command(s) so sites/conflicts are computed by the
+   federation reconciler instead of the preview snapshot.
+3. Wire authentication, the credential store and remote inference with explicit
+   opt-in and audit events.
+4. Give secondary windows real roles (federation wall, execution monitor) rather
+   than duplicating the full cockpit.
